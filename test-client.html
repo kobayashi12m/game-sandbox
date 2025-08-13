@@ -1,0 +1,42 @@
+  <!DOCTYPE html>
+  <html>
+  <head>
+      <title>WebSocket テスト</title>
+  </head>
+  <body>
+      <h1>WebSocket接続テスト</h1>
+      <div id="status">未接続</div>
+      <input type="text" id="messageInput" placeholder="メッセージを入力">
+      <button onclick="sendMessage()">送信</button>
+      <div id="messages"></div>
+
+      <script>
+          const ws = new WebSocket('ws://localhost:8080/ws');
+          const status = document.getElementById('status');
+          const messages = document.getElementById('messages');
+
+          ws.onopen = () => {
+              status.textContent = '接続済み';
+              status.style.color = 'green';
+          };
+
+          ws.onmessage = (event) => {
+              messages.innerHTML += `<p>受信: ${event.data}</p>`;
+          };
+
+          ws.onclose = () => {
+              status.textContent = '切断されました';
+              status.style.color = 'red';
+          };
+
+          function sendMessage() {
+              const input = document.getElementById('messageInput');
+              if (input.value) {
+                  ws.send(input.value);
+                  messages.innerHTML += `<p>送信: ${input.value}</p>`;
+                  input.value = '';
+              }
+          }
+      </script>
+  </body>
+  </html>
