@@ -8,7 +8,7 @@ function App() {
   const [messages, setMessages] = useState<string[]>([])
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8080/ws')
+    const ws = new WebSocket(`ws://${window.location.hostname}:8080/ws`)
 
     ws.onopen = () => {
       console.log('WebSocket接続成功')
