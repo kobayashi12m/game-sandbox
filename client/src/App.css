@@ -17,3 +17,23 @@ h1 {
   line-height: 1.1;
   margin-bottom: 0.5em;
 }
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+  #root {
+    padding: 1rem;
+  }
+  
+  h1 {
+    font-size: 2em;
+    margin-bottom: 0.3em;
+  }
+  
+  .App {
+    gap: 10px;
+  }
+  
+  canvas {
+    touch-action: none; /* タッチイベントの最適化 */
+  }
+}

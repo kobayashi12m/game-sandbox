@@ -8,6 +8,13 @@ interface Player {
   guardSize: number;
 }
 
+interface InterpolatedPlayer extends Player {
+  targetX: number;
+  targetY: number;
+  renderX: number;
+  renderY: number;
+}
+
 interface GameCanvasProps {
   player: Player | null;
   otherPlayers: Player[];
@@ -17,31 +24,87 @@ interface GameCanvasProps {
 const GameCanvas: React.FC<GameCanvasProps> = ({ player, otherPlayers, onPositionUpdate }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [mousePos, setMousePos] = React.useState({ x: 400, y: 300 });
+  const interpolatedPlayersRef = useRef<Map<string, InterpolatedPlayer>>(new Map());
+  const animationFrameRef = useRef<number>();
 
-  // マウス移動ハンドラー
+  // マウス・タッチ移動ハンドラー
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const handleMouseMove = (event: MouseEvent) => {
+    const getPosition = (event: MouseEvent | TouchEvent) => {
       const rect = canvas.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
+      let x, y;
       
-      setMousePos({ x, y });
+      if ('touches' in event) {
+        // タッチイベント
+        const touch = event.touches[0] || event.changedTouches[0];
+        x = touch.clientX - rect.left;
+        y = touch.clientY - rect.top;
+      } else {
+        // マウスイベント
+        x = event.clientX - rect.left;
+        y = event.clientY - rect.top;
+      }
+      
+      return { x, y };
+    };
+
+    const handleMove = (event: MouseEvent | TouchEvent) => {
+      const pos = getPosition(event);
+      setMousePos(pos);
       
       // 位置更新をコールバック
       if (onPositionUpdate) {
-        onPositionUpdate(x, y);
+        onPositionUpdate(pos.x, pos.y);
       }
     };
 
-    canvas.addEventListener('mousemove', handleMouseMove);
+    // マウスとタッチの両方に対応
+    canvas.addEventListener('mousemove', handleMove);
+    canvas.addEventListener('touchmove', handleMove, { passive: true });
 
     return () => {
-      canvas.removeEventListener('mousemove', handleMouseMove);
+      canvas.removeEventListener('mousemove', handleMove);
+      canvas.removeEventListener('touchmove', handleMove);
     };
   }, [onPositionUpdate]);
+
+  // 他プレイヤーの位置更新時に補間データを設定
+  useEffect(() => {
+    const interpolatedPlayers = interpolatedPlayersRef.current;
+    
+    otherPlayers.forEach(player => {
+      const existing = interpolatedPlayers.get(player.id);
+      
+      if (existing) {
+        // 既存プレイヤーの目標位置を更新
+        existing.targetX = player.x;
+        existing.targetY = player.y;
+        existing.x = player.x;
+        existing.y = player.y;
+        existing.coreSize = player.coreSize;
+        existing.guardSize = player.guardSize;
+      } else {
+        // 新しいプレイヤーを追加
+        interpolatedPlayers.set(player.id, {
+          ...player,
+          targetX: player.x,
+          targetY: player.y,
+          renderX: player.x,
+          renderY: player.y,
+        });
+      }
+    });
+
+    // 存在しなくなったプレイヤーを削除
+    const currentPlayerIds = new Set(otherPlayers.map(p => p.id));
+    for (const [playerId] of interpolatedPlayers) {
+      if (!currentPlayerIds.has(playerId)) {
+        interpolatedPlayers.delete(playerId);
+      }
+    }
+  }, [otherPlayers]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -50,9 +113,15 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ player, otherPlayers, onPositio
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Canvasサイズを設定
-    canvas.width = 800;
-    canvas.height = 600;
+    // Canvasサイズをレスポンシブに設定
+    const isMobile = window.innerWidth < 768;
+    canvas.width = isMobile ? Math.min(window.innerWidth - 20, 400) : 800;
+    canvas.height = isMobile ? Math.min(window.innerHeight - 200, 300) : 600;
+
+    // 位置補間関数
+    const lerp = (start: number, end: number, factor: number) => {
+      return start + (end - start) * factor;
+    };
 
     // 描画関数
     const draw = () => {
@@ -60,22 +129,25 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ player, otherPlayers, onPositio
       ctx.fillStyle = '#f0f0f0';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // デバッグ情報を描画
-      ctx.fillStyle = 'black';
-      ctx.font = '14px Arial';
-      ctx.textAlign = 'left';
-      ctx.fillText(`他プレイヤー数: ${otherPlayers.length}`, 10, 20);
+      // デバッグ情報を描画（PCのみ）
+      if (!isMobile) {
+        ctx.fillStyle = 'black';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(`他プレイヤー数: ${otherPlayers.length}`, 10, 20);
+      }
 
-      // 他のプレイヤーを描画
-      console.log('描画する他プレイヤー数:', otherPlayers.length);
-      otherPlayers.forEach((otherPlayer, index) => {
-        console.log(`プレイヤー${index + 1}: ${otherPlayer.id} at (${otherPlayer.x}, ${otherPlayer.y})`);
-      });
-      
-      otherPlayers.forEach(otherPlayer => {
+      // 他のプレイヤーを補間位置で描画
+      const interpolatedPlayers = interpolatedPlayersRef.current;
+      interpolatedPlayers.forEach(otherPlayer => {
+        // 位置を補間（スムーズな移動）
+        const lerpFactor = 0.15; // 補間の強さ（0.1-0.2が適切）
+        otherPlayer.renderX = lerp(otherPlayer.renderX, otherPlayer.targetX, lerpFactor);
+        otherPlayer.renderY = lerp(otherPlayer.renderY, otherPlayer.targetY, lerpFactor);
+
         // ガード（外側の円）を描画
         ctx.beginPath();
-        ctx.arc(otherPlayer.x, otherPlayer.y, otherPlayer.guardSize, 0, Math.PI * 2);
+        ctx.arc(otherPlayer.renderX, otherPlayer.renderY, otherPlayer.guardSize, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(100, 100, 100, 0.3)';
         ctx.fill();
         ctx.strokeStyle = 'rgba(100, 100, 100, 0.8)';
@@ -84,7 +156,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ player, otherPlayers, onPositio
 
         // コア（内側の円）を描画
         ctx.beginPath();
-        ctx.arc(otherPlayer.x, otherPlayer.y, otherPlayer.coreSize, 0, Math.PI * 2);
+        ctx.arc(otherPlayer.renderX, otherPlayer.renderY, otherPlayer.coreSize, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(150, 150, 150, 0.8)';
         ctx.fill();
         ctx.strokeStyle = 'rgba(100, 100, 100, 1)';
@@ -95,7 +167,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ player, otherPlayers, onPositio
         ctx.fillStyle = 'black';
         ctx.font = '12px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(otherPlayer.id, otherPlayer.x, otherPlayer.y - otherPlayer.guardSize - 10);
+        ctx.fillText(otherPlayer.id, otherPlayer.renderX, otherPlayer.renderY - otherPlayer.guardSize - 10);
       });
 
       // 自分のプレイヤーを描画（最前面）
@@ -130,21 +202,21 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ player, otherPlayers, onPositio
       }
     };
 
-    // 初回描画
-    draw();
-
-    // アニメーションループ
+    // アニメーションループ（補間のために必要）
     const animate = () => {
       draw();
-      requestAnimationFrame(animate);
+      animationFrameRef.current = requestAnimationFrame(animate);
     };
 
-    const animationId = requestAnimationFrame(animate);
+    // アニメーション開始
+    animationFrameRef.current = requestAnimationFrame(animate);
 
     return () => {
-      cancelAnimationFrame(animationId);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
-  }, [player, otherPlayers, mousePos]);
+  }, [player, mousePos]);
 
   return (
     <canvas

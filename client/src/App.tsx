@@ -32,32 +32,24 @@ function App() {
     }
 
     ws.onmessage = (event) => {
-      console.log('メッセージ受信:', event.data)
       try {
         const gameMsg: GameMessage = JSON.parse(event.data)
         
         if (gameMsg.type === 'gameInit') {
           // ゲーム初期化メッセージを受信
-          console.log('ゲーム初期化:', gameMsg.data)
           const playerData: Player = gameMsg.data
           setPlayer(playerData)
           playerIdRef.current = playerData.id
         } else if (gameMsg.type === 'gameState') {
           // 他のプレイヤーの状態更新
           const playerData: Player = gameMsg.data
-          console.log('受信したプレイヤー状態:', playerData)
-          console.log('現在の自分のプレイヤーID:', playerIdRef.current)
           
           if (playerIdRef.current && playerData.id !== playerIdRef.current) {
-            console.log('他のプレイヤーを追加:', playerData.id)
             setOtherPlayers(prev => {
               const newMap = new Map(prev)
               newMap.set(playerData.id, playerData)
-              console.log('更新後の他プレイヤー数:', newMap.size)
               return newMap
             })
-          } else {
-            console.log('自分のプレイヤーなのでスキップ、またはまだ初期化されていない')
           }
         } else if (gameMsg.type === 'playerDisconnect') {
           // プレイヤー切断
@@ -69,7 +61,7 @@ function App() {
           })
         }
       } catch (e) {
-        console.error('メッセージパースエラー:', e)
+        // エラーは無視（パフォーマンス向上のため）
       }
     }
 
@@ -93,8 +85,8 @@ function App() {
   // 位置更新ハンドラー（レート制限付き）
   const handlePositionUpdate = (x: number, y: number) => {
     const now = Date.now()
-    // 50ms（20FPS）のレート制限
-    if (now - lastUpdateTime.current < 50) return
+    // 100ms（10FPS）のレート制限に変更
+    if (now - lastUpdateTime.current < 100) return
     
     if (socket && socket.readyState === WebSocket.OPEN && playerIdRef.current) {
       const moveMsg: GameMessage = {
@@ -112,8 +104,6 @@ function App() {
 
   return (
     <div className="App">
-      <h1>コア・ガード.io</h1>
-      
       <div>
         <p>接続: <strong>{connectionStatus}</strong></p>
         {player && <p>プレイヤーID: <strong>{player.id}</strong></p>}
