@@ -1,0 +1,74 @@
+.touch-controls {
+  display: none;
+  position: relative;
+  width: 180px;
+  height: 180px;
+  margin: 20px auto;
+}
+
+@media (max-width: 768px), (pointer: coarse) {
+  .touch-controls {
+    display: block;
+  }
+}
+
+.control-button {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  background-color: rgba(78, 205, 196, 0.8);
+  border: 2px solid #4ECDC4;
+  border-radius: 10px;
+  color: white;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.1s;
+}
+
+.control-button:active {
+  background-color: rgba(78, 205, 196, 1);
+  transform: scale(0.95);
+}
+
+.control-button.up {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.control-button.down {
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.control-button.left {
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.control-button.right {
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.control-row {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.control-center {
+  width: 60px;
+  height: 60px;
+}

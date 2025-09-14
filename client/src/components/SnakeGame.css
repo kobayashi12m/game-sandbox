@@ -1,0 +1,157 @@
+.snake-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  background-color: #0a0a0a;
+  min-height: 100vh;
+  color: white;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 800px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.game-header h2 {
+  margin: 0;
+}
+
+.scoreboard {
+  background-color: #1a1a1a;
+  padding: 15px;
+  border-radius: 8px;
+  min-width: 200px;
+}
+
+.scoreboard h3 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+}
+
+.player-score {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 5px 0;
+  font-size: 14px;
+}
+
+.game-canvas {
+  border: 2px solid #333;
+  background-color: #1a1a1a;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  max-width: 100%;
+  height: auto;
+}
+
+.controls {
+  margin-top: 20px;
+  text-align: center;
+  color: #999;
+}
+
+.desktop-controls {
+  display: block;
+}
+
+@media (max-width: 768px), (pointer: coarse) {
+  .desktop-controls {
+    display: none;
+  }
+  
+  .snake-game {
+    padding: 10px;
+  }
+  
+  .game-header {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .game-header h2 {
+    font-size: 24px;
+    text-align: center;
+  }
+  
+  .scoreboard {
+    width: 100%;
+    max-width: 300px;
+  }
+  
+  .game-canvas {
+    width: 90vw;
+    height: 90vw;
+    max-width: 600px;
+    max-height: 600px;
+  }
+}
+
+.join-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: #0a0a0a;
+  color: white;
+}
+
+.join-form h2 {
+  margin-bottom: 30px;
+  font-size: 32px;
+}
+
+.join-form form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 300px;
+}
+
+.join-form input {
+  padding: 12px;
+  font-size: 16px;
+  border: 1px solid #333;
+  border-radius: 4px;
+  background-color: #1a1a1a;
+  color: white;
+}
+
+.join-form input:focus {
+  outline: none;
+  border-color: #4ECDC4;
+}
+
+.join-form button {
+  padding: 12px;
+  font-size: 16px;
+  background-color: #4ECDC4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.join-form button:hover {
+  background-color: #45B7D1;
+}
+
+@media (max-width: 768px) {
+  .join-form h2 {
+    font-size: 24px;
+  }
+  
+  .join-form form {
+    width: 90%;
+    max-width: 300px;
+  }
+}
