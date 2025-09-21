@@ -1,0 +1,208 @@
+.scoreboard {
+  background-color: #1a1a1a;
+  border-radius: 12px;
+  padding: 20px;
+  min-width: 280px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  border: 1px solid #333;
+}
+
+.scoreboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #333;
+}
+
+.scoreboard-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #fff;
+  font-weight: bold;
+}
+
+.room-info {
+  font-size: 12px;
+  color: #999;
+  background-color: #2a2a2a;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.players-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.player-score {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background-color: #2a2a2a;
+  border-radius: 8px;
+  border: 1px solid #333;
+  transition: all 0.2s ease;
+}
+
+.player-score:hover {
+  background-color: #333;
+}
+
+.player-score.current-player {
+  background-color: #2a4a3a;
+  border-color: #4ECDC4;
+  box-shadow: 0 0 8px rgba(78, 205, 196, 0.3);
+}
+
+.player-rank {
+  font-weight: bold;
+  color: #4ECDC4;
+  min-width: 25px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.player-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid #555;
+  flex-shrink: 0;
+}
+
+.player-name {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-status {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.player-status.alive {
+  background-color: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
+}
+
+.player-status.dead {
+  background-color: rgba(244, 67, 54, 0.2);
+  color: #f44336;
+}
+
+.player-score-value {
+  font-weight: bold;
+  color: #4ECDC4;
+  font-size: 16px;
+  min-width: 40px;
+  text-align: right;
+}
+
+.no-players {
+  text-align: center;
+  color: #999;
+  padding: 20px;
+  font-style: italic;
+}
+
+/* レスポンシブデザイン */
+@media (max-width: 768px) {
+  .scoreboard {
+    width: 100%;
+    max-width: 350px;
+    margin: 0 auto;
+    padding: 10px;
+    min-width: auto;
+  }
+  
+  .scoreboard-header {
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+  }
+  
+  .scoreboard-header h3 {
+    font-size: 14px;
+  }
+  
+  .room-info {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+  
+  .players-list {
+    gap: 4px;
+    max-height: 120px;
+    overflow-y: auto;
+  }
+  
+  .player-score {
+    padding: 6px;
+    gap: 8px;
+  }
+  
+  .player-rank {
+    font-size: 12px;
+    min-width: 20px;
+  }
+  
+  .player-color {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .player-name {
+    font-size: 12px;
+  }
+  
+  .player-status {
+    font-size: 9px;
+    padding: 1px 4px;
+  }
+  
+  .player-score-value {
+    font-size: 13px;
+    min-width: 30px;
+  }
+}
+
+/* iPhone SE等の小さな画面対応 */
+@media (max-width: 375px) {
+  .scoreboard {
+    padding: 8px;
+  }
+  
+  .players-list {
+    max-height: 100px;
+  }
+  
+  .player-score {
+    padding: 5px;
+  }
+  
+  .player-name {
+    font-size: 11px;
+  }
+}

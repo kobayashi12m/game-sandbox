@@ -1,9 +1,9 @@
 .touch-controls {
   display: none;
   position: relative;
-  width: 180px;
-  height: 180px;
-  margin: 20px auto;
+  width: 140px;
+  height: 140px;
+  margin: 10px auto 0;
 }
 
 @media (max-width: 768px), (pointer: coarse) {
@@ -12,20 +12,39 @@
   }
 }
 
+/* iPhone用の調整 */
+@media (max-width: 768px) and (max-height: 900px) {
+  .touch-controls {
+    width: 120px;
+    height: 120px;
+    margin: 5px auto 0;
+  }
+}
+
 .control-button {
   position: absolute;
-  width: 60px;
-  height: 60px;
+  width: 50px;
+  height: 50px;
   background-color: rgba(78, 205, 196, 0.8);
   border: 2px solid #4ECDC4;
-  border-radius: 10px;
+  border-radius: 8px;
   color: white;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: bold;
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   transition: all 0.1s;
+}
+
+/* iPhone用の調整 */
+@media (max-width: 768px) and (max-height: 900px) {
+  .control-button {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+    border-radius: 6px;
+  }
 }
 
 .control-button:active {
@@ -69,6 +88,14 @@
 }
 
 .control-center {
-  width: 60px;
-  height: 60px;
+  width: 50px;
+  height: 50px;
+}
+
+/* iPhone用の調整 */
+@media (max-width: 768px) and (max-height: 900px) {
+  .control-center {
+    width: 40px;
+    height: 40px;
+  }
 }

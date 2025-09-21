@@ -1,8 +1,9 @@
 import React from 'react';
 import './TouchControls.css';
+import type { Direction } from '../types';
 
 interface TouchControlsProps {
-  onDirectionChange: (direction: string) => void;
+  onDirectionChange: (direction: Direction) => void;
 }
 
 const TouchControls: React.FC<TouchControlsProps> = ({ onDirectionChange }) => {

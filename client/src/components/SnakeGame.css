@@ -2,46 +2,63 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px;
+  padding: 10px;
   background-color: #0a0a0a;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh; /* Dynamic viewport height for mobile */
   color: white;
   width: 100%;
-  overflow-x: hidden;
+  overflow: hidden;
+  position: relative;
 }
 
 .game-header {
   display: flex;
   justify-content: space-between;
   width: 100%;
-  max-width: 800px;
-  margin-bottom: 20px;
+  max-width: 1000px;
+  margin-bottom: 10px;
   flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.game-title-section {
+  display: flex;
+  align-items: center;
   gap: 20px;
 }
 
-.game-header h2 {
+.game-title-section h2 {
   margin: 0;
+  font-size: 24px;
+  color: #4ECDC4;
 }
 
-.scoreboard {
-  background-color: #1a1a1a;
-  padding: 15px;
-  border-radius: 8px;
-  min-width: 200px;
-}
-
-.scoreboard h3 {
-  margin: 0 0 10px 0;
-  font-size: 16px;
-}
-
-.player-score {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 5px 0;
+.disconnect-button {
+  padding: 8px 16px;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
   font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.disconnect-button:hover {
+  background-color: #d32f2f;
+  transform: translateY(-1px);
+}
+
+.canvas-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  flex: 1;
+  min-height: 0; /* flexboxでのサイズ調整のため */
 }
 
 .game-canvas {
@@ -50,12 +67,14 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   max-width: 100%;
   height: auto;
+  display: block;
 }
 
 .controls {
-  margin-top: 20px;
+  margin-top: 10px;
   text-align: center;
   color: #999;
+  width: 100%;
 }
 
 .desktop-controls {
@@ -94,64 +113,46 @@
   }
 }
 
-.join-form {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background-color: #0a0a0a;
-  color: white;
-}
-
-.join-form h2 {
-  margin-bottom: 30px;
-  font-size: 32px;
-}
-
-.join-form form {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  width: 300px;
-}
-
-.join-form input {
-  padding: 12px;
-  font-size: 16px;
-  border: 1px solid #333;
-  border-radius: 4px;
-  background-color: #1a1a1a;
-  color: white;
-}
-
-.join-form input:focus {
-  outline: none;
-  border-color: #4ECDC4;
-}
-
-.join-form button {
-  padding: 12px;
-  font-size: 16px;
-  background-color: #4ECDC4;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.join-form button:hover {
-  background-color: #45B7D1;
-}
-
-@media (max-width: 768px) {
-  .join-form h2 {
-    font-size: 24px;
+/* iPhone対応の追加スタイル */
+@media (max-width: 768px) and (max-height: 900px) {
+  .snake-game {
+    padding: 5px;
+    justify-content: space-between;
   }
   
-  .join-form form {
-    width: 90%;
-    max-width: 300px;
+  .game-header {
+    margin-bottom: 5px;
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .game-title-section {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .game-title-section h2 {
+    font-size: 18px;
+  }
+  
+  .disconnect-button {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  .controls {
+    margin-top: 5px;
+  }
+  
+  .desktop-controls {
+    display: none;
   }
 }
+
+/* iPhone SE/5/5S (320px幅) */
+@media (max-width: 320px) {
+  .game-title-section h2 {
+    font-size: 16px;
+  }
+}
+
