@@ -12,17 +12,20 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// Game represents a game session
+// Game はゲームセッションを表す
 type Game struct {
 	ID      string
 	Players map[string]*models.Player
 	Food    []models.Position
 	Running bool
-	Mu      sync.RWMutex
+	mu      sync.RWMutex
 }
 
-// AddPlayer adds a new player to the game
+// AddPlayer はゲームに新しいプレイヤーを追加する
 func (g *Game) AddPlayer(id, name string, conn *websocket.Conn) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	
 	colors := []string{"#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#DDA0DD", "#F4A460"}
 	color := colors[len(g.Players)%len(colors)]
 	
@@ -41,12 +44,14 @@ func (g *Game) AddPlayer(id, name string, conn *websocket.Conn) {
 	}
 }
 
-// RemovePlayer removes a player from the game
+// RemovePlayer はゲームからプレイヤーを削除する
 func (g *Game) RemovePlayer(id string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	delete(g.Players, id)
 }
 
-// GenerateFood creates food items on the game grid
+// GenerateFood はゲームグリッドに食べ物を生成する
 func (g *Game) GenerateFood() {
 	g.Food = []models.Position{}
 	foodCount := 3
@@ -76,7 +81,7 @@ func (g *Game) GenerateFood() {
 	}
 }
 
-// IsPositionOccupied checks if a position is occupied by any snake
+// IsPositionOccupied は指定された位置が蛇に占有されているかチェックする
 func (g *Game) IsPositionOccupied(pos models.Position) bool {
 	for _, player := range g.Players {
 		for _, segment := range player.Snake.Body {
@@ -88,24 +93,24 @@ func (g *Game) IsPositionOccupied(pos models.Position) bool {
 	return false
 }
 
-// Update processes one game tick
+// Update はゲームの1ティックを処理する
 func (g *Game) Update() {
 	if !g.Running {
 		return
 	}
 
-	// Move all snakes
+	// 全ての蛇を移動
 	for _, player := range g.Players {
 		player.Snake.Move()
 	}
 
-	// Check collisions
+	// 衝突判定
 	for _, player := range g.Players {
 		if !player.Snake.Alive {
 			continue
 		}
 
-		// Self collision
+		// 自己衝突
 		if player.Snake.CheckSelfCollision() {
 			player.Snake.Alive = false
 			player.Score -= 10
@@ -115,7 +120,7 @@ func (g *Game) Update() {
 			continue
 		}
 
-		// Collision with other snakes
+		// 他の蛇との衝突
 		for _, otherPlayer := range g.Players {
 			if player.ID != otherPlayer.ID && player.Snake.CheckCollisionWith(otherPlayer.Snake) {
 				player.Snake.Alive = false
@@ -128,7 +133,7 @@ func (g *Game) Update() {
 			}
 		}
 
-		// Check food collision
+		// 食べ物との衝突判定
 		head := player.Snake.Body[0]
 		for i := len(g.Food) - 1; i >= 0; i-- {
 			if g.Food[i].X == head.X && g.Food[i].Y == head.Y {
@@ -139,7 +144,7 @@ func (g *Game) Update() {
 		}
 	}
 
-	// Regenerate food if needed
+	// 必要に応じて食べ物を再生成
 	if len(g.Food) < 3 {
 		g.GenerateFood()
 	}
@@ -147,28 +152,31 @@ func (g *Game) Update() {
 	// Respawn dead snakes (only if not already respawning)
 	for _, player := range g.Players {
 		if !player.Snake.Alive && player.Snake.Growing != -1 {
-			// Use Growing=-1 as a flag to prevent multiple respawn goroutines
+			// Growing=-1 をフラグとして使用し、複数の復活ゴルーチンを防ぐ
 			player.Snake.Growing = -1
 			go func(p *models.Player) {
 				time.Sleep(3 * time.Second)
-				g.Mu.Lock()
-				if !p.Snake.Alive { // Double check in case player was manually revived
+				g.mu.Lock()
+				if !p.Snake.Alive { // 手動で復活させられた場合のための二重チェック
 					p.Snake.Reset()
 				}
-				g.Mu.Unlock()
+				g.mu.Unlock()
 			}(player)
 		}
 	}
 }
 
-// GetState returns the current game state for clients
+// GetState はクライアント用の現在のゲーム状態を返す
 func (g *Game) GetState() models.GameState {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	
 	players := make([]models.PlayerState, 0, len(g.Players))
 	for _, p := range g.Players {
-		// Create a copy of the snake to avoid modifying original
+		// 元のデータを変更しないよう蛇のコピーを作成
 		snakeCopy := *p.Snake
 		
-		// If snake is dead, clear its body to prevent visual glitches
+		// 蛇が死んでいる場合、表示のバグを防ぐために体をクリア
 		if !snakeCopy.Alive {
 			snakeCopy.Body = []models.Position{}
 		}
@@ -186,7 +194,7 @@ func (g *Game) GetState() models.GameState {
 	}
 }
 
-// Broadcast sends a message to all players in the game
+// Broadcast はゲーム内の全プレイヤーにメッセージを送信する
 func (g *Game) Broadcast(message interface{}) {
 	data, err := json.Marshal(message)
 	if err != nil {
@@ -200,31 +208,86 @@ func (g *Game) Broadcast(message interface{}) {
 	}
 }
 
-// Start begins the game loop
+// Start はゲームループを開始する
 func (g *Game) Start() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	
 	g.Running = true
 	g.GenerateFood()
 	go g.RunGameLoop()
 }
 
-// RunGameLoop runs the main game update loop
+// GetPlayer はIDでプレイヤーを取得する
+func (g *Game) GetPlayer(id string) (*models.Player, bool) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	player, exists := g.Players[id]
+	return player, exists
+}
+
+// GetPlayerCount はゲーム内のプレイヤー数を返す
+func (g *Game) GetPlayerCount() int {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return len(g.Players)
+}
+
+// IsRunning はゲームが実行中かどうかを返す
+func (g *Game) IsRunning() bool {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.Running
+}
+
+// ShouldStart はゲームを開始すべきかチェックし、必要なら開始する
+func (g *Game) ShouldStart() bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	
+	if len(g.Players) == 1 && !g.Running {
+		g.Running = true
+		g.GenerateFood()
+		go g.RunGameLoop()
+		return true
+	}
+	return false
+}
+
+// ChangePlayerDirection はプレイヤーの蛇の方向を変更する
+func (g *Game) ChangePlayerDirection(playerID string, direction utils.Direction) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	
+	if player, exists := g.Players[playerID]; exists && player.Snake.Alive {
+		player.Snake.ChangeDirection(direction)
+	}
+}
+
+// Stop はゲームを安全に停止する
+func (g *Game) Stop() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.Running = false
+}
+
+// RunGameLoop はメインゲームの更新ループを実行する
 func (g *Game) RunGameLoop() {
 	ticker := time.NewTicker(utils.INITIAL_SPEED)
 	defer ticker.Stop()
 
 	for g.Running {
-		select {
-		case <-ticker.C:
-			g.Mu.Lock()
-			g.Update()
-			state := g.GetState()
-			g.Mu.Unlock()
+		<-ticker.C
+		g.mu.Lock()
+		g.Update()
+		g.mu.Unlock()
+		
+		state := g.GetState()
 
-			message := map[string]interface{}{
-				"type":  "gameState",
-				"state": state,
-			}
-			g.Broadcast(message)
+		message := map[string]interface{}{
+			"type":  "gameState",
+			"state": state,
 		}
+		g.Broadcast(message)
 	}
 }

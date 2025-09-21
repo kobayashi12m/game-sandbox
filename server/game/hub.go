@@ -5,20 +5,20 @@ import (
 	"chess-mmo/server/models"
 )
 
-// Hub manages multiple game rooms
+// Hub は複数のゲームルームを管理する
 type Hub struct {
 	games map[string]*Game
 	mu    sync.RWMutex
 }
 
-// NewHub creates a new game hub
+// NewHub は新しいゲームハブを作成する
 func NewHub() *Hub {
 	return &Hub{
 		games: make(map[string]*Game),
 	}
 }
 
-// GetOrCreateGame gets an existing game or creates a new one
+// GetOrCreateGame は既存のゲームを取得するか、新しいゲームを作成する
 func (h *Hub) GetOrCreateGame(roomID string) *Game {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -35,7 +35,7 @@ func (h *Hub) GetOrCreateGame(roomID string) *Game {
 	return h.games[roomID]
 }
 
-// RemoveGame removes a game from the hub
+// RemoveGame はハブからゲームを削除する
 func (h *Hub) RemoveGame(roomID string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()

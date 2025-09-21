@@ -5,7 +5,7 @@ import (
 	"chess-mmo/server/utils"
 )
 
-// Reset initializes the snake to its starting state
+// Reset は蛇を初期状態に初期化する
 func (s *Snake) Reset() {
 	startX := rand.IntN(utils.GRID_SIZE-10) + 5
 	startY := rand.IntN(utils.GRID_SIZE-10) + 5
@@ -19,7 +19,7 @@ func (s *Snake) Reset() {
 	s.Alive = true
 }
 
-// Move advances the snake one step in its current direction
+// Move は蛇を現在の方向に1マス進める
 func (s *Snake) Move() {
 	if !s.Alive {
 		return
@@ -31,7 +31,7 @@ func (s *Snake) Move() {
 		Y: head.Y + s.Direction.Y,
 	}
 
-	// Wrap around edges
+	// 端でのラップアラウンド
 	if newHead.X < 0 {
 		newHead.X = utils.GRID_SIZE - 1
 	} else if newHead.X >= utils.GRID_SIZE {
@@ -52,12 +52,12 @@ func (s *Snake) Move() {
 	}
 }
 
-// Grow increases the snake's growth counter
+// Grow は蛇の成長カウンターを増加する
 func (s *Snake) Grow(amount int) {
 	s.Growing += amount
 }
 
-// CheckSelfCollision returns true if the snake's head collides with its body
+// CheckSelfCollision は蛇の頭が体と衝突した場合trueを返す
 func (s *Snake) CheckSelfCollision() bool {
 	head := s.Body[0]
 	for i := 1; i < len(s.Body); i++ {
@@ -68,7 +68,7 @@ func (s *Snake) CheckSelfCollision() bool {
 	return false
 }
 
-// CheckCollisionWith returns true if this snake's head collides with another snake
+// CheckCollisionWith はこの蛇の頭が他の蛇と衝突した場合trueを返す
 func (s *Snake) CheckCollisionWith(other *Snake) bool {
 	if !other.Alive {
 		return false
@@ -82,9 +82,9 @@ func (s *Snake) CheckCollisionWith(other *Snake) bool {
 	return false
 }
 
-// ChangeDirection updates the snake's direction, preventing reverse direction
+// ChangeDirection は蛇の方向を更新し、逆方向を防ぐ
 func (s *Snake) ChangeDirection(newDir utils.Direction) {
-	// Prevent reverse direction
+	// 逆方向を防ぐ
 	if s.Direction.X == -newDir.X && s.Direction.Y == -newDir.Y {
 		return
 	}

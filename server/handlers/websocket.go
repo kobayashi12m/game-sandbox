@@ -7,13 +7,14 @@ import (
 	"chess-mmo/server/game"
 	"chess-mmo/server/models"
 	"chess-mmo/server/utils"
+
 	"github.com/gorilla/websocket"
 )
 
 var (
 	upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
-			// Allow all origins (for development)
+			// 全てのオリジンを許可（開発用）
 			return true
 		},
 		ReadBufferSize:  1024,
@@ -21,7 +22,7 @@ var (
 	}
 )
 
-// WebSocketHandler handles WebSocket connections
+// WebSocketHandler はWebSocket接続を処理する
 func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
@@ -59,27 +60,21 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 				playerID = utils.GenerateID()
 				gameInstance = hub.GetOrCreateGame(roomID)
 
-				gameInstance.Mu.Lock()
 				gameInstance.AddPlayer(playerID, playerName, conn)
-				player = gameInstance.Players[playerID]
-				
-				if len(gameInstance.Players) == 1 && !gameInstance.Running {
-					gameInstance.Start()
-				}
-				gameInstance.Mu.Unlock()
+				player, _ = gameInstance.GetPlayer(playerID)
 
-				// Send join confirmation
+				gameInstance.ShouldStart()
+
+				// 参加確認を送信
 				response := map[string]interface{}{
 					"type":     "gameJoined",
 					"playerId": playerID,
 				}
 				conn.WriteJSON(response)
 
-				// Send current game state
-				gameInstance.Mu.RLock()
+				// 現在のゲーム状態を送信
 				state := gameInstance.GetState()
-				gameInstance.Mu.RUnlock()
-				
+
 				stateMsg := map[string]interface{}{
 					"type":  "gameState",
 					"state": state,
@@ -90,27 +85,21 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 				if player == nil || gameInstance == nil {
 					continue
 				}
-				
+
 				direction, _ := msg["direction"].(string)
 				if newDir, ok := utils.DIRECTIONS[direction]; ok {
-					gameInstance.Mu.Lock()
-					if player.Snake.Alive {
-						player.Snake.ChangeDirection(newDir)
-					}
-					gameInstance.Mu.Unlock()
+					gameInstance.ChangePlayerDirection(playerID, newDir)
 				}
 			}
 		}
 
-		// Clean up on disconnect
+		// 切断時のクリーンアップ
 		if gameInstance != nil && playerID != "" {
-			gameInstance.Mu.Lock()
 			gameInstance.RemovePlayer(playerID)
-			if len(gameInstance.Players) == 0 {
-				gameInstance.Running = false
+			if gameInstance.GetPlayerCount() == 0 {
+				gameInstance.Stop()
 				hub.RemoveGame(gameInstance.ID)
 			}
-			gameInstance.Mu.Unlock()
 		}
 	}
 }

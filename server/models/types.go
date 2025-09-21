@@ -5,13 +5,13 @@ import (
 	"chess-mmo/server/utils"
 )
 
-// Position represents coordinates on the game grid
+// Position はゲームグリッド上の座標を表す
 type Position struct {
 	X int `json:"x"`
 	Y int `json:"y"`
 }
 
-// Snake represents a snake in the game
+// Snake はゲーム内の蛇を表す
 type Snake struct {
 	ID        string          `json:"id"`
 	Body      []Position      `json:"body"`
@@ -21,7 +21,7 @@ type Snake struct {
 	Growing   int             `json:"-"`
 }
 
-// Player represents a player in the game
+// Player はゲーム内のプレイヤーを表す
 type Player struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
@@ -30,13 +30,13 @@ type Player struct {
 	Conn  *websocket.Conn
 }
 
-// GameState represents the current state sent to clients
+// GameState はクライアントに送信される現在の状態を表す
 type GameState struct {
 	Players []PlayerState `json:"players"`
 	Food    []Position    `json:"food"`
 }
 
-// PlayerState represents player data for client synchronization
+// PlayerState はクライアント同期用のプレイヤーデータを表す
 type PlayerState struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
