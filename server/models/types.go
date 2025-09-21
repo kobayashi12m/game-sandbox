@@ -1,8 +1,10 @@
 package models
 
 import (
-	"github.com/gorilla/websocket"
 	"chess-mmo/server/utils"
+	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 // Position はゲームグリッド上の座標を表す
@@ -13,12 +15,14 @@ type Position struct {
 
 // Snake はゲーム内の蛇を表す
 type Snake struct {
-	ID        string          `json:"id"`
-	Body      []Position      `json:"body"`
-	Direction utils.Direction `json:"direction"`
-	Color     string          `json:"color"`
-	Alive     bool            `json:"alive"`
-	Growing   int             `json:"-"`
+	ID         string          `json:"id"`
+	Body       []Position      `json:"body"`
+	Direction  utils.Direction `json:"direction"`
+	Color      string          `json:"color"`
+	Alive      bool            `json:"alive"`
+	Growing    int             `json:"-"`
+	Respawning bool            `json:"-"`
+	DeathTime  time.Time       `json:"-"`
 }
 
 // Player はゲーム内のプレイヤーを表す

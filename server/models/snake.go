@@ -1,8 +1,8 @@
 package models
 
 import (
-	"math/rand/v2"
 	"chess-mmo/server/utils"
+	"math/rand/v2"
 )
 
 // Reset は蛇を初期状態に初期化する
@@ -17,6 +17,7 @@ func (s *Snake) Reset() {
 	s.Direction = utils.DIRECTIONS["RIGHT"]
 	s.Growing = 0
 	s.Alive = true
+	s.Respawning = false
 }
 
 // Move は蛇を現在の方向に1マス進める

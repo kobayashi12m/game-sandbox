@@ -3,12 +3,13 @@ package game
 import (
 	"encoding/json"
 	"log"
+	"math/rand/v2"
 	"sync"
 	"time"
-	"math/rand/v2"
 
 	"chess-mmo/server/models"
 	"chess-mmo/server/utils"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -25,16 +26,16 @@ type Game struct {
 func (g *Game) AddPlayer(id, name string, conn *websocket.Conn) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	
+
 	colors := []string{"#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#DDA0DD", "#F4A460"}
 	color := colors[len(g.Players)%len(colors)]
-	
+
 	snake := &models.Snake{
 		ID:    id,
 		Color: color,
 	}
 	snake.Reset()
-	
+
 	g.Players[id] = &models.Player{
 		ID:    id,
 		Name:  name,
@@ -149,19 +150,27 @@ func (g *Game) Update() {
 		g.GenerateFood()
 	}
 
-	// Respawn dead snakes (only if not already respawning)
+	// 死んだ蛇の処理
+	g.handleDeadSnakes()
+}
+
+// handleDeadSnakes は死んだ蛇の復活処理を管理する
+func (g *Game) handleDeadSnakes() {
+	now := time.Now()
 	for _, player := range g.Players {
-		if !player.Snake.Alive && player.Snake.Growing != -1 {
-			// Growing=-1 をフラグとして使用し、複数の復活ゴルーチンを防ぐ
-			player.Snake.Growing = -1
-			go func(p *models.Player) {
-				time.Sleep(3 * time.Second)
-				g.mu.Lock()
-				if !p.Snake.Alive { // 手動で復活させられた場合のための二重チェック
-					p.Snake.Reset()
-				}
-				g.mu.Unlock()
-			}(player)
+		snake := player.Snake
+
+		if !snake.Alive && !snake.Respawning {
+			// 死亡時の初期化
+			snake.Respawning = true
+			snake.DeathTime = now
+			snake.Body = []models.Position{} // 即座にクリア
+		}
+
+		if snake.Respawning && now.Sub(snake.DeathTime) >= 3*time.Second {
+			// 復活
+			snake.Reset()
+			snake.Respawning = false
 		}
 	}
 }
@@ -170,17 +179,12 @@ func (g *Game) Update() {
 func (g *Game) GetState() models.GameState {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
-	
+
 	players := make([]models.PlayerState, 0, len(g.Players))
 	for _, p := range g.Players {
 		// 元のデータを変更しないよう蛇のコピーを作成
 		snakeCopy := *p.Snake
-		
-		// 蛇が死んでいる場合、表示のバグを防ぐために体をクリア
-		if !snakeCopy.Alive {
-			snakeCopy.Body = []models.Position{}
-		}
-		
+
 		players = append(players, models.PlayerState{
 			ID:    p.ID,
 			Name:  p.Name,
@@ -212,7 +216,7 @@ func (g *Game) Broadcast(message interface{}) {
 func (g *Game) Start() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	
+
 	g.Running = true
 	g.GenerateFood()
 	go g.RunGameLoop()
@@ -244,7 +248,7 @@ func (g *Game) IsRunning() bool {
 func (g *Game) ShouldStart() bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	
+
 	if len(g.Players) == 1 && !g.Running {
 		g.Running = true
 		g.GenerateFood()
@@ -258,7 +262,7 @@ func (g *Game) ShouldStart() bool {
 func (g *Game) ChangePlayerDirection(playerID string, direction utils.Direction) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	
+
 	if player, exists := g.Players[playerID]; exists && player.Snake.Alive {
 		player.Snake.ChangeDirection(direction)
 	}
@@ -281,7 +285,7 @@ func (g *Game) RunGameLoop() {
 		g.mu.Lock()
 		g.Update()
 		g.mu.Unlock()
-		
+
 		state := g.GetState()
 
 		message := map[string]interface{}{
