@@ -65,7 +65,7 @@ func (s *Snake) CheckSelfCollision() bool {
 	head := s.Body[0]
 	// 最初の数セグメントはスキップ（頭の近くは常に重なる）
 	for i := 4; i < len(s.Body); i++ {
-		if distance(head, s.Body[i]) < utils.SNAKE_RADIUS*2 {
+		if wrappedDistance(head, s.Body[i]) < utils.SNAKE_RADIUS*2 {
 			return true
 		}
 	}
@@ -79,7 +79,7 @@ func (s *Snake) CheckCollisionWith(other *Snake) bool {
 	}
 	head := s.Body[0]
 	for _, segment := range other.Body {
-		if distance(head, segment) < utils.SNAKE_RADIUS*2 {
+		if wrappedDistance(head, segment) < utils.SNAKE_RADIUS*2 {
 			return true
 		}
 	}
@@ -111,18 +111,30 @@ func (s *Snake) updateBodySegments(newHead Position) {
 		prev := s.Body[i-1]
 		curr := s.Body[i]
 
-		// セグメント間の距離を保つ
-		dist := distance(prev, curr)
+		// ラップアラウンドを考慮した距離を計算
+		dist := wrappedDistance(prev, curr)
 		if dist > utils.SNAKE_RADIUS*2 {
-			// セグメントを前のセグメントに向けて移動
-			dx := prev.X - curr.X
-			dy := prev.Y - curr.Y
+			// ラップアラウンドを考慮した方向ベクトルを取得
+			dx, dy := wrappedDirection(curr, prev)
 			length := math.Sqrt(dx*dx + dy*dy)
 			if length > 0 {
 				dx /= length
 				dy /= length
+				// セグメントを適切な距離に移動
 				curr.X += dx * (dist - utils.SNAKE_RADIUS*2)
 				curr.Y += dy * (dist - utils.SNAKE_RADIUS*2)
+				
+				// ラップアラウンドを適用
+				if curr.X < 0 {
+					curr.X += utils.FIELD_WIDTH
+				} else if curr.X >= utils.FIELD_WIDTH {
+					curr.X -= utils.FIELD_WIDTH
+				}
+				if curr.Y < 0 {
+					curr.Y += utils.FIELD_HEIGHT
+				} else if curr.Y >= utils.FIELD_HEIGHT {
+					curr.Y -= utils.FIELD_HEIGHT
+				}
 			}
 		}
 		newBody = append(newBody, curr)
@@ -148,4 +160,42 @@ func distance(p1, p2 Position) float64 {
 	dx := p1.X - p2.X
 	dy := p1.Y - p2.Y
 	return math.Sqrt(dx*dx + dy*dy)
+}
+
+// wrappedDistance はラップアラウンドを考慮した2点間の距離を計算する
+func wrappedDistance(p1, p2 Position) float64 {
+	// X軸の最短距離を計算
+	dx := math.Abs(p1.X - p2.X)
+	if dx > utils.FIELD_WIDTH/2 {
+		dx = utils.FIELD_WIDTH - dx
+	}
+	
+	// Y軸の最短距離を計算
+	dy := math.Abs(p1.Y - p2.Y)
+	if dy > utils.FIELD_HEIGHT/2 {
+		dy = utils.FIELD_HEIGHT - dy
+	}
+	
+	return math.Sqrt(dx*dx + dy*dy)
+}
+
+// wrappedDirection はラップアラウンドを考慮した方向ベクトルを計算する
+func wrappedDirection(from, to Position) (float64, float64) {
+	// X方向の計算
+	dx := to.X - from.X
+	if dx > utils.FIELD_WIDTH/2 {
+		dx -= utils.FIELD_WIDTH
+	} else if dx < -utils.FIELD_WIDTH/2 {
+		dx += utils.FIELD_WIDTH
+	}
+	
+	// Y方向の計算
+	dy := to.Y - from.Y
+	if dy > utils.FIELD_HEIGHT/2 {
+		dy -= utils.FIELD_HEIGHT
+	} else if dy < -utils.FIELD_HEIGHT/2 {
+		dy += utils.FIELD_HEIGHT
+	}
+	
+	return dx, dy
 }
