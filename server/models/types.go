@@ -7,10 +7,10 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// Position はゲームグリッド上の座標を表す
+// Position はゲームフィールド上の座標を表す（浮動小数点）
 type Position struct {
-	X int `json:"x"`
-	Y int `json:"y"`
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
 }
 
 // Snake はゲーム内の蛇を表す
@@ -23,6 +23,7 @@ type Snake struct {
 	Growing    int             `json:"-"`
 	Respawning bool            `json:"-"`
 	DeathTime  time.Time       `json:"-"`
+	Speed      float64         `json:"-"` // 移動速度（ユニット/秒）
 }
 
 // Player はゲーム内のプレイヤーを表す

@@ -56,6 +56,10 @@ export type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 
 // ゲーム設定
 export const GAME_CONFIG = {
-  GRID_SIZE: 40,
-  CELL_SIZE: 15,
-} as const;
+  FIELD_WIDTH: 600,
+  FIELD_HEIGHT: 600,
+  SNAKE_RADIUS: 7.5,
+  FOOD_RADIUS: 5,
+  DISPLAY_WIDTH: 600,
+  DISPLAY_HEIGHT: 600,
+};

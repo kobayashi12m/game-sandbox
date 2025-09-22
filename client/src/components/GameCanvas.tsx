@@ -11,8 +11,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, playerId }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [canvasSize, setCanvasSize] = useState({
-    width: GAME_CONFIG.GRID_SIZE * GAME_CONFIG.CELL_SIZE,
-    height: GAME_CONFIG.GRID_SIZE * GAME_CONFIG.CELL_SIZE
+    width: GAME_CONFIG.DISPLAY_WIDTH,
+    height: GAME_CONFIG.DISPLAY_HEIGHT
   });
 
   // ウィンドウサイズに応じてCanvasサイズを調整
@@ -26,16 +26,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, playerId }) => {
       
       if (isMobile) {
         // モバイルでは利用可能な幅に合わせる
-        const maxSize = Math.min(rect.width - 20, window.innerHeight * 0.5);
-        const cellSize = Math.floor(maxSize / GAME_CONFIG.GRID_SIZE);
-        const size = cellSize * GAME_CONFIG.GRID_SIZE;
-        
-        setCanvasSize({ width: size, height: size });
+        const maxSize = Math.min(rect.width - 20, window.innerHeight * 0.5) as number;
+        setCanvasSize({ width: maxSize, height: maxSize });
       } else {
         // デスクトップでは固定サイズ
         setCanvasSize({
-          width: GAME_CONFIG.GRID_SIZE * GAME_CONFIG.CELL_SIZE,
-          height: GAME_CONFIG.GRID_SIZE * GAME_CONFIG.CELL_SIZE
+          width: GAME_CONFIG.DISPLAY_WIDTH,
+          height: GAME_CONFIG.DISPLAY_HEIGHT
         });
       }
     };
@@ -53,7 +50,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, playerId }) => {
     if (!ctx) return;
 
     // スケールを計算
-    const scale = canvasSize.width / (GAME_CONFIG.GRID_SIZE * GAME_CONFIG.CELL_SIZE);
+    const scale = canvasSize.width / GAME_CONFIG.FIELD_WIDTH;
     ctx.save();
     ctx.scale(scale, scale);
     
@@ -80,52 +77,55 @@ const drawGame = (
   gameState: GameState, 
   playerId: string
 ) => {
-  const { GRID_SIZE, CELL_SIZE } = GAME_CONFIG;
+  const { FIELD_WIDTH, FIELD_HEIGHT, SNAKE_RADIUS, FOOD_RADIUS } = GAME_CONFIG;
   
   // キャンバスをクリア
   ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(0, 0, GRID_SIZE * CELL_SIZE, GRID_SIZE * CELL_SIZE);
+  ctx.fillRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
 
-  // グリッドを描画
-  drawGrid(ctx, GRID_SIZE, CELL_SIZE);
+  // グリッドを描画（オプション）
+  drawGrid(ctx, FIELD_WIDTH, FIELD_HEIGHT);
   
   // 食べ物を描画
-  drawFood(ctx, gameState.food, CELL_SIZE);
+  drawFood(ctx, gameState.food, FOOD_RADIUS);
   
   // 蛇を描画
-  drawSnakes(ctx, gameState.players, playerId, CELL_SIZE);
+  drawSnakes(ctx, gameState.players, playerId, SNAKE_RADIUS);
 };
 
-// グリッド描画
-const drawGrid = (ctx: CanvasRenderingContext2D, gridSize: number, cellSize: number) => {
+// グリッド描画（オプション）
+const drawGrid = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
   ctx.strokeStyle = '#333';
   ctx.lineWidth = 0.5;
+  const gridSpacing = 30; // グリッド間隔
   
-  for (let i = 0; i <= gridSize; i++) {
-    // 縦線
+  // 縦線
+  for (let x = 0; x <= width; x += gridSpacing) {
     ctx.beginPath();
-    ctx.moveTo(i * cellSize, 0);
-    ctx.lineTo(i * cellSize, gridSize * cellSize);
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
     ctx.stroke();
-    
-    // 横線
+  }
+  
+  // 横線
+  for (let y = 0; y <= height; y += gridSpacing) {
     ctx.beginPath();
-    ctx.moveTo(0, i * cellSize);
-    ctx.lineTo(gridSize * cellSize, i * cellSize);
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
     ctx.stroke();
   }
 };
 
 // 食べ物描画
-const drawFood = (ctx: CanvasRenderingContext2D, food: Array<{x: number, y: number}>, cellSize: number) => {
+const drawFood = (ctx: CanvasRenderingContext2D, food: Array<{x: number, y: number}>, radius: number) => {
   ctx.fillStyle = '#ff6b6b';
   
   food.forEach(foodItem => {
     ctx.beginPath();
     ctx.arc(
-      foodItem.x * cellSize + cellSize / 2,
-      foodItem.y * cellSize + cellSize / 2,
-      cellSize / 3,
+      foodItem.x,
+      foodItem.y,
+      radius,
       0,
       2 * Math.PI
     );
@@ -138,7 +138,7 @@ const drawSnakes = (
   ctx: CanvasRenderingContext2D, 
   players: GameState['players'], 
   playerId: string, 
-  cellSize: number
+  snakeRadius: number
 ) => {
   players.forEach(player => {
     const snake = player.snake;
@@ -155,10 +155,12 @@ const drawSnakes = (
       
       if (index === 0) {
         // 頭部
-        drawSnakeHead(ctx, segment, cellSize, isCurrentPlayer);
+        drawSnakeHead(ctx, segment, snakeRadius, snake.color, isCurrentPlayer);
       } else {
         // 体部
-        drawSnakeBody(ctx, segment, cellSize);
+        ctx.beginPath();
+        ctx.arc(segment.x, segment.y, snakeRadius, 0, 2 * Math.PI);
+        ctx.fill();
       }
     });
 
@@ -167,7 +169,7 @@ const drawSnakes = (
 
     // プレイヤー名を描画
     if (snake.body.length > 0) {
-      drawPlayerName(ctx, player.name, snake.body[0], cellSize, isCurrentPlayer);
+      drawPlayerName(ctx, player.name, snake.body[0], isCurrentPlayer);
     }
   });
 };
@@ -176,58 +178,53 @@ const drawSnakes = (
 const drawSnakeHead = (
   ctx: CanvasRenderingContext2D, 
   segment: {x: number, y: number}, 
-  cellSize: number,
+  radius: number,
+  color: string,
   isCurrentPlayer: boolean
 ) => {
-  const x = segment.x * cellSize;
-  const y = segment.y * cellSize;
-  
-  // 頭部の背景
-  ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
+  // 頭部の円
+  ctx.beginPath();
+  ctx.arc(segment.x, segment.y, radius * 1.1, 0, 2 * Math.PI);
+  ctx.fillStyle = color;
+  ctx.fill();
   
   // 目を描画
   ctx.fillStyle = '#000';
-  const eyeSize = 3;
-  const eyeOffset = 3;
+  const eyeRadius = radius * 0.25;
+  const eyeOffset = radius * 0.5;
   
-  ctx.fillRect(x + eyeOffset, y + eyeOffset, eyeSize, eyeSize);
-  ctx.fillRect(x + cellSize - eyeOffset - eyeSize, y + eyeOffset, eyeSize, eyeSize);
+  ctx.beginPath();
+  ctx.arc(segment.x - eyeOffset, segment.y - eyeOffset, eyeRadius, 0, 2 * Math.PI);
+  ctx.fill();
   
-  // 自分の蛇には王冠マークを追加
+  ctx.beginPath();
+  ctx.arc(segment.x + eyeOffset, segment.y - eyeOffset, eyeRadius, 0, 2 * Math.PI);
+  ctx.fill();
+  
+  // 自分の蛇にはアウトラインを追加
   if (isCurrentPlayer) {
-    ctx.fillStyle = '#ffd700';
-    ctx.fillRect(x + cellSize/2 - 2, y - 4, 4, 3);
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(segment.x, segment.y, radius * 1.2, 0, 2 * Math.PI);
+    ctx.stroke();
   }
 };
 
-// 蛇の体部描画
-const drawSnakeBody = (
-  ctx: CanvasRenderingContext2D, 
-  segment: {x: number, y: number}, 
-  cellSize: number
-) => {
-  ctx.fillRect(
-    segment.x * cellSize + 2,
-    segment.y * cellSize + 2,
-    cellSize - 4,
-    cellSize - 4
-  );
-};
 
 // プレイヤー名描画
 const drawPlayerName = (
   ctx: CanvasRenderingContext2D, 
   name: string, 
   headPosition: {x: number, y: number}, 
-  cellSize: number,
   isCurrentPlayer: boolean
 ) => {
   ctx.fillStyle = isCurrentPlayer ? '#ffd700' : '#fff';
   ctx.font = isCurrentPlayer ? 'bold 12px Arial' : '12px Arial';
   ctx.textAlign = 'center';
   
-  const x = headPosition.x * cellSize + cellSize / 2;
-  const y = headPosition.y * cellSize - 5;
+  const x = headPosition.x;
+  const y = headPosition.y - 20;
   
   // 文字の背景（可読性向上）
   const textWidth = ctx.measureText(name).width;

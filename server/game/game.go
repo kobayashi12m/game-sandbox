@@ -52,7 +52,7 @@ func (g *Game) RemovePlayer(id string) {
 	delete(g.Players, id)
 }
 
-// GenerateFood はゲームグリッドに食べ物を生成する
+// GenerateFood はゲームフィールドに食べ物を生成する
 func (g *Game) GenerateFood() {
 	g.Food = []models.Position{}
 	foodCount := 3
@@ -68,8 +68,8 @@ func (g *Game) GenerateFood() {
 		attempts := 0
 		for {
 			pos = models.Position{
-				X: rand.IntN(utils.GRID_SIZE),
-				Y: rand.IntN(utils.GRID_SIZE),
+				X: rand.Float64() * utils.FIELD_WIDTH,
+				Y: rand.Float64() * utils.FIELD_HEIGHT,
 			}
 			if !g.IsPositionOccupied(pos) || attempts > 100 {
 				break
@@ -86,7 +86,10 @@ func (g *Game) GenerateFood() {
 func (g *Game) IsPositionOccupied(pos models.Position) bool {
 	for _, player := range g.Players {
 		for _, segment := range player.Snake.Body {
-			if segment.X == pos.X && segment.Y == pos.Y {
+			dx := segment.X - pos.X
+			dy := segment.Y - pos.Y
+			dist := dx*dx + dy*dy
+			if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
 				return true
 			}
 		}
@@ -95,14 +98,14 @@ func (g *Game) IsPositionOccupied(pos models.Position) bool {
 }
 
 // Update はゲームの1ティックを処理する
-func (g *Game) Update() {
+func (g *Game) Update(deltaTime float64) {
 	if !g.Running {
 		return
 	}
 
 	// 全ての蛇を移動
 	for _, player := range g.Players {
-		player.Snake.Move()
+		player.Snake.Move(deltaTime)
 	}
 
 	// 衝突判定
@@ -137,7 +140,11 @@ func (g *Game) Update() {
 		// 食べ物との衝突判定
 		head := player.Snake.Body[0]
 		for i := len(g.Food) - 1; i >= 0; i-- {
-			if g.Food[i].X == head.X && g.Food[i].Y == head.Y {
+			// 蛇の頭と食べ物の距離をチェック
+			dx := head.X - g.Food[i].X
+			dy := head.Y - g.Food[i].Y
+			dist := dx*dx + dy*dy
+			if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
 				player.Snake.Grow(3)
 				player.Score += 10
 				g.Food = append(g.Food[:i], g.Food[i+1:]...)
@@ -277,13 +284,18 @@ func (g *Game) Stop() {
 
 // RunGameLoop はメインゲームの更新ループを実行する
 func (g *Game) RunGameLoop() {
-	ticker := time.NewTicker(utils.INITIAL_SPEED)
+	ticker := time.NewTicker(utils.GAME_TICK)
 	defer ticker.Stop()
+	lastUpdate := time.Now()
 
 	for g.Running {
 		<-ticker.C
+		now := time.Now()
+		deltaTime := now.Sub(lastUpdate).Seconds()
+		lastUpdate = now
+
 		g.mu.Lock()
-		g.Update()
+		g.Update(deltaTime)
 		g.mu.Unlock()
 
 		state := g.GetState()
