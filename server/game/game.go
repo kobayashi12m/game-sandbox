@@ -54,16 +54,19 @@ func (g *Game) RemovePlayer(id string) {
 
 // GenerateFood はゲームフィールドに食べ物を生成する
 func (g *Game) GenerateFood() {
-	g.Food = []models.Position{}
-	foodCount := 3
+	targetFoodCount := 3
 	if len(g.Players) > 0 {
-		foodCount = int(float64(len(g.Players)) * 1.5)
-		if foodCount < 3 {
-			foodCount = 3
+		targetFoodCount = int(float64(len(g.Players)) * 1.5)
+		if targetFoodCount < 3 {
+			targetFoodCount = 3
 		}
 	}
 
-	for i := 0; i < foodCount; i++ {
+	// 不足分だけ追加生成
+	currentFoodCount := len(g.Food)
+	needToAdd := targetFoodCount - currentFoodCount
+	
+	for i := 0; i < needToAdd; i++ {
 		var pos models.Position
 		attempts := 0
 		for {
