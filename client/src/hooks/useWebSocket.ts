@@ -34,29 +34,16 @@ export const useWebSocket = ({
   const handleMessage = useCallback((message: WebSocketMessage) => {
     switch (message.type) {
       case 'gameJoined':
-        if (typeof message.playerId === 'string') {
+        if ('playerId' in message && typeof message.playerId === 'string') {
           setPlayerId(message.playerId);
-          console.log('ゲームに参加しました, プレイヤーID:', message.playerId);
         }
         break;
       
       case 'gameState':
-        if (message.state && typeof message.state === 'object') {
+        if ('state' in message) {
           setGameState(message.state as GameState);
         }
         break;
-      
-      case 'gameInit':
-        // 後方互換性のため
-        if (message.data && typeof message.data === 'object' && 
-            message.data !== null && 'id' in message.data && 
-            typeof (message.data as Record<string, unknown>).id === 'string') {
-          setPlayerId((message.data as Record<string, unknown>).id as string);
-        }
-        break;
-      
-      default:
-        console.log('不明なメッセージタイプ:', message.type);
     }
   }, []);
 
@@ -74,13 +61,12 @@ export const useWebSocket = ({
     wsRef.current = websocket;
 
     websocket.onopen = () => {
-      console.log('WebSocket接続が確立されました');
       setIsConnecting(false);
       
       const joinMessage: JoinMessage = {
         type: 'join',
         roomId,
-        playerName: playerName || 'Player'
+        playerName
       };
       websocket.send(JSON.stringify(joinMessage));
     };
@@ -89,20 +75,18 @@ export const useWebSocket = ({
       try {
         const message: WebSocketMessage = JSON.parse(event.data);
         handleMessage(message);
-      } catch (error) {
-        console.error('メッセージの解析に失敗しました:', error);
+      } catch {
+        // JSON parse error - ignore malformed messages
       }
     };
 
     websocket.onclose = () => {
-      console.log('WebSocket接続が閉じられました');
       setIsConnecting(false);
       setPlayerId('');
       setGameState({ players: [], food: [] });
     };
 
-    websocket.onerror = (error) => {
-      console.error('WebSocketエラー:', error);
+    websocket.onerror = () => {
       setIsConnecting(false);
     };
 
@@ -115,10 +99,7 @@ export const useWebSocket = ({
   // 方向変更メッセージの送信
   const sendDirection = useCallback((direction: Direction) => {
     const websocket = wsRef.current;
-    if (!websocket || websocket.readyState !== WebSocket.OPEN) {
-      console.warn('WebSocket接続が利用できません');
-      return;
-    }
+    if (!websocket || websocket.readyState !== WebSocket.OPEN) return;
 
     const directionMessage: DirectionMessage = {
       type: 'changeDirection',
