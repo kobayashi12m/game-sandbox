@@ -9,8 +9,14 @@ interface ScoreboardProps {
 }
 
 const Scoreboard: React.FC<ScoreboardProps> = ({ players, currentPlayerId, roomId }) => {
-  // プレイヤーをスコア順にソート
-  const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+  // プレイヤーをスコア順にソート（同率の場合はIDでソート）
+  const sortedPlayers = [...players].sort((a, b) => {
+    if (b.score !== a.score) {
+      return b.score - a.score;
+    }
+    // 同じスコアの場合はIDでソートして安定性を保つ
+    return a.id.localeCompare(b.id);
+  });
 
   return (
     <div className="scoreboard">
