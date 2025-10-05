@@ -211,6 +211,36 @@ func (g *Game) Update(deltaTime float64) {
 				return
 			}
 
+			// プレイヤー（人間）の当たり判定をスキップ
+			if !player.IsNPC && utils.DISABLE_COLLISION {
+				// 食べ物との衝突判定のみ実行
+				head := player.Snake.Body[0]
+				nearbyFood := g.spatialGrid.GetNearbyFoodSafe(head, g.Food)
+				
+				for _, foodPos := range nearbyFood {
+					// 蛇の頭と食べ物の距離をチェック
+					dx := head.X - foodPos.X
+					dy := head.Y - foodPos.Y
+					dist := dx*dx + dy*dy
+
+					if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
+						// 食べ物を配列から安全に除去
+						for i := len(g.Food) - 1; i >= 0; i-- {
+							if g.Food[i].X == foodPos.X && g.Food[i].Y == foodPos.Y {
+								g.Food = append(g.Food[:i], g.Food[i+1:]...)
+								// 蛇を成長させる
+								player.Snake.Growing = 3
+								player.Score += 10
+								return
+							}
+						}
+						return
+					}
+				}
+				return
+			}
+
+			// NPCは通常の当たり判定
 			// 自己衝突
 			if player.Snake.CheckSelfCollision() {
 				player.Snake.Alive = false
@@ -330,26 +360,20 @@ func (g *Game) GetOptimizedState(clientPlayerID string, clientX, clientY, viewWi
 	for _, p := range g.Players {
 		// プレイヤーが画面範囲内にいるかチェック（生死問わず）
 		if len(p.Snake.Body) > 0 {
-			head := p.Snake.Body[0]
-			if head.X >= minX && head.X <= maxX && head.Y >= minY && head.Y <= maxY {
+			// 蛇の任意のセグメントが画面範囲内にあるかチェック
+			isVisible := false
+			for _, segment := range p.Snake.Body {
+				if segment.X >= minX && segment.X <= maxX && segment.Y >= minY && segment.Y <= maxY {
+					isVisible = true
+					break
+				}
+			}
+			
+			if isVisible {
 				// 元のデータを変更しないよう蛇のコピーを作成
 				snakeCopy := *p.Snake
 				
-				// 画面外のセグメントを削除（通信量削減）
-				visibleSegments := make([]models.Position, 0, len(snakeCopy.Body))
-				for _, segment := range snakeCopy.Body {
-					// セグメントが画面範囲内にあるかチェック
-					if segment.X >= minX && segment.X <= maxX && segment.Y >= minY && segment.Y <= maxY {
-						visibleSegments = append(visibleSegments, segment)
-					}
-				}
-				
-				// 最低でも頭は残す（頭が画面外でも蛇の存在を示すため）
-				if len(visibleSegments) == 0 && len(snakeCopy.Body) > 0 {
-					visibleSegments = append(visibleSegments, snakeCopy.Body[0])
-				}
-				
-				snakeCopy.Body = visibleSegments
+				// 体の一部でも画面内にあれば全身を送信（セグメント削除無し）
 
 				players = append(players, models.PlayerState{
 					ID:    p.ID,
@@ -410,9 +434,9 @@ func (g *Game) BroadcastOptimized() {
 		}
 
 		head := player.Snake.Body[0]
-		// クライアントの画面サイズを仮定（実際のクライアントサイズを取得する方が良い）
-		viewWidth := 1920.0
-		viewHeight := 1080.0
+		// テスト用：FHDより小さいカリング範囲
+		viewWidth := 1280.0
+		viewHeight := 720.0
 
 		// このクライアント専用の最適化されたゲーム状態を取得
 		optimizedState := g.GetOptimizedState(player.ID, head.X, head.Y, viewWidth, viewHeight)

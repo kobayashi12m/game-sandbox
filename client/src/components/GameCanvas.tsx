@@ -9,27 +9,30 @@ interface GameCanvasProps {
 
 const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, playerId, gameConfig }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [debugMode, setDebugMode] = useState(false);
   // サーバー設定を基に固定サイズを計算（レイアウトシフト防止）
   const canvasSize = useMemo(() => {
-    // ゲームフィールドのアスペクト比を維持しつつ、ウィンドウに収まるサイズ
-    const fieldRatio = gameConfig.fieldWidth / gameConfig.fieldHeight;
+    // 画面いっぱいにキャンバスを表示
     const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight - 120; // オーバーレイUI分を除く
+    const windowHeight = window.innerHeight;
     
-    let width = windowWidth;
-    let height = width / fieldRatio;
-    
-    // 高さが足りない場合は高さ基準で調整
-    if (height > windowHeight) {
-      height = windowHeight;
-      width = height * fieldRatio;
-    }
-    
-    return { width: Math.floor(width), height: Math.floor(height) };
-  }, [gameConfig.fieldWidth, gameConfig.fieldHeight]);
+    return { width: windowWidth, height: windowHeight };
+  }, []);
   
   const frameCountRef = useRef(0);
   const lastLogTimeRef = useRef(Date.now());
+
+  // デバッグモード切り替え（Dキー）
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.key === 'd' || event.key === 'D') {
+        setDebugMode(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -43,7 +46,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, playerId, gameConfig
     frameCountRef.current++;
     
     try {
-      drawGame(ctx, gameState, playerId, gameConfig, canvasSize);
+      drawGame(ctx, gameState, playerId, gameConfig, canvasSize, debugMode);
       
       // 20秒毎に軽量ログ出力
       const now = Date.now();
@@ -87,7 +90,8 @@ const drawGame = (
   gameState: GameState,
   playerId: string,
   gameConfig: GameConfig,
-  canvasSize: { width: number; height: number }
+  canvasSize: { width: number; height: number },
+  debugMode: boolean
 ) => {
   // プレイヤーの位置を取得
   const currentPlayer = gameState.players?.find(p => p.id === playerId);
@@ -107,6 +111,9 @@ const drawGame = (
 
   // フィールドの境界を描画
   drawFieldBoundary(ctx, gameConfig);
+
+  // サーバーカリング範囲を描画（デバッグ用）
+  drawServerCullingBounds(ctx, playerPosition, cameraX, cameraY, canvasSize);
 
   // 食べ物を描画（カリング付き）
   drawFood(ctx, gameState.food, gameConfig.foodRadius, cameraX, cameraY, canvasSize);
@@ -145,7 +152,7 @@ const drawGame = (
   ctx.restore();
 
   // UI要素を描画（画面固定）
-  drawUI(ctx, currentPlayer, canvasSize);
+  drawUI(ctx, currentPlayer, canvasSize, debugMode);
 };
 
 // フィールドの境界を描画
@@ -157,6 +164,34 @@ const drawFieldBoundary = (
   ctx.lineWidth = 3;
   ctx.setLineDash([10, 5]);
   ctx.strokeRect(0, 0, gameConfig.fieldWidth, gameConfig.fieldHeight);
+  ctx.setLineDash([]);
+};
+
+// サーバーカリング範囲を描画（デバッグ用）
+const drawServerCullingBounds = (
+  ctx: CanvasRenderingContext2D,
+  playerPosition: Position | undefined,
+  cameraX: number,
+  cameraY: number,
+  canvasSize: { width: number; height: number }
+) => {
+  if (!playerPosition) return;
+
+  // サーバー側のカリング範囲を再現（server/game/game.go:414-415の値と合わせる）
+  const serverViewWidth = 1280.0;
+  const serverViewHeight = 720.0;
+  const margin = 500.0; // server/game/game.go:323の値
+
+  const minX = playerPosition.x - serverViewWidth / 2 - margin;
+  const maxX = playerPosition.x + serverViewWidth / 2 + margin;
+  const minY = playerPosition.y - serverViewHeight / 2 - margin;
+  const maxY = playerPosition.y + serverViewHeight / 2 + margin;
+
+  // カリング境界を赤い点線で描画
+  ctx.strokeStyle = '#ff0000';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]);
+  ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
   ctx.setLineDash([]);
 };
 
@@ -300,7 +335,8 @@ const drawPlayerName = (
 const drawUI = (
   ctx: CanvasRenderingContext2D,
   currentPlayer: Player | undefined,
-  canvasSize: { width: number; height: number }
+  canvasSize: { width: number; height: number },
+  debugMode: boolean
 ) => {
   if (!currentPlayer) return;
 
@@ -320,6 +356,18 @@ const drawUI = (
     ctx.font = 'bold 20px Arial';
     ctx.fillText('DEAD', 20, 80);
   }
+
+  // デバッグ情報表示
+  // if (debugMode) {
+  //   ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+  //   ctx.fillRect(10, 100, 250, 40);
+  //   
+  //   ctx.fillStyle = '#fff';
+  //   ctx.font = 'bold 14px Arial';
+  //   ctx.textAlign = 'left';
+  //   ctx.fillText('DEBUG MODE (Press D to toggle)', 20, 120);
+  //   ctx.fillText('Red border = Server culling range', 20, 135);
+  // }
 
   // ミニマップ（右下）
   drawMinimap(ctx, currentPlayer, canvasSize);

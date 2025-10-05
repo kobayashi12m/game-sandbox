@@ -10,6 +10,9 @@ const (
 	SNAKE_SPEED  = 300.0                 // 蛇の速度（ユニット/秒）
 	GAME_TICK    = 16 * time.Millisecond // ゲーム更新間隔（60FPS）
 	NPC_COUNT    = 100                   // デフォルトNPC数
+	
+	// デバッグ設定
+	DISABLE_COLLISION = true // trueで当たり判定を無効化
 )
 
 // Direction represents movement direction (normalized vector)
