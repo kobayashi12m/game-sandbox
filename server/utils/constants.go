@@ -8,7 +8,8 @@ const (
 	SNAKE_RADIUS = 15.0                  // 蛇の半径
 	FOOD_RADIUS  = 10.0                  // 食べ物の半径
 	SNAKE_SPEED  = 300.0                 // 蛇の速度（ユニット/秒）
-	GAME_TICK    = 16 * time.Millisecond // ゲーム更新間隔（60FPS）
+	GAME_TICK    = 33 * time.Millisecond // ゲーム更新間隔（30FPS）
+	NPC_COUNT    = 100                   // デフォルトNPC数
 )
 
 // Direction represents movement direction (normalized vector)

@@ -3,6 +3,7 @@ package game
 import (
 	"sync"
 	"chess-mmo/server/models"
+	"chess-mmo/server/utils"
 )
 
 // Hub は複数のゲームルームを管理する
@@ -31,7 +32,7 @@ func (h *Hub) GetOrCreateGame(roomID string) *Game {
 		ID:          roomID,
 		Players:     make(map[string]*models.Player),
 		Running:     false,
-		NPCCount:    100, // デフォルトでNPCを20体追加（負荷テスト用）
+		NPCCount:    utils.NPC_COUNT, // constants.goから取得
 		spatialGrid: NewSpatialGrid(), // 空間分割グリッドを初期化
 	}
 	

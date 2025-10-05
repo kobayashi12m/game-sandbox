@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import type { GameState, GameConfig, Position, Player } from '../types';
 
 interface GameCanvasProps {
@@ -9,22 +9,27 @@ interface GameCanvasProps {
 
 const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, playerId, gameConfig }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+  // サーバー設定を基に固定サイズを計算（レイアウトシフト防止）
+  const canvasSize = useMemo(() => {
+    // ゲームフィールドのアスペクト比を維持しつつ、ウィンドウに収まるサイズ
+    const fieldRatio = gameConfig.fieldWidth / gameConfig.fieldHeight;
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight - 120; // オーバーレイUI分を除く
+    
+    let width = windowWidth;
+    let height = width / fieldRatio;
+    
+    // 高さが足りない場合は高さ基準で調整
+    if (height > windowHeight) {
+      height = windowHeight;
+      width = height * fieldRatio;
+    }
+    
+    return { width: Math.floor(width), height: Math.floor(height) };
+  }, [gameConfig.fieldWidth, gameConfig.fieldHeight]);
+  
   const frameCountRef = useRef(0);
   const lastLogTimeRef = useRef(Date.now());
-
-  // ビューポートサイズに応じてキャンバスサイズを設定
-  useEffect(() => {
-    const updateCanvasSize = () => {
-      const width = window.innerWidth;
-      const height = window.innerHeight - 120; // ヘッダー分を除く
-      setCanvasSize({ width, height });
-    };
-
-    updateCanvasSize();
-    window.addEventListener('resize', updateCanvasSize);
-    return () => window.removeEventListener('resize', updateCanvasSize);
-  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -40,9 +45,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, playerId, gameConfig
     try {
       drawGame(ctx, gameState, playerId, gameConfig, canvasSize);
       
-      // 5秒毎に詳細ログ出力
+      // 20秒毎に軽量ログ出力
       const now = Date.now();
-      if (now - lastLogTimeRef.current > 5000) {
+      if (now - lastLogTimeRef.current > 20000) {
         const memory = (performance as any).memory;
         const drawTime = performance.now() - startTime;
         const playerCount = gameState.players?.length || 0;
@@ -103,14 +108,37 @@ const drawGame = (
   // フィールドの境界を描画
   drawFieldBoundary(ctx, gameConfig);
 
-  // 食べ物を描画
-  drawFood(ctx, gameState.food, gameConfig.foodRadius);
+  // 食べ物を描画（カリング付き）
+  drawFood(ctx, gameState.food, gameConfig.foodRadius, cameraX, cameraY, canvasSize);
 
-  // プレイヤーを描画
+  // プレイヤーを描画（カリング付き）
   if (gameState.players && gameState.players.length > 0) {
+    // カリング用の画面境界計算（余裕を持たせる）
+    const cullingMargin = 300; // 画面外300pxまで描画
+    const minX = cameraX - cullingMargin;
+    const maxX = cameraX + canvasSize.width + cullingMargin;
+    const minY = cameraY - cullingMargin;
+    const maxY = cameraY + canvasSize.height + cullingMargin;
+    
+    let drawnCount = 0;
+    let culledCount = 0;
+    
     gameState.players.forEach(player => {
-      drawSnake(ctx, player, player.id === playerId, gameConfig.snakeRadius);
+      // プレイヤーが画面範囲内にいるかチェック
+      if (player.snake?.body?.[0]) {
+        const head = player.snake.body[0];
+        
+        // 頭が画面範囲内にあるかチェック
+        if (head.x >= minX && head.x <= maxX && head.y >= minY && head.y <= maxY) {
+          drawSnake(ctx, player, player.id === playerId, gameConfig.snakeRadius);
+          drawnCount++;
+        } else {
+          culledCount++;
+        }
+      }
     });
+    
+    // デバッグ用（20秒毎のログに追加情報を含める） - 削除してエラーを回避
   }
 
   // カメラ変換を元に戻す
@@ -132,22 +160,38 @@ const drawFieldBoundary = (
   ctx.setLineDash([]);
 };
 
-// 食べ物の描画
+// 食べ物の描画（カリング付き）
 const drawFood = (
   ctx: CanvasRenderingContext2D,
   food: Position[],
-  radius: number
+  radius: number,
+  cameraX: number,
+  cameraY: number,
+  canvasSize: { width: number; height: number }
 ) => {
   if (!food || food.length === 0) return;
+  
+  // カリング境界
+  const margin = 100;
+  const minX = cameraX - margin;
+  const maxX = cameraX + canvasSize.width + margin;
+  const minY = cameraY - margin;
+  const maxY = cameraY + canvasSize.height + margin;
   
   ctx.fillStyle = '#ff6b6b';
   ctx.shadowBlur = 10;
   ctx.shadowColor = '#ff6b6b';
   
+  let drawnFoodCount = 0;
+  
   food.forEach(item => {
-    ctx.beginPath();
-    ctx.arc(item.x, item.y, radius, 0, 2 * Math.PI);
-    ctx.fill();
+    // 画面範囲内の食べ物のみ描画
+    if (item.x >= minX && item.x <= maxX && item.y >= minY && item.y <= maxY) {
+      ctx.beginPath();
+      ctx.arc(item.x, item.y, radius, 0, 2 * Math.PI);
+      ctx.fill();
+      drawnFoodCount++;
+    }
   });
   
   ctx.shadowBlur = 0;
