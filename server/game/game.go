@@ -393,10 +393,44 @@ func (g *Game) GetOptimizedState(clientPlayerID string, clientX, clientY, viewWi
 		}
 	}
 
+	// リーダーボード用に全プレイヤーの基本情報を追加
+	// (位置情報は含めず、スコア情報のみ)
+	allPlayersForScoreboard := make([]models.PlayerState, 0, len(g.Players))
+	for _, p := range g.Players {
+		// 画面外のプレイヤーは最小限の情報のみ送信
+		if !isPlayerInList(p.ID, players) {
+			minimalSnake := &models.Snake{
+				ID:    p.Snake.ID,
+				Body:  []models.Position{}, // 位置情報は送らない
+				Color: p.Snake.Color,
+				Alive: p.Snake.Alive,
+			}
+			allPlayersForScoreboard = append(allPlayersForScoreboard, models.PlayerState{
+				ID:    p.ID,
+				Name:  p.Name,
+				Snake: minimalSnake,
+				Score: p.Score,
+			})
+		}
+	}
+	
+	// 画面内のプレイヤーと画面外のプレイヤーを結合
+	players = append(players, allPlayersForScoreboard...)
+
 	return models.GameState{
 		Players: players,
 		Food:    food,
 	}
+}
+
+// isPlayerInList はプレイヤーIDがリストに含まれているかチェック
+func isPlayerInList(playerID string, players []models.PlayerState) bool {
+	for _, p := range players {
+		if p.ID == playerID {
+			return true
+		}
+	}
+	return false
 }
 
 // Broadcast はゲーム内の全プレイヤーにメッセージを送信する
@@ -411,9 +445,14 @@ func (g *Game) Broadcast(message interface{}) {
 		if player.IsNPC || player.Conn == nil {
 			continue
 		}
-		if err := player.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
-			log.Printf("Error broadcasting to player %s: %v", player.ID, err)
-		}
+		// WebSocket書き込みを同期化
+		func() {
+			player.ConnMu.Lock()
+			defer player.ConnMu.Unlock()
+			if err := player.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
+				log.Printf("Error broadcasting to player %s: %v", player.ID, err)
+			}
+		}()
 	}
 }
 
@@ -452,9 +491,14 @@ func (g *Game) BroadcastOptimized() {
 			continue
 		}
 
-		if err := player.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
-			log.Printf("Error broadcasting optimized state to player %s: %v", player.ID, err)
-		}
+		// WebSocket書き込みを同期化
+		func() {
+			player.ConnMu.Lock()
+			defer player.ConnMu.Unlock()
+			if err := player.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
+				log.Printf("Error broadcasting optimized state to player %s: %v", player.ID, err)
+			}
+		}()
 	}
 }
 
@@ -532,23 +576,44 @@ func (g *Game) Stop() {
 
 // RunGameLoop はメインゲームの更新ループを実行する
 func (g *Game) RunGameLoop() {
+	// パニックリカバリー
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("PANIC in RunGameLoop for game %s: %v", g.ID, r)
+		}
+	}()
+
 	ticker := time.NewTicker(utils.GAME_TICK)
 	defer ticker.Stop()
 	lastUpdate := time.Now()
 
+	log.Printf("Game loop started for game %s", g.ID)
+	defer log.Printf("Game loop ended for game %s", g.ID)
+
 	for g.Running {
-		<-ticker.C
-		now := time.Now()
-		deltaTime := now.Sub(lastUpdate).Seconds()
-		lastUpdate = now
+		select {
+		case <-ticker.C:
+			now := time.Now()
+			deltaTime := now.Sub(lastUpdate).Seconds()
+			lastUpdate = now
 
-		g.mu.Lock()
-		// NPCの方向を更新
-		g.updateNPCDirections()
-		g.Update(deltaTime)
-		g.mu.Unlock()
+			// 更新処理をゴルーチン安全にラップ
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						log.Printf("PANIC in game update for game %s: %v", g.ID, r)
+					}
+				}()
 
-		// 各クライアントに最適化されたデータを個別送信
-		g.BroadcastOptimized()
+				g.mu.Lock()
+				// NPCの方向を更新
+				g.updateNPCDirections()
+				g.Update(deltaTime)
+				g.mu.Unlock()
+
+				// 各クライアントに最適化されたデータを個別送信
+				g.BroadcastOptimized()
+			}()
+		}
 	}
 }

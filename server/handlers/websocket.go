@@ -65,37 +65,43 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 
 				gameInstance.ShouldStart()
 
-				// 参加確認を送信
-				response := map[string]interface{}{
-					"type":     "gameJoined",
-					"playerId": playerID,
-				}
-				conn.WriteJSON(response)
+				// WebSocket書き込みを同期化
+				func() {
+					player.ConnMu.Lock()
+					defer player.ConnMu.Unlock()
+					
+					// 参加確認を送信
+					response := map[string]interface{}{
+						"type":     "gameJoined",
+						"playerId": playerID,
+					}
+					conn.WriteJSON(response)
 
-				// ゲーム設定を送信
-				config := models.GameConfig{
-					FieldWidth:    utils.FIELD_WIDTH,
-					FieldHeight:   utils.FIELD_HEIGHT,
-					SnakeRadius:   utils.SNAKE_RADIUS,
-					FoodRadius:    utils.FOOD_RADIUS,
-					CullingWidth:  utils.CULLING_WIDTH,
-					CullingHeight: utils.CULLING_HEIGHT,
-					CullingMargin: utils.CULLING_MARGIN,
-				}
-				configMsg := map[string]interface{}{
-					"type":   "gameConfig",
-					"config": config,
-				}
-				conn.WriteJSON(configMsg)
+					// ゲーム設定を送信
+					config := models.GameConfig{
+						FieldWidth:    utils.FIELD_WIDTH,
+						FieldHeight:   utils.FIELD_HEIGHT,
+						SnakeRadius:   utils.SNAKE_RADIUS,
+						FoodRadius:    utils.FOOD_RADIUS,
+						CullingWidth:  utils.CULLING_WIDTH,
+						CullingHeight: utils.CULLING_HEIGHT,
+						CullingMargin: utils.CULLING_MARGIN,
+					}
+					configMsg := map[string]interface{}{
+						"type":   "gameConfig",
+						"config": config,
+					}
+					conn.WriteJSON(configMsg)
 
-				// 現在のゲーム状態を送信
-				state := gameInstance.GetState()
+					// 現在のゲーム状態を送信
+					state := gameInstance.GetState()
 
-				stateMsg := map[string]interface{}{
-					"type":  "gameState",
-					"state": state,
-				}
-				conn.WriteJSON(stateMsg)
+					stateMsg := map[string]interface{}{
+						"type":  "gameState",
+						"state": state,
+					}
+					conn.WriteJSON(stateMsg)
+				}()
 
 			case "changeDirection":
 				if player == nil || gameInstance == nil {

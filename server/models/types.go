@@ -2,6 +2,7 @@ package models
 
 import (
 	"chess-mmo/server/utils"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -35,6 +36,7 @@ type Player struct {
 	Conn            *websocket.Conn
 	IsNPC           bool      `json:"-"` // NPCかどうかのフラグ
 	LastDirectionChange time.Time `json:"-"` // 最後に方向を変えた時刻
+	ConnMu          sync.Mutex `json:"-"` // WebSocket書き込み用mutex
 }
 
 // GameState はクライアントに送信される現在の状態を表す
