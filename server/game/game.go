@@ -190,7 +190,7 @@ func (g *Game) Update(deltaTime float64) {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					log.Printf("PANIC in UpdateSpatialGrid: %v, Frame: %d", r, g.frameCount)
+					log.Printf("\033[35m🚨 PANIC_RECOVERED in UpdateSpatialGrid: %v, Frame: %d\033[0m", r, g.frameCount)
 				}
 			}()
 			g.UpdateSpatialGrid()
@@ -203,7 +203,7 @@ func (g *Game) Update(deltaTime float64) {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					log.Printf("PANIC in collision detection for player %s: %v, Frame: %d", player.Name, r, g.frameCount)
+					log.Printf("\033[35m🚨 PANIC_RECOVERED in collision detection for player %s: %v, Frame: %d\033[0m", player.Name, r, g.frameCount)
 				}
 			}()
 			
@@ -416,7 +416,7 @@ func (g *Game) Broadcast(message interface{}) {
 			player.ConnMu.Lock()
 			defer player.ConnMu.Unlock()
 			if err := player.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
-				log.Printf("Error broadcasting to player %s: %v", player.ID, err)
+				log.Printf("\033[31m❌ WS_ERROR: Error broadcasting to player %s: %v\033[0m", player.ID, err)
 			}
 		}()
 	}
@@ -424,20 +424,26 @@ func (g *Game) Broadcast(message interface{}) {
 
 // BroadcastOptimized は各クライアントに最適化されたデータを個別送信
 func (g *Game) BroadcastOptimized() {
+	// プレイヤーリストのスナップショットを取得
 	g.mu.RLock()
-	defer g.mu.RUnlock()
-
+	playerList := make([]*models.Player, 0, len(g.Players))
 	for _, player := range g.Players {
 		// NPCプレイヤーにはメッセージを送信しない
 		if player.IsNPC || player.Conn == nil {
 			continue
 		}
-
+		
 		// プレイヤーの位置を取得（死んでいても送信を続ける）
 		if len(player.Snake.Body) == 0 {
 			continue
 		}
+		
+		playerList = append(playerList, player)
+	}
+	g.mu.RUnlock()
 
+	// スナップショットを使って各プレイヤーに送信（デッドロック回避）
+	for _, player := range playerList {
 		head := player.Snake.Body[0]
 		// constants.goからカリング範囲を取得
 		viewWidth := utils.CULLING_WIDTH
@@ -462,11 +468,11 @@ func (g *Game) BroadcastOptimized() {
 			player.ConnMu.Lock()
 			defer player.ConnMu.Unlock()
 			if err := player.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
-				log.Printf("Error broadcasting optimized state to player %s: %v", player.ID, err)
+				log.Printf("\033[31m❌ WS_ERROR: Error broadcasting optimized state to player %s: %v\033[0m", player.ID, err)
 			}
 			// デバッグ：データサイズをログ出力（10秒に1回）
 			if g.frameCount%600 == 0 {
-				log.Printf("📊 WS Data size for player %s: %d bytes", player.Name, len(data))
+				log.Printf("\033[34m📊 WS_DATA: size for player %s: %d bytes\033[0m", player.Name, len(data))
 			}
 		}()
 	}
@@ -549,7 +555,7 @@ func (g *Game) RunGameLoop() {
 	// パニックリカバリー
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("PANIC in RunGameLoop for game %s: %v", g.ID, r)
+			log.Printf("\033[35m🚨 PANIC_RECOVERED in RunGameLoop for game %s: %v\033[0m", g.ID, r)
 		}
 	}()
 
@@ -557,8 +563,8 @@ func (g *Game) RunGameLoop() {
 	defer ticker.Stop()
 	lastUpdate := time.Now()
 
-	log.Printf("Game loop started for game %s", g.ID)
-	defer log.Printf("Game loop ended for game %s", g.ID)
+	log.Printf("\033[32m✅ GAME_LOOP: Started for game %s\033[0m", g.ID)
+	defer log.Printf("\033[33m⚠️ GAME_LOOP: Ended for game %s\033[0m", g.ID)
 
 	for g.Running {
 		select {
@@ -571,7 +577,7 @@ func (g *Game) RunGameLoop() {
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
-						log.Printf("PANIC in game update for game %s: %v", g.ID, r)
+						log.Printf("\033[35m🚨 PANIC_RECOVERED in game update for game %s: %v\033[0m", g.ID, r)
 					}
 				}()
 
