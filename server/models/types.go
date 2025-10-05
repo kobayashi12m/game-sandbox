@@ -28,11 +28,13 @@ type Snake struct {
 
 // Player はゲーム内のプレイヤーを表す
 type Player struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Snake *Snake `json:"snake"`
-	Score int    `json:"score"`
-	Conn  *websocket.Conn
+	ID              string `json:"id"`
+	Name            string `json:"name"`
+	Snake           *Snake `json:"snake"`
+	Score           int    `json:"score"`
+	Conn            *websocket.Conn
+	IsNPC           bool      `json:"-"` // NPCかどうかのフラグ
+	LastDirectionChange time.Time `json:"-"` // 最後に方向を変えた時刻
 }
 
 // GameState はクライアントに送信される現在の状態を表す

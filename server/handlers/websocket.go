@@ -109,9 +109,12 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 		// 切断時のクリーンアップ
 		if gameInstance != nil && playerID != "" {
 			gameInstance.RemovePlayer(playerID)
-			if gameInstance.GetPlayerCount() == 0 {
+			
+			// 人間プレイヤーがいなくなったらゲームを停止
+			if gameInstance.GetHumanPlayerCount() == 0 {
 				gameInstance.Stop()
 				hub.RemoveGame(gameInstance.ID)
+				log.Printf("Game stopped - no human players remaining")
 			}
 		}
 	}

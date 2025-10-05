@@ -15,11 +15,12 @@ import (
 
 // Game はゲームセッションを表す
 type Game struct {
-	ID      string
-	Players map[string]*models.Player
-	Food    []models.Position
-	Running bool
-	mu      sync.RWMutex
+	ID       string
+	Players  map[string]*models.Player
+	Food     []models.Position
+	Running  bool
+	NPCCount int // NPC数の設定
+	mu       sync.RWMutex
 }
 
 // AddPlayer はゲームに新しいプレイヤーを追加する
@@ -52,21 +53,33 @@ func (g *Game) RemovePlayer(id string) {
 	delete(g.Players, id)
 }
 
+// GetHumanPlayerCount は人間プレイヤーの数を返す
+func (g *Game) GetHumanPlayerCount() int {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	
+	count := 0
+	for _, player := range g.Players {
+		if !player.IsNPC {
+			count++
+		}
+	}
+	return count
+}
+
 // GenerateFood はゲームフィールドに食べ物を生成する
 func (g *Game) GenerateFood() {
-	targetFoodCount := 3
+	targetFoodCount := 5  // 最小数を増加
 	if len(g.Players) > 0 {
-		targetFoodCount = int(float64(len(g.Players)) * 1.5)
-		if targetFoodCount < 3 {
-			targetFoodCount = 3
+		targetFoodCount = int(float64(len(g.Players)) * 2.0)  // プレイヤー数の2倍に増加
+		if targetFoodCount < 5 {
+			targetFoodCount = 5
 		}
 	}
 
-	// 不足分だけ追加生成
-	currentFoodCount := len(g.Food)
-	needToAdd := targetFoodCount - currentFoodCount
+	initialFoodCount := len(g.Food)
 	
-	for i := 0; i < needToAdd; i++ {
+	for len(g.Food) < targetFoodCount {
 		var pos models.Position
 		attempts := 0
 		for {
@@ -81,7 +94,17 @@ func (g *Game) GenerateFood() {
 		}
 		if attempts <= 100 {
 			g.Food = append(g.Food, pos)
+		} else {
+			log.Printf("Failed to place food after 100 attempts (current food: %d, target: %d)", 
+				len(g.Food), targetFoodCount)
+			break  // 無限ループを防ぐ
 		}
+	}
+	
+	// 食べ物が生成された場合のみログ出力
+	if len(g.Food) > initialFoodCount {
+		log.Printf("Generated food: %d -> %d (target: %d, players: %d)", 
+			initialFoodCount, len(g.Food), targetFoodCount, len(g.Players))
 	}
 }
 
@@ -147,42 +170,34 @@ func (g *Game) Update(deltaTime float64) {
 			dx := head.X - g.Food[i].X
 			dy := head.Y - g.Food[i].Y
 			dist := dx*dx + dy*dy
+
 			if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
-				player.Snake.Grow(3)
-				player.Score += 10
+				// 食べ物を除去
 				g.Food = append(g.Food[:i], g.Food[i+1:]...)
+				// 蛇を成長させる
+				player.Snake.Growing = 3
+				player.Score += 10
+				log.Printf("Player %s ate food! Remaining food: %d", player.Name, len(g.Food))
+				break
 			}
 		}
 	}
 
-	// 必要に応じて食べ物を再生成
-	if len(g.Food) < 3 {
-		g.GenerateFood()
-	}
-
-	// 死んだ蛇の処理
-	g.handleDeadSnakes()
-}
-
-// handleDeadSnakes は死んだ蛇の復活処理を管理する
-func (g *Game) handleDeadSnakes() {
-	now := time.Now()
+	// 死んだ蛇のリスポーン処理
 	for _, player := range g.Players {
-		snake := player.Snake
-
-		if !snake.Alive && !snake.Respawning {
-			// 死亡時の初期化
-			snake.Respawning = true
-			snake.DeathTime = now
-			snake.Body = []models.Position{} // 即座にクリア
+		if !player.Snake.Alive && !player.Snake.Respawning {
+			player.Snake.Respawning = true
+			player.Snake.DeathTime = time.Now()
 		}
 
-		if snake.Respawning && now.Sub(snake.DeathTime) >= 3*time.Second {
-			// 復活
-			snake.Reset()
-			snake.Respawning = false
+		if player.Snake.Respawning && time.Since(player.Snake.DeathTime) > 3*time.Second {
+			player.Snake.Reset()
+			player.Snake.Respawning = false
 		}
 	}
+
+	// 食べ物の補充
+	g.GenerateFood()
 }
 
 // GetState はクライアント用の現在のゲーム状態を返す
@@ -216,6 +231,10 @@ func (g *Game) Broadcast(message interface{}) {
 	}
 
 	for _, player := range g.Players {
+		// NPCプレイヤーにはメッセージを送信しない
+		if player.IsNPC || player.Conn == nil {
+			continue
+		}
 		if err := player.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
 			log.Printf("Error broadcasting to player %s: %v", player.ID, err)
 		}
@@ -259,10 +278,19 @@ func (g *Game) ShouldStart() bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	if len(g.Players) == 1 && !g.Running {
+	// 人間プレイヤーが1人以上いて、ゲームが開始されていない場合
+	humanPlayers := 0
+	for _, player := range g.Players {
+		if !player.IsNPC {
+			humanPlayers++
+		}
+	}
+
+	if humanPlayers >= 1 && !g.Running {
 		g.Running = true
 		g.GenerateFood()
 		go g.RunGameLoop()
+		log.Printf("Game started with %d human players and %d total players", humanPlayers, len(g.Players))
 		return true
 	}
 	return false
@@ -298,6 +326,8 @@ func (g *Game) RunGameLoop() {
 		lastUpdate = now
 
 		g.mu.Lock()
+		// NPCの方向を更新
+		g.updateNPCDirections()
 		g.Update(deltaTime)
 		g.mu.Unlock()
 

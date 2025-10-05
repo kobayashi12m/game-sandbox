@@ -27,11 +27,17 @@ func (h *Hub) GetOrCreateGame(roomID string) *Game {
 		return game
 	}
 	
-	h.games[roomID] = &Game{
-		ID:      roomID,
-		Players: make(map[string]*models.Player),
-		Running: false,
+	game := &Game{
+		ID:       roomID,
+		Players:  make(map[string]*models.Player),
+		Running:  false,
+		NPCCount: 20, // デフォルトでNPCを20体追加（負荷テスト用）
 	}
+	
+	// NPCを追加
+	game.AddNPC(game.NPCCount)
+	
+	h.games[roomID] = game
 	return h.games[roomID]
 }
 

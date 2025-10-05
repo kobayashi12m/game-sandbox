@@ -45,9 +45,11 @@ const drawGame = (
   drawFood(ctx, gameState.food, gameConfig.foodRadius);
 
   // プレイヤーを描画
-  gameState.players.forEach(player => {
-    drawSnake(ctx, player, player.id === playerId, gameConfig.snakeRadius);
-  });
+  if (gameState.players && gameState.players.length > 0) {
+    gameState.players.forEach(player => {
+      drawSnake(ctx, player, player.id === playerId, gameConfig.snakeRadius);
+    });
+  }
 };
 
 // 食べ物の描画
@@ -56,6 +58,8 @@ const drawFood = (
   food: Position[],
   radius: number
 ) => {
+  if (!food || food.length === 0) return;
+  
   ctx.fillStyle = '#ff6b6b';
   food.forEach(item => {
     ctx.beginPath();
