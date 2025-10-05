@@ -306,13 +306,20 @@ const drawUI = (
 
   // スコア表示
   ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-  ctx.fillRect(10, 10, 200, 60);
+  ctx.fillRect(10, 10, 200, 80);
   
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 18px Arial';
   ctx.textAlign = 'left';
   ctx.fillText(`Score: ${currentPlayer.score}`, 20, 35);
   ctx.fillText(`Length: ${currentPlayer.snake.body.length}`, 20, 55);
+  
+  // 死んでいる場合はDEAD表示
+  if (!currentPlayer.snake.alive) {
+    ctx.fillStyle = '#ff4444';
+    ctx.font = 'bold 20px Arial';
+    ctx.fillText('DEAD', 20, 80);
+  }
 
   // ミニマップ（右下）
   drawMinimap(ctx, currentPlayer, canvasSize);
