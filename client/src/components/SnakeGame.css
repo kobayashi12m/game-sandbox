@@ -1,91 +1,234 @@
+/* 全画面ゲームレイアウト */
 .snake-game {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
+  width: 100vw;
+  height: 100vh;
   background-color: #0a0a0a;
-  min-height: 100vh;
   color: white;
+  overflow: hidden;
+  position: relative;
 }
 
-.connection-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+/* ゲームコンテナ */
+.game-container {
   width: 100%;
-  max-width: 800px;
-  padding: 10px 20px;
-  background-color: #1a1a1a;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  border: 1px solid #333;
+  height: 100%;
+  position: relative;
 }
 
-.connection-status {
+/* オーバーレイUI */
+.overlay-ui {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* 接続状況オーバーレイ（左上） */
+.connection-status-overlay {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: rgba(0, 0, 0, 0.8);
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #333;
+  pointer-events: auto;
+}
+
+.status-indicator {
   font-weight: bold;
   font-size: 14px;
 }
 
-.connect-button, .disconnect-button {
-  padding: 8px 16px;
-  color: white;
+.connect-button-small, .disconnect-button-small {
+  padding: 4px 8px;
+  font-size: 12px;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
   font-weight: 500;
 }
 
-.connect-button {
+.connect-button-small {
   background-color: #4CAF50;
+  color: white;
 }
 
-.connect-button:hover:not(:disabled) {
+.connect-button-small:hover:not(:disabled) {
   background-color: #45a049;
 }
 
-.disconnect-button {
+.disconnect-button-small {
   background-color: #f44336;
+  color: white;
 }
 
-.disconnect-button:hover {
+.disconnect-button-small:hover {
   background-color: #d32f2f;
 }
 
-.game-header {
+/* リーダーボードオーバーレイ（右上） */
+.leaderboard-overlay {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  pointer-events: auto;
+}
+
+/* リーダーボードのスタイル調整 */
+.leaderboard-overlay .scoreboard {
+  background-color: rgba(0, 0, 0, 0.9);
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 12px;
+  min-width: 200px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.leaderboard-overlay .scoreboard h3 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: #4ECDC4;
+  text-align: center;
+}
+
+.leaderboard-overlay .scoreboard .player-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  width: 100%;
-  max-width: 800px;
-  margin-bottom: 20px;
-  gap: 20px;
+  padding: 4px 8px;
+  margin: 2px 0;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.05);
+  font-size: 12px;
 }
 
-.game-title-section h2 {
-  margin: 0;
-  font-size: 24px;
+.leaderboard-overlay .scoreboard .player-item.current-player {
+  background-color: rgba(255, 215, 0, 0.2);
+  border: 1px solid #ffd700;
+}
+
+.leaderboard-overlay .scoreboard .player-name {
+  font-weight: 500;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard-overlay .scoreboard .player-score {
+  font-weight: bold;
   color: #4ECDC4;
 }
 
+/* タッチコントロールオーバーレイ */
+.touch-controls-overlay {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+
+/* 待機画面 */
 .waiting-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
   text-align: center;
-  margin-top: 100px;
+  gap: 20px;
 }
 
 .waiting-screen h2 {
   color: #4ECDC4;
-  margin-bottom: 20px;
+  margin: 0;
+  font-size: 32px;
 }
 
-.controls {
-  margin-top: 20px;
-  text-align: center;
+.waiting-screen p {
   color: #999;
+  font-size: 16px;
+  margin: 0;
 }
 
+.connect-button {
+  padding: 12px 24px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.connect-button:hover:not(:disabled) {
+  background-color: #45a049;
+  transform: translateY(-2px);
+}
+
+.connect-button:disabled {
+  background-color: #666;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* モバイル対応 */
 @media (max-width: 768px) {
-  .desktop-controls {
-    display: none;
+  .connection-status-overlay {
+    top: 10px;
+    left: 10px;
+    font-size: 12px;
   }
+  
+  .leaderboard-overlay {
+    top: 10px;
+    right: 10px;
+  }
+  
+  .leaderboard-overlay .scoreboard {
+    min-width: 150px;
+    padding: 8px;
+  }
+  
+  .leaderboard-overlay .scoreboard h3 {
+    font-size: 14px;
+  }
+  
+  .leaderboard-overlay .scoreboard .player-item {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+  
+  .touch-controls-overlay {
+    bottom: 15px;
+  }
+}
+
+/* スクロールバーのスタイル */
+.leaderboard-overlay .scoreboard::-webkit-scrollbar {
+  width: 4px;
+}
+
+.leaderboard-overlay .scoreboard::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.leaderboard-overlay .scoreboard::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+.leaderboard-overlay .scoreboard::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
 }

@@ -56,65 +56,70 @@ const SnakeGame: React.FC = () => {
 
   return (
     <div className="snake-game">
-      {/* 接続状況とボタンのヘッダー */}
-      <div className="connection-header">
-        <div className="connection-status">
-          <span 
-            className="status-indicator"
-            style={{ color: getConnectionStatusColor() }}
-          >
-            ● {getConnectionStatus()}
-          </span>
-        </div>
-        <div className="connection-buttons">
-          {!isConnected && hasInitiallyConnected ? (
-            <button 
-              className="connect-button"
-              onClick={handleConnect}
-              disabled={isConnecting}
-            >
-              再接続
-            </button>
-          ) : isConnected ? (
-            <button 
-              className="disconnect-button"
-              onClick={handleDisconnect}
-            >
-              切断
-            </button>
-          ) : null}
-        </div>
-      </div>
-
       {/* ゲームコンテンツ */}
       {isConnected ? (
-        <>
-          <div className="game-header">
-            <div className="game-title-section">
-              <h2>🐍 Snake Game</h2>
-            </div>
-            <Scoreboard 
-              players={gameState.players}
-              currentPlayerId={playerId}
-              roomId={roomId}
-            />
-          </div>
-          
+        <div className="game-container">
+          {/* メインのゲーム画面 */}
           <GameCanvas 
             gameState={gameState}
             playerId={playerId}
             gameConfig={gameConfig}
           />
           
-          <div className="controls">
-            <p className="desktop-controls">矢印キー または WASD で移動</p>
+          {/* オーバーレイUI */}
+          <div className="overlay-ui">
+            {/* 接続状況（左上） */}
+            <div className="connection-status-overlay">
+              <span 
+                className="status-indicator"
+                style={{ color: getConnectionStatusColor() }}
+              >
+                ● {getConnectionStatus()}
+              </span>
+              {isConnected ? (
+                <button 
+                  className="disconnect-button-small"
+                  onClick={handleDisconnect}
+                >
+                  切断
+                </button>
+              ) : (
+                <button 
+                  className="connect-button-small"
+                  onClick={handleConnect}
+                  disabled={isConnecting}
+                >
+                  再接続
+                </button>
+              )}
+            </div>
+            
+            {/* リーダーボード（右上） */}
+            <div className="leaderboard-overlay">
+              <Scoreboard 
+                players={gameState.players}
+                currentPlayerId={playerId}
+                roomId={roomId}
+              />
+            </div>
+          </div>
+          
+          {/* タッチコントロール */}
+          <div className="touch-controls-overlay">
             <TouchControls onDirectionChange={handleTouchDirection} />
           </div>
-        </>
+        </div>
       ) : hasInitiallyConnected ? (
         <div className="waiting-screen">
           <h2>🐍 Snake Game</h2>
           <p>接続が切断されました。再接続ボタンを押してゲームに復帰してください</p>
+          <button 
+            className="connect-button"
+            onClick={handleConnect}
+            disabled={isConnecting}
+          >
+            再接続
+          </button>
         </div>
       ) : (
         <div className="waiting-screen">

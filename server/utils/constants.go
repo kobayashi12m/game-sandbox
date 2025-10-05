@@ -3,11 +3,11 @@ package utils
 import "time"
 
 const (
-	FIELD_WIDTH  = 1800.0                // フィールドの幅
-	FIELD_HEIGHT = 1000.0                // フィールドの高さ
-	SNAKE_RADIUS = 12.0                  // 蛇の半径
-	FOOD_RADIUS  = 8.0                   // 食べ物の半径
-	SNAKE_SPEED  = 250.0                 // 蛇の速度（ユニット/秒）
+	FIELD_WIDTH  = 5000.0                // フィールドの幅（大幅拡大）
+	FIELD_HEIGHT = 3000.0                // フィールドの高さ（大幅拡大）
+	SNAKE_RADIUS = 15.0                  // 蛇の半径
+	FOOD_RADIUS  = 10.0                  // 食べ物の半径
+	SNAKE_SPEED  = 300.0                 // 蛇の速度（ユニット/秒）
 	GAME_TICK    = 16 * time.Millisecond // ゲーム更新間隔（60FPS）
 )
 

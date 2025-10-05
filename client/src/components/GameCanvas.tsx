@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import type { GameState, GameConfig, Position, Player } from '../types';
 
 interface GameCanvasProps {
@@ -9,6 +9,20 @@ interface GameCanvasProps {
 
 const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, playerId, gameConfig }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+
+  // ビューポートサイズに応じてキャンバスサイズを設定
+  useEffect(() => {
+    const updateCanvasSize = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight - 120; // ヘッダー分を除く
+      setCanvasSize({ width, height });
+    };
+
+    updateCanvasSize();
+    window.addEventListener('resize', updateCanvasSize);
+    return () => window.removeEventListener('resize', updateCanvasSize);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -17,29 +31,45 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, playerId, gameConfig
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    drawGame(ctx, gameState, playerId, gameConfig);
-  }, [gameState, playerId, gameConfig]);
+    drawGame(ctx, gameState, playerId, gameConfig, canvasSize);
+  }, [gameState, playerId, gameConfig, canvasSize]);
 
   return (
     <canvas
       ref={canvasRef}
-      width={gameConfig.fieldWidth}
-      height={gameConfig.fieldHeight}
-      style={{ border: '2px solid #333' }}
+      width={canvasSize.width}
+      height={canvasSize.height}
+      style={{ display: 'block' }}
     />
   );
 };
 
-// メインの描画関数
+// メインの描画関数（カメラ追従付き）
 const drawGame = (
   ctx: CanvasRenderingContext2D,
   gameState: GameState,
   playerId: string,
-  gameConfig: GameConfig
+  gameConfig: GameConfig,
+  canvasSize: { width: number; height: number }
 ) => {
+  // プレイヤーの位置を取得
+  const currentPlayer = gameState.players?.find(p => p.id === playerId);
+  const playerPosition = currentPlayer?.snake?.body?.[0];
+  
+  // カメラの中心位置を計算
+  const cameraX = playerPosition ? playerPosition.x - canvasSize.width / 2 : 0;
+  const cameraY = playerPosition ? playerPosition.y - canvasSize.height / 2 : 0;
+
   // キャンバスをクリア
-  ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(0, 0, gameConfig.fieldWidth, gameConfig.fieldHeight);
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
+
+  // カメラ変換を適用
+  ctx.save();
+  ctx.translate(-cameraX, -cameraY);
+
+  // フィールドの境界を描画
+  drawFieldBoundary(ctx, gameConfig);
 
   // 食べ物を描画
   drawFood(ctx, gameState.food, gameConfig.foodRadius);
@@ -50,6 +80,24 @@ const drawGame = (
       drawSnake(ctx, player, player.id === playerId, gameConfig.snakeRadius);
     });
   }
+
+  // カメラ変換を元に戻す
+  ctx.restore();
+
+  // UI要素を描画（画面固定）
+  drawUI(ctx, currentPlayer, canvasSize);
+};
+
+// フィールドの境界を描画
+const drawFieldBoundary = (
+  ctx: CanvasRenderingContext2D,
+  gameConfig: GameConfig
+) => {
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([10, 5]);
+  ctx.strokeRect(0, 0, gameConfig.fieldWidth, gameConfig.fieldHeight);
+  ctx.setLineDash([]);
 };
 
 // 食べ物の描画
@@ -61,11 +109,16 @@ const drawFood = (
   if (!food || food.length === 0) return;
   
   ctx.fillStyle = '#ff6b6b';
+  ctx.shadowBlur = 10;
+  ctx.shadowColor = '#ff6b6b';
+  
   food.forEach(item => {
     ctx.beginPath();
     ctx.arc(item.x, item.y, radius, 0, 2 * Math.PI);
     ctx.fill();
   });
+  
+  ctx.shadowBlur = 0;
 };
 
 // 蛇の描画
@@ -85,11 +138,11 @@ const drawSnake = (
   snake.body.forEach((segment, index) => {
     if (index === 0) {
       // 頭部を描画
-      drawSnakeHead(ctx, segment, radius, snake.color);
+      drawSnakeHead(ctx, segment, radius, snake.color, isCurrentPlayer);
     } else {
       // 体を描画
       ctx.beginPath();
-      ctx.arc(segment.x, segment.y, radius, 0, 2 * Math.PI);
+      ctx.arc(segment.x, segment.y, radius * (1 - index * 0.02), 0, 2 * Math.PI);
       ctx.fill();
     }
   });
@@ -107,16 +160,29 @@ const drawSnakeHead = (
   ctx: CanvasRenderingContext2D,
   position: Position,
   radius: number,
-  color: string
+  color: string,
+  isCurrentPlayer: boolean
 ) => {
   // 頭部の円
   ctx.beginPath();
   ctx.arc(position.x, position.y, radius, 0, 2 * Math.PI);
   ctx.fill();
 
+  // 自分の蛇にはアウトラインを追加
+  if (isCurrentPlayer) {
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 3;
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#ffd700';
+    ctx.beginPath();
+    ctx.arc(position.x, position.y, radius + 2, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
   // 目を描画
   ctx.fillStyle = '#000';
-  const eyeRadius = radius * 0.3;
+  const eyeRadius = radius * 0.25;
   const eyeOffset = radius * 0.4;
   
   ctx.beginPath();
@@ -140,9 +206,70 @@ const drawPlayerName = (
 ) => {
   ctx.globalAlpha = 1;
   ctx.fillStyle = isCurrentPlayer ? '#ffd700' : '#fff';
-  ctx.font = '12px Arial';
+  ctx.font = isCurrentPlayer ? 'bold 16px Arial' : '14px Arial';
   ctx.textAlign = 'center';
+  
+  // 文字の背景（可読性向上）
+  const textWidth = ctx.measureText(name).width;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+  ctx.fillRect(headPosition.x - textWidth/2 - 4, headPosition.y - 28, textWidth + 8, 18);
+  
+  // 文字を描画
+  ctx.fillStyle = isCurrentPlayer ? '#ffd700' : '#fff';
   ctx.fillText(name, headPosition.x, headPosition.y - 15);
+};
+
+// UI要素の描画（画面固定）
+const drawUI = (
+  ctx: CanvasRenderingContext2D,
+  currentPlayer: Player | undefined,
+  canvasSize: { width: number; height: number }
+) => {
+  if (!currentPlayer) return;
+
+  // スコア表示
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+  ctx.fillRect(10, 10, 200, 60);
+  
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 18px Arial';
+  ctx.textAlign = 'left';
+  ctx.fillText(`Score: ${currentPlayer.score}`, 20, 35);
+  ctx.fillText(`Length: ${currentPlayer.snake.body.length}`, 20, 55);
+
+  // ミニマップ（右下）
+  drawMinimap(ctx, currentPlayer, canvasSize);
+};
+
+// ミニマップの描画
+const drawMinimap = (
+  ctx: CanvasRenderingContext2D,
+  currentPlayer: Player,
+  canvasSize: { width: number; height: number }
+) => {
+  const mapSize = 120;
+  const mapX = canvasSize.width - mapSize - 10;
+  const mapY = canvasSize.height - mapSize - 10;
+
+  // ミニマップ背景
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+  ctx.fillRect(mapX, mapY, mapSize, mapSize);
+  
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(mapX, mapY, mapSize, mapSize);
+
+  // プレイヤーの位置を表示
+  if (currentPlayer.snake.body.length > 0) {
+    const head = currentPlayer.snake.body[0];
+    const playerX = mapX + (head.x / 5000) * mapSize;
+    const playerY = mapY + (head.y / 3000) * mapSize;
+    
+    ctx.fillStyle = '#ffd700';
+    ctx.beginPath();
+    ctx.arc(playerX, playerY, 3, 0, 2 * Math.PI);
+    ctx.fill();
+  }
 };
 
 export default GameCanvas;

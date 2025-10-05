@@ -31,7 +31,7 @@ func (h *Hub) GetOrCreateGame(roomID string) *Game {
 		ID:       roomID,
 		Players:  make(map[string]*models.Player),
 		Running:  false,
-		NPCCount: 20, // デフォルトでNPCを20体追加（負荷テスト用）
+		NPCCount: 100, // デフォルトでNPCを20体追加（負荷テスト用）
 	}
 	
 	// NPCを追加
