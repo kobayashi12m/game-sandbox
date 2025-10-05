@@ -10,6 +10,8 @@ interface GameCanvasProps {
 const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, playerId, gameConfig }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+  const frameCountRef = useRef(0);
+  const lastLogTimeRef = useRef(Date.now());
 
   // ビューポートサイズに応じてキャンバスサイズを設定
   useEffect(() => {
@@ -31,7 +33,37 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, playerId, gameConfig
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    drawGame(ctx, gameState, playerId, gameConfig, canvasSize);
+    // パフォーマンス監視
+    const startTime = performance.now();
+    frameCountRef.current++;
+    
+    try {
+      drawGame(ctx, gameState, playerId, gameConfig, canvasSize);
+      
+      // 5秒毎に詳細ログ出力
+      const now = Date.now();
+      if (now - lastLogTimeRef.current > 5000) {
+        const memory = (performance as any).memory;
+        const drawTime = performance.now() - startTime;
+        const playerCount = gameState.players?.length || 0;
+        const totalSegments = gameState.players?.reduce((sum, p) => sum + (p.snake?.body?.length || 0), 0) || 0;
+        const foodCount = gameState.food?.length || 0;
+        
+        console.log(`🎮 CLIENT PERFORMANCE:
+Frame: ${frameCountRef.current}
+Players: ${playerCount} (Segments: ${totalSegments})
+Food: ${foodCount}
+Draw Time: ${drawTime.toFixed(2)}ms
+Memory Used: ${memory ? (memory.usedJSHeapSize / 1024 / 1024).toFixed(1) : 'N/A'}MB
+Memory Limit: ${memory ? (memory.jsHeapSizeLimit / 1024 / 1024).toFixed(1) : 'N/A'}MB`);
+        
+        lastLogTimeRef.current = now;
+      }
+    } catch (error) {
+      console.error('🚨 DRAW ERROR:', error);
+      console.error('GameState:', gameState);
+      console.error('PlayerID:', playerId);
+    }
   }, [gameState, playerId, gameConfig, canvasSize]);
 
   return (
@@ -140,9 +172,10 @@ const drawSnake = (
       // 頭部を描画
       drawSnakeHead(ctx, segment, radius, snake.color, isCurrentPlayer);
     } else {
-      // 体を描画
+      // 体を描画（半径が負にならないよう制限）
+      const segmentRadius = Math.max(radius * (1 - index * 0.02), radius * 0.1);
       ctx.beginPath();
-      ctx.arc(segment.x, segment.y, radius * (1 - index * 0.02), 0, 2 * Math.PI);
+      ctx.arc(segment.x, segment.y, segmentRadius, 0, 2 * Math.PI);
       ctx.fill();
     }
   });

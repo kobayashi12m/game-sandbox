@@ -28,10 +28,11 @@ func (h *Hub) GetOrCreateGame(roomID string) *Game {
 	}
 	
 	game := &Game{
-		ID:       roomID,
-		Players:  make(map[string]*models.Player),
-		Running:  false,
-		NPCCount: 100, // デフォルトでNPCを20体追加（負荷テスト用）
+		ID:          roomID,
+		Players:     make(map[string]*models.Player),
+		Running:     false,
+		NPCCount:    100, // デフォルトでNPCを20体追加（負荷テスト用）
+		spatialGrid: NewSpatialGrid(), // 空間分割グリッドを初期化
 	}
 	
 	// NPCを追加

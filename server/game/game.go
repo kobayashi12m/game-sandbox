@@ -15,12 +15,14 @@ import (
 
 // Game はゲームセッションを表す
 type Game struct {
-	ID       string
-	Players  map[string]*models.Player
-	Food     []models.Position
-	Running  bool
-	NPCCount int // NPC数の設定
-	mu       sync.RWMutex
+	ID           string
+	Players      map[string]*models.Player
+	Food         []models.Position
+	Running      bool
+	NPCCount     int // NPC数の設定
+	spatialGrid  *SpatialGrid // 空間分割グリッド
+	frameCount   int64 // フレームカウンター
+	mu           sync.RWMutex
 }
 
 // AddPlayer はゲームに新しいプレイヤーを追加する
@@ -76,8 +78,6 @@ func (g *Game) GenerateFood() {
 			targetFoodCount = 5
 		}
 	}
-
-	initialFoodCount := len(g.Food)
 	
 	for len(g.Food) < targetFoodCount {
 		var pos models.Position
@@ -101,11 +101,7 @@ func (g *Game) GenerateFood() {
 		}
 	}
 	
-	// 食べ物が生成された場合のみログ出力
-	if len(g.Food) > initialFoodCount {
-		log.Printf("Generated food: %d -> %d (target: %d, players: %d)", 
-			initialFoodCount, len(g.Food), targetFoodCount, len(g.Players))
-	}
+	// フードログを削除（ログが多すぎるため）
 }
 
 // IsPositionOccupied は指定された位置が蛇に占有されているかチェックする
@@ -123,10 +119,64 @@ func (g *Game) IsPositionOccupied(pos models.Position) bool {
 	return false
 }
 
+// UpdateSpatialGrid は空間分割グリッドを更新する
+func (g *Game) UpdateSpatialGrid() {
+	// グリッドをクリア
+	g.spatialGrid.Clear()
+	
+	// プレイヤーの全セグメントをグリッドに追加
+	for playerID, player := range g.Players {
+		if player.Snake.Alive && len(player.Snake.Body) > 0 {
+			// 蛇の全セグメントをグリッドに登録（完璧な当たり判定のため）
+			g.spatialGrid.AddPlayerSegments(playerID, player.Snake.Body)
+		}
+	}
+	
+	// 食べ物をグリッドに追加
+	for i, food := range g.Food {
+		g.spatialGrid.AddFood(i, food)
+	}
+}
+
 // Update はゲームの1ティックを処理する
 func (g *Game) Update(deltaTime float64) {
 	if !g.Running {
 		return
+	}
+
+	// フレームカウンターを増加
+	g.frameCount++
+	
+	// デバッグ用：詳細なゲーム状態をログ出力
+	if g.frameCount%300 == 0 { // 5秒に1回
+		totalSegments := 0
+		humanPlayers := 0
+		maxSnakeLength := 0
+		minSnakeLength := 999999
+		deadPlayers := 0
+		
+		for _, player := range g.Players {
+			segments := len(player.Snake.Body)
+			totalSegments += segments
+			
+			if !player.IsNPC {
+				humanPlayers++
+			}
+			
+			if segments > maxSnakeLength {
+				maxSnakeLength = segments
+			}
+			if segments < minSnakeLength {
+				minSnakeLength = segments
+			}
+			
+			if !player.Snake.Alive {
+				deadPlayers++
+			}
+		}
+		
+		log.Printf("🎮 SERVER STATE: Frame %d | Players: %d (Human: %d, Dead: %d) | Food: %d | Segments: %d (Max: %d, Min: %d)", 
+			g.frameCount, len(g.Players), humanPlayers, deadPlayers, len(g.Food), totalSegments, maxSnakeLength, minSnakeLength)
 	}
 
 	// 全ての蛇を移動
@@ -134,53 +184,94 @@ func (g *Game) Update(deltaTime float64) {
 		player.Snake.Move(deltaTime)
 	}
 
+	// 空間分割グリッドを3フレームに1回更新（負荷軽減）
+	if g.frameCount%3 == 0 {
+		// defer文でパニックをキャッチ
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("PANIC in UpdateSpatialGrid: %v, Frame: %d", r, g.frameCount)
+				}
+			}()
+			g.UpdateSpatialGrid()
+		}()
+	}
+
 	// 衝突判定
 	for _, player := range g.Players {
-		if !player.Snake.Alive {
-			continue
-		}
-
-		// 自己衝突
-		if player.Snake.CheckSelfCollision() {
-			player.Snake.Alive = false
-			player.Score -= 10
-			if player.Score < 0 {
-				player.Score = 0
+		// defer文でパニックをキャッチ
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("PANIC in collision detection for player %s: %v, Frame: %d", player.Name, r, g.frameCount)
+				}
+			}()
+			
+			if !player.Snake.Alive {
+				return
 			}
-			continue
-		}
 
-		// 他の蛇との衝突
-		for _, otherPlayer := range g.Players {
-			if player.ID != otherPlayer.ID && player.Snake.CheckCollisionWith(otherPlayer.Snake) {
+			// 自己衝突
+			if player.Snake.CheckSelfCollision() {
 				player.Snake.Alive = false
 				player.Score -= 10
 				if player.Score < 0 {
 					player.Score = 0
 				}
-				otherPlayer.Score += 5
-				break
+				return
 			}
-		}
 
-		// 食べ物との衝突判定
-		head := player.Snake.Body[0]
-		for i := len(g.Food) - 1; i >= 0; i-- {
-			// 蛇の頭と食べ物の距離をチェック
-			dx := head.X - g.Food[i].X
-			dy := head.Y - g.Food[i].Y
-			dist := dx*dx + dy*dy
-
-			if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
-				// 食べ物を除去
-				g.Food = append(g.Food[:i], g.Food[i+1:]...)
-				// 蛇を成長させる
-				player.Snake.Growing = 3
-				player.Score += 10
-				log.Printf("Player %s ate food! Remaining food: %d", player.Name, len(g.Food))
-				break
+			// 他の蛇との衝突（空間分割で最適化、フォールバック付き）
+			head := player.Snake.Body[0]
+			nearbyPlayerIDs := g.spatialGrid.GetNearbyPlayersUnique(head)
+			
+			// 空間分割で候補が見つからない場合は全体検索（安全性確保）
+			if len(nearbyPlayerIDs) == 0 {
+				for otherPlayerID := range g.Players {
+					if otherPlayerID != player.ID {
+						nearbyPlayerIDs = append(nearbyPlayerIDs, otherPlayerID)
+					}
+				}
 			}
-		}
+			
+			for _, otherPlayerID := range nearbyPlayerIDs {
+				if otherPlayer, exists := g.Players[otherPlayerID]; exists && 
+				   player.ID != otherPlayer.ID && 
+				   player.Snake.CheckCollisionWith(otherPlayer.Snake) {
+					player.Snake.Alive = false
+					player.Score -= 10
+					if player.Score < 0 {
+						player.Score = 0
+					}
+					otherPlayer.Score += 5
+					return
+				}
+			}
+
+			// 食べ物との衝突判定（空間分割で最適化、安全）
+			nearbyFood := g.spatialGrid.GetNearbyFoodSafe(head, g.Food)
+			
+			for _, foodPos := range nearbyFood {
+				// 蛇の頭と食べ物の距離をチェック
+				dx := head.X - foodPos.X
+				dy := head.Y - foodPos.Y
+				dist := dx*dx + dy*dy
+
+				if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
+					// 食べ物を配列から安全に除去
+					for i := len(g.Food) - 1; i >= 0; i-- {
+						if g.Food[i].X == foodPos.X && g.Food[i].Y == foodPos.Y {
+							g.Food = append(g.Food[:i], g.Food[i+1:]...)
+							// 蛇を成長させる
+							player.Snake.Growing = 3
+							player.Score += 10
+							return
+						}
+					}
+					return
+				}
+			}
+		}()
 	}
 
 	// 死んだ蛇のリスポーン処理
