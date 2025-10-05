@@ -19,7 +19,7 @@ const SnakeGame: React.FC = () => {
   }, []);
 
   // カスタムフックを使用
-  const { gameState, playerId, sendDirection, isConnecting } = useWebSocket({
+  const { gameState, playerId, sendDirection, isConnecting, gameConfig } = useWebSocket({
     roomId,
     playerName,
     isConnected
@@ -103,6 +103,7 @@ const SnakeGame: React.FC = () => {
           <GameCanvas 
             gameState={gameState}
             playerId={playerId}
+            gameConfig={gameConfig}
           />
           
           <div className="controls">

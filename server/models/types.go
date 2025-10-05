@@ -48,3 +48,11 @@ type PlayerState struct {
 	Snake *Snake `json:"snake"`
 	Score int    `json:"score"`
 }
+
+// GameConfig はゲームの設定を表す
+type GameConfig struct {
+	FieldWidth  float64 `json:"fieldWidth"`
+	FieldHeight float64 `json:"fieldHeight"`
+	SnakeRadius float64 `json:"snakeRadius"`
+	FoodRadius  float64 `json:"foodRadius"`
+}

@@ -72,6 +72,19 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 				}
 				conn.WriteJSON(response)
 
+				// ゲーム設定を送信
+				config := models.GameConfig{
+					FieldWidth:  utils.FIELD_WIDTH,
+					FieldHeight: utils.FIELD_HEIGHT,
+					SnakeRadius: utils.SNAKE_RADIUS,
+					FoodRadius:  utils.FOOD_RADIUS,
+				}
+				configMsg := map[string]interface{}{
+					"type":   "gameConfig",
+					"config": config,
+				}
+				conn.WriteJSON(configMsg)
+
 				// 現在のゲーム状態を送信
 				state := gameInstance.GetState()
 

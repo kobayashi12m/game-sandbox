@@ -4,8 +4,11 @@ import type {
   JoinMessage, 
   DirectionMessage, 
   Direction,
-  WebSocketMessage 
+  WebSocketMessage,
+  GameConfig,
+  GameConfigMessage
 } from '../types';
+import { DEFAULT_GAME_CONFIG } from '../types';
 
 interface UseWebSocketProps {
   roomId: string;
@@ -18,6 +21,7 @@ interface UseWebSocketReturn {
   playerId: string;
   sendDirection: (direction: Direction) => void;
   isConnecting: boolean;
+  gameConfig: GameConfig;
 }
 
 export const useWebSocket = ({ 
@@ -28,6 +32,7 @@ export const useWebSocket = ({
   const [gameState, setGameState] = useState<GameState>({ players: [], food: [] });
   const [playerId, setPlayerId] = useState<string>('');
   const [isConnecting, setIsConnecting] = useState(false);
+  const [gameConfig, setGameConfig] = useState<GameConfig>(DEFAULT_GAME_CONFIG);
   const wsRef = useRef<WebSocket | null>(null);
 
   // メッセージハンドラー
@@ -42,6 +47,13 @@ export const useWebSocket = ({
       case 'gameState':
         if ('state' in message) {
           setGameState(message.state as GameState);
+        }
+        break;
+        
+      case 'gameConfig':
+        if ('config' in message) {
+          const configMsg = message as GameConfigMessage;
+          setGameConfig(configMsg.config);
         }
         break;
     }
@@ -113,6 +125,7 @@ export const useWebSocket = ({
     gameState,
     playerId,
     sendDirection,
-    isConnecting
+    isConnecting,
+    gameConfig
   };
 };

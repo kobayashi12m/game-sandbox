@@ -51,15 +51,25 @@ export interface GameStateMessage extends WebSocketMessage {
   state: GameState;
 }
 
+export interface GameConfig {
+  fieldWidth: number;
+  fieldHeight: number;
+  snakeRadius: number;
+  foodRadius: number;
+}
+
+export interface GameConfigMessage extends WebSocketMessage {
+  type: 'gameConfig';
+  config: GameConfig;
+}
+
 // 方向の型
 export type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 
-// ゲーム設定
-export const GAME_CONFIG = {
-  FIELD_WIDTH: 600,
-  FIELD_HEIGHT: 600,
-  SNAKE_RADIUS: 7.5,
-  FOOD_RADIUS: 5,
-  DISPLAY_WIDTH: 600,
-  DISPLAY_HEIGHT: 600,
+// デフォルトのゲーム設定（サーバーから受信するまでの暫定値）
+export const DEFAULT_GAME_CONFIG: GameConfig = {
+  fieldWidth: 600,
+  fieldHeight: 600,
+  snakeRadius: 7.5,
+  foodRadius: 5,
 };
