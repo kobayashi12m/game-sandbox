@@ -74,10 +74,13 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 
 				// ゲーム設定を送信
 				config := models.GameConfig{
-					FieldWidth:  utils.FIELD_WIDTH,
-					FieldHeight: utils.FIELD_HEIGHT,
-					SnakeRadius: utils.SNAKE_RADIUS,
-					FoodRadius:  utils.FOOD_RADIUS,
+					FieldWidth:    utils.FIELD_WIDTH,
+					FieldHeight:   utils.FIELD_HEIGHT,
+					SnakeRadius:   utils.SNAKE_RADIUS,
+					FoodRadius:    utils.FOOD_RADIUS,
+					CullingWidth:  utils.CULLING_WIDTH,
+					CullingHeight: utils.CULLING_HEIGHT,
+					CullingMargin: utils.CULLING_MARGIN,
 				}
 				configMsg := map[string]interface{}{
 					"type":   "gameConfig",

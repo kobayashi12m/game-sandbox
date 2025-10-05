@@ -53,8 +53,11 @@ type PlayerState struct {
 
 // GameConfig はゲームの設定を表す
 type GameConfig struct {
-	FieldWidth  float64 `json:"fieldWidth"`
-	FieldHeight float64 `json:"fieldHeight"`
-	SnakeRadius float64 `json:"snakeRadius"`
-	FoodRadius  float64 `json:"foodRadius"`
+	FieldWidth      float64 `json:"fieldWidth"`
+	FieldHeight     float64 `json:"fieldHeight"`
+	SnakeRadius     float64 `json:"snakeRadius"`
+	FoodRadius      float64 `json:"foodRadius"`
+	CullingWidth    float64 `json:"cullingWidth"`
+	CullingHeight   float64 `json:"cullingHeight"`
+	CullingMargin   float64 `json:"cullingMargin"`
 }

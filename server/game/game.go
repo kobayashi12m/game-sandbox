@@ -350,7 +350,7 @@ func (g *Game) GetOptimizedState(clientPlayerID string, clientX, clientY, viewWi
 	defer g.mu.RUnlock()
 
 	// クライアントの画面範囲計算
-	margin := 500.0 // 余裕を持った範囲
+	margin := utils.CULLING_MARGIN // 余裕を持った範囲
 	minX := clientX - viewWidth/2 - margin
 	maxX := clientX + viewWidth/2 + margin
 	minY := clientY - viewHeight/2 - margin
@@ -434,9 +434,9 @@ func (g *Game) BroadcastOptimized() {
 		}
 
 		head := player.Snake.Body[0]
-		// テスト用：FHDより小さいカリング範囲
-		viewWidth := 1280.0
-		viewHeight := 720.0
+		// constants.goからカリング範囲を取得
+		viewWidth := utils.CULLING_WIDTH
+		viewHeight := utils.CULLING_HEIGHT
 
 		// このクライアント専用の最適化されたゲーム状態を取得
 		optimizedState := g.GetOptimizedState(player.ID, head.X, head.Y, viewWidth, viewHeight)

@@ -113,7 +113,7 @@ const drawGame = (
   drawFieldBoundary(ctx, gameConfig);
 
   // サーバーカリング範囲を描画（デバッグ用）
-  drawServerCullingBounds(ctx, playerPosition, cameraX, cameraY, canvasSize);
+  drawServerCullingBounds(ctx, playerPosition, cameraX, cameraY, canvasSize, gameConfig);
 
   // 食べ物を描画（カリング付き）
   drawFood(ctx, gameState.food, gameConfig.foodRadius, cameraX, cameraY, canvasSize);
@@ -173,14 +173,15 @@ const drawServerCullingBounds = (
   playerPosition: Position | undefined,
   cameraX: number,
   cameraY: number,
-  canvasSize: { width: number; height: number }
+  canvasSize: { width: number; height: number },
+  gameConfig: GameConfig
 ) => {
   if (!playerPosition) return;
 
-  // サーバー側のカリング範囲を再現（server/game/game.go:414-415の値と合わせる）
-  const serverViewWidth = 1280.0;
-  const serverViewHeight = 720.0;
-  const margin = 500.0; // server/game/game.go:323の値
+  // サーバーから受信したカリング範囲を使用
+  const serverViewWidth = gameConfig.cullingWidth;
+  const serverViewHeight = gameConfig.cullingHeight;
+  const margin = gameConfig.cullingMargin;
 
   const minX = playerPosition.x - serverViewWidth / 2 - margin;
   const maxX = playerPosition.x + serverViewWidth / 2 + margin;

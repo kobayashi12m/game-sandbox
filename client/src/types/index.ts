@@ -56,6 +56,9 @@ export interface GameConfig {
   fieldHeight: number;
   snakeRadius: number;
   foodRadius: number;
+  cullingWidth: number;
+  cullingHeight: number;
+  cullingMargin: number;
 }
 
 export interface GameConfigMessage extends WebSocketMessage {
@@ -72,4 +75,7 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   fieldHeight: 600,
   snakeRadius: 7.5,
   foodRadius: 5,
+  cullingWidth: 800,
+  cullingHeight: 600,
+  cullingMargin: 500,
 };
