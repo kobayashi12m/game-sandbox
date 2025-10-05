@@ -393,44 +393,10 @@ func (g *Game) GetOptimizedState(clientPlayerID string, clientX, clientY, viewWi
 		}
 	}
 
-	// リーダーボード用に全プレイヤーの基本情報を追加
-	// (位置情報は含めず、スコア情報のみ)
-	allPlayersForScoreboard := make([]models.PlayerState, 0, len(g.Players))
-	for _, p := range g.Players {
-		// 画面外のプレイヤーは最小限の情報のみ送信
-		if !isPlayerInList(p.ID, players) {
-			minimalSnake := &models.Snake{
-				ID:    p.Snake.ID,
-				Body:  []models.Position{}, // 位置情報は送らない
-				Color: p.Snake.Color,
-				Alive: p.Snake.Alive,
-			}
-			allPlayersForScoreboard = append(allPlayersForScoreboard, models.PlayerState{
-				ID:    p.ID,
-				Name:  p.Name,
-				Snake: minimalSnake,
-				Score: p.Score,
-			})
-		}
-	}
-	
-	// 画面内のプレイヤーと画面外のプレイヤーを結合
-	players = append(players, allPlayersForScoreboard...)
-
 	return models.GameState{
 		Players: players,
 		Food:    food,
 	}
-}
-
-// isPlayerInList はプレイヤーIDがリストに含まれているかチェック
-func isPlayerInList(playerID string, players []models.PlayerState) bool {
-	for _, p := range players {
-		if p.ID == playerID {
-			return true
-		}
-	}
-	return false
 }
 
 // Broadcast はゲーム内の全プレイヤーにメッセージを送信する
@@ -497,6 +463,10 @@ func (g *Game) BroadcastOptimized() {
 			defer player.ConnMu.Unlock()
 			if err := player.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
 				log.Printf("Error broadcasting optimized state to player %s: %v", player.ID, err)
+			}
+			// デバッグ：データサイズをログ出力（10秒に1回）
+			if g.frameCount%600 == 0 {
+				log.Printf("📊 WS Data size for player %s: %d bytes", player.Name, len(data))
 			}
 		}()
 	}
