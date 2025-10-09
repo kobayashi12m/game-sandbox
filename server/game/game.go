@@ -244,26 +244,17 @@ func (g *Game) Update(deltaTime float64) {
 				return
 			}
 
-			// 他の蛇との衝突（空間分割で最適化、ポインタベース）
+			// 他の蛇との衝突（空間分割で最適化、セグメント直接チェック）
 			head := player.Snake.Body[0]
-			nearbyPlayers := g.spatialGrid.GetNearbyPlayersUnique(head)
+			collidedPlayer := g.spatialGrid.CheckCollisionAt(head, player)
 
-			collisionFound := false
-			for _, otherPlayer := range nearbyPlayers {
-				if player.ID != otherPlayer.ID &&
-					player.Snake.CheckCollisionWith(otherPlayer.Snake) {
-					player.Snake.Alive = false
-					player.Score -= 10
-					if player.Score < 0 {
-						player.Score = 0
-					}
-					otherPlayer.Score += 5
-					collisionFound = true
-					break
+			if collidedPlayer != nil {
+				player.Snake.Alive = false
+				player.Score -= 10
+				if player.Score < 0 {
+					player.Score = 0
 				}
-			}
-
-			if collisionFound {
+				collidedPlayer.Score += 5
 				return
 			}
 

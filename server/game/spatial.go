@@ -15,8 +15,8 @@ type SpatialGrid struct {
 
 // GridCell は各グリッドセルに含まれるオブジェクト
 type GridCell struct {
-	players []*models.Player // このセルに含まれるプレイヤーのポインタ
-	food    []*models.Food   // このセルに含まれる食べ物のポインタ
+	playerSegments map[*models.Player][]*models.Position // プレイヤー別のセグメントポインタ
+	food           []*models.Food                        // このセルに含まれる食べ物のポインタ
 }
 
 // NewSpatialGrid は新しい空間分割グリッドを作成する
@@ -32,8 +32,8 @@ func NewSpatialGrid() *SpatialGrid {
 		cells[i] = make([]*GridCell, width)
 		for j := range cells[i] {
 			cells[i][j] = &GridCell{
-				players: make([]*models.Player, 0, 4),
-				food:    make([]*models.Food, 0, 4),
+				playerSegments: make(map[*models.Player][]*models.Position),
+				food:           make([]*models.Food, 0, 4),
 			}
 		}
 	}
@@ -50,8 +50,8 @@ func NewSpatialGrid() *SpatialGrid {
 func (sg *SpatialGrid) Clear() {
 	for i := range sg.cells {
 		for j := range sg.cells[i] {
-			// 完全に新しいスライスを作成してメモリリークを防ぐ
-			sg.cells[i][j].players = make([]*models.Player, 0, 4)
+			// 完全に新しいマップとスライスを作成してメモリリークを防ぐ
+			sg.cells[i][j].playerSegments = make(map[*models.Player][]*models.Position)
 			sg.cells[i][j].food = make([]*models.Food, 0, 4)
 		}
 	}
@@ -78,14 +78,16 @@ func (sg *SpatialGrid) GetCellCoords(x, y float64) (int, int) {
 	return cellX, cellY
 }
 
-// AddPlayer はプレイヤーの全セグメントをグリッドに追加する
+// AddPlayerSegments はプレイヤーの全セグメントをグリッドに追加する
 func (sg *SpatialGrid) AddPlayerSegments(player *models.Player, segments []models.Position) {
-	for _, segment := range segments {
+	for i := range segments {
+		segment := &segments[i] // ポインタを取得
 		cellX, cellY := sg.GetCellCoords(segment.X, segment.Y)
 
 		// 安全性チェック
 		if cellY >= 0 && cellY < sg.height && cellX >= 0 && cellX < sg.width {
-			sg.cells[cellY][cellX].players = append(sg.cells[cellY][cellX].players, player)
+			cell := sg.cells[cellY][cellX]
+			cell.playerSegments[player] = append(cell.playerSegments[player], segment)
 		}
 	}
 }
@@ -100,11 +102,9 @@ func (sg *SpatialGrid) AddFood(food *models.Food) {
 	}
 }
 
-// GetNearbyPlayersUnique は指定した位置の周囲のプレイヤーを重複なしで取得する
-func (sg *SpatialGrid) GetNearbyPlayersUnique(position models.Position) []*models.Player {
+// CheckCollisionAt は指定した位置で衝突しているプレイヤーを返す
+func (sg *SpatialGrid) CheckCollisionAt(position models.Position, excludePlayer *models.Player) *models.Player {
 	centerX, centerY := sg.GetCellCoords(position.X, position.Y)
-
-	playerSet := make(map[*models.Player]bool)
 
 	// 周囲9セル（3x3）をチェック
 	for dy := -1; dy <= 1; dy++ {
@@ -115,20 +115,28 @@ func (sg *SpatialGrid) GetNearbyPlayersUnique(position models.Position) []*model
 			// 境界チェック
 			if cellX >= 0 && cellX < sg.width && cellY >= 0 && cellY < sg.height {
 				cell := sg.cells[cellY][cellX]
-				for _, player := range cell.players {
-					playerSet[player] = true
+
+				// 各プレイヤーのセグメントをチェック
+				for player, segments := range cell.playerSegments {
+					if player == excludePlayer || !player.Snake.Alive {
+						continue
+					}
+
+					// セグメントとの距離チェック
+					for _, segment := range segments {
+						dx := position.X - segment.X
+						dy := position.Y - segment.Y
+						dist := dx*dx + dy*dy
+						if dist < utils.SNAKE_RADIUS*utils.SNAKE_RADIUS*4 { // 2*SNAKE_RADIUSの二乗
+							return player
+						}
+					}
 				}
 			}
 		}
 	}
 
-	// セットをスライスに変換
-	nearbyPlayers := make([]*models.Player, 0, len(playerSet))
-	for player := range playerSet {
-		nearbyPlayers = append(nearbyPlayers, player)
-	}
-
-	return nearbyPlayers
+	return nil
 }
 
 // GetNearbyFoodSafe は指定した位置の周囲の食べ物を安全に取得する
@@ -181,15 +189,29 @@ func (sg *SpatialGrid) GetNearbyFoodInRadius(position models.Position, radius fl
 
 // IsPositionOccupiedOptimized は空間分割を使った効率的な占有チェック
 func (sg *SpatialGrid) IsPositionOccupiedOptimized(pos models.Position) bool {
-	nearbyPlayers := sg.GetNearbyPlayersUnique(pos)
+	centerX, centerY := sg.GetCellCoords(pos.X, pos.Y)
 
-	for _, player := range nearbyPlayers {
-		for _, segment := range player.Snake.Body {
-			dx := segment.X - pos.X
-			dy := segment.Y - pos.Y
-			dist := dx*dx + dy*dy
-			if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
-				return true
+	// 周囲9セル（3x3）をチェック
+	for dy := -1; dy <= 1; dy++ {
+		for dx := -1; dx <= 1; dx++ {
+			cellX := centerX + dx
+			cellY := centerY + dy
+
+			// 境界チェック
+			if cellX >= 0 && cellX < sg.width && cellY >= 0 && cellY < sg.height {
+				cell := sg.cells[cellY][cellX]
+
+				// 各プレイヤーのセグメントをチェック
+				for _, segments := range cell.playerSegments {
+					for _, segment := range segments {
+						dx := segment.X - pos.X
+						dy := segment.Y - pos.Y
+						dist := dx*dx + dy*dy
+						if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
+							return true
+						}
+					}
+				}
 			}
 		}
 	}
