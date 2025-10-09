@@ -69,7 +69,7 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 				func() {
 					player.ConnMu.Lock()
 					defer player.ConnMu.Unlock()
-					
+
 					// 参加確認を送信
 					response := map[string]interface{}{
 						"type":     "gameJoined",
@@ -77,7 +77,9 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 					}
 					conn.WriteJSON(response)
 
-					// ゲーム設定を送信
+					// ゲーム設定を送信（グリッド線含む）
+					gridLines := gameInstance.GetSpatialGridLines()
+
 					config := models.GameConfig{
 						FieldWidth:    utils.FIELD_WIDTH,
 						FieldHeight:   utils.FIELD_HEIGHT,
@@ -86,6 +88,7 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 						CullingWidth:  utils.CULLING_WIDTH,
 						CullingHeight: utils.CULLING_HEIGHT,
 						CullingMargin: utils.CULLING_MARGIN,
+						GridLines:     gridLines,
 					}
 					configMsg := map[string]interface{}{
 						"type":   "gameConfig",
@@ -118,7 +121,7 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 		// 切断時のクリーンアップ
 		if gameInstance != nil && playerID != "" {
 			gameInstance.RemovePlayer(playerID)
-			
+
 			// 人間プレイヤーがいなくなったらゲームを停止
 			if gameInstance.GetHumanPlayerCount() == 0 {
 				gameInstance.Stop()

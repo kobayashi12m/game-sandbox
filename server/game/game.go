@@ -115,6 +115,11 @@ func (g *Game) IsPositionOccupied(pos models.Position) bool {
 	return false
 }
 
+// GetSpatialGridLines はSpatialGridの分割線を取得する
+func (g *Game) GetSpatialGridLines() []models.GridLine {
+	return g.spatialGrid.GetGridLines()
+}
+
 // RemoveFood は食べ物をポインタで効率的に削除する
 func (g *Game) RemoveFood(targetFood *models.Food) {
 	for i, food := range g.Food {

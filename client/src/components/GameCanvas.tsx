@@ -1,5 +1,11 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react';
-import type { GameState, GameConfig, Position, Player } from '../types';
+import React, { useRef, useEffect, useState, useMemo } from "react";
+import type {
+  GameState,
+  GameConfig,
+  Position,
+  Player,
+  GridLine,
+} from "../types";
 
 interface GameCanvasProps {
   gameState: GameState;
@@ -7,79 +13,103 @@ interface GameCanvasProps {
   gameConfig: GameConfig;
 }
 
-const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, playerId, gameConfig }) => {
+const GameCanvas: React.FC<GameCanvasProps> = ({
+  gameState,
+  playerId,
+  gameConfig,
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [debugMode, setDebugMode] = useState(false);
+  const [showGrid, setShowGrid] = useState(true);
+  const [showCulling, setShowCulling] = useState(true);
   // サーバー設定を基に固定サイズを計算（レイアウトシフト防止）
   const canvasSize = useMemo(() => {
     // 画面いっぱいにキャンバスを表示
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
-    
+
     return { width: windowWidth, height: windowHeight };
   }, []);
-  
+
   const frameCountRef = useRef(0);
   const lastLogTimeRef = useRef(Date.now());
 
-  // デバッグモード切り替え（Dキー）
+  // キーボードショートカット
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      if (event.key === 'd' || event.key === 'D') {
-        setDebugMode(prev => !prev);
+      if (event.key === "g" || event.key === "G") {
+        setShowGrid((prev) => !prev);
+      }
+      if (event.key === "c" || event.key === "C") {
+        setShowCulling((prev) => !prev);
       }
     };
 
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
   }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     // パフォーマンス監視
     const startTime = performance.now();
     frameCountRef.current++;
-    
+
     try {
-      drawGame(ctx, gameState, playerId, gameConfig, canvasSize, debugMode);
-      
+      drawGame(
+        ctx,
+        gameState,
+        playerId,
+        gameConfig,
+        canvasSize,
+        showGrid,
+        showCulling
+      );
+
       // 20秒毎に軽量ログ出力
       const now = Date.now();
       if (now - lastLogTimeRef.current > 20000) {
         const memory = (performance as any).memory;
         const drawTime = performance.now() - startTime;
         const playerCount = gameState.players?.length || 0;
-        const totalSegments = gameState.players?.reduce((sum, p) => sum + (p.snake?.body?.length || 0), 0) || 0;
+        const totalSegments =
+          gameState.players?.reduce(
+            (sum, p) => sum + (p.snake?.body?.length || 0),
+            0
+          ) || 0;
         const foodCount = gameState.food?.length || 0;
-        
+
         console.log(`🎮 CLIENT PERFORMANCE:
 Frame: ${frameCountRef.current}
 Players: ${playerCount} (Segments: ${totalSegments})
 Food: ${foodCount}
 Draw Time: ${drawTime.toFixed(2)}ms
-Memory Used: ${memory ? (memory.usedJSHeapSize / 1024 / 1024).toFixed(1) : 'N/A'}MB
-Memory Limit: ${memory ? (memory.jsHeapSizeLimit / 1024 / 1024).toFixed(1) : 'N/A'}MB`);
-        
+Memory Used: ${
+          memory ? (memory.usedJSHeapSize / 1024 / 1024).toFixed(1) : "N/A"
+        }MB
+Memory Limit: ${
+          memory ? (memory.jsHeapSizeLimit / 1024 / 1024).toFixed(1) : "N/A"
+        }MB`);
+
         lastLogTimeRef.current = now;
       }
     } catch (error) {
-      console.error('🚨 DRAW ERROR:', error);
-      console.error('GameState:', gameState);
-      console.error('PlayerID:', playerId);
+      console.error("🚨 DRAW ERROR:", error);
+      console.error("GameState:", gameState);
+      console.error("PlayerID:", playerId);
     }
-  }, [gameState, playerId, gameConfig, canvasSize]);
+  }, [gameState, playerId, gameConfig, canvasSize, showGrid, showCulling]);
 
   return (
     <canvas
       ref={canvasRef}
       width={canvasSize.width}
       height={canvasSize.height}
-      style={{ display: 'block' }}
+      style={{ display: "block" }}
     />
   );
 };
@@ -91,18 +121,19 @@ const drawGame = (
   playerId: string,
   gameConfig: GameConfig,
   canvasSize: { width: number; height: number },
-  debugMode: boolean
+  showGrid: boolean,
+  showCulling: boolean
 ) => {
   // プレイヤーの位置を取得
-  const currentPlayer = gameState.players?.find(p => p.id === playerId);
+  const currentPlayer = gameState.players?.find((p) => p.id === playerId);
   const playerPosition = currentPlayer?.snake?.body?.[0];
-  
+
   // カメラの中心位置を計算
   const cameraX = playerPosition ? playerPosition.x - canvasSize.width / 2 : 0;
   const cameraY = playerPosition ? playerPosition.y - canvasSize.height / 2 : 0;
 
   // キャンバスをクリア
-  ctx.fillStyle = '#0a0a0a';
+  ctx.fillStyle = "#0a0a0a";
   ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
 
   // カメラ変換を適用
@@ -112,11 +143,32 @@ const drawGame = (
   // フィールドの境界を描画
   drawFieldBoundary(ctx, gameConfig);
 
-  // サーバーカリング範囲を描画（デバッグ用）
-  drawServerCullingBounds(ctx, playerPosition, cameraX, cameraY, canvasSize, gameConfig);
+  // SpatialGridの線を描画
+  if (showGrid && gameConfig.gridLines) {
+    drawSpatialGrid(ctx, gameConfig.gridLines);
+  }
+
+  // サーバーカリング範囲を描画
+  if (showCulling) {
+    drawServerCullingBounds(
+      ctx,
+      playerPosition,
+      cameraX,
+      cameraY,
+      canvasSize,
+      gameConfig
+    );
+  }
 
   // 食べ物を描画（カリング付き）
-  drawFood(ctx, gameState.food, gameConfig.foodRadius, cameraX, cameraY, canvasSize);
+  drawFood(
+    ctx,
+    gameState.food,
+    gameConfig.foodRadius,
+    cameraX,
+    cameraY,
+    canvasSize
+  );
 
   // プレイヤーを描画（カリング付き）
   if (gameState.players && gameState.players.length > 0) {
@@ -126,25 +178,35 @@ const drawGame = (
     const maxX = cameraX + canvasSize.width + cullingMargin;
     const minY = cameraY - cullingMargin;
     const maxY = cameraY + canvasSize.height + cullingMargin;
-    
+
     let drawnCount = 0;
     let culledCount = 0;
-    
-    gameState.players.forEach(player => {
+
+    gameState.players.forEach((player) => {
       // プレイヤーが画面範囲内にいるかチェック
       if (player.snake?.body?.[0]) {
         const head = player.snake.body[0];
-        
+
         // 頭が画面範囲内にあるかチェック
-        if (head.x >= minX && head.x <= maxX && head.y >= minY && head.y <= maxY) {
-          drawSnake(ctx, player, player.id === playerId, gameConfig.snakeRadius);
+        if (
+          head.x >= minX &&
+          head.x <= maxX &&
+          head.y >= minY &&
+          head.y <= maxY
+        ) {
+          drawSnake(
+            ctx,
+            player,
+            player.id === playerId,
+            gameConfig.snakeRadius
+          );
           drawnCount++;
         } else {
           culledCount++;
         }
       }
     });
-    
+
     // デバッグ用（20秒毎のログに追加情報を含める） - 削除してエラーを回避
   }
 
@@ -152,7 +214,7 @@ const drawGame = (
   ctx.restore();
 
   // UI要素を描画（画面固定）
-  drawUI(ctx, currentPlayer, canvasSize, debugMode);
+  drawUI(ctx, currentPlayer, canvasSize, showGrid, showCulling);
 };
 
 // フィールドの境界を描画
@@ -160,7 +222,7 @@ const drawFieldBoundary = (
   ctx: CanvasRenderingContext2D,
   gameConfig: GameConfig
 ) => {
-  ctx.strokeStyle = '#333';
+  ctx.strokeStyle = "#333";
   ctx.lineWidth = 3;
   ctx.setLineDash([10, 5]);
   ctx.strokeRect(0, 0, gameConfig.fieldWidth, gameConfig.fieldHeight);
@@ -189,7 +251,7 @@ const drawServerCullingBounds = (
   const maxY = playerPosition.y + serverViewHeight / 2 + margin;
 
   // カリング境界を赤い点線で描画
-  ctx.strokeStyle = '#ff0000';
+  ctx.strokeStyle = "#ff0000";
   ctx.lineWidth = 2;
   ctx.setLineDash([5, 5]);
   ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
@@ -206,21 +268,21 @@ const drawFood = (
   canvasSize: { width: number; height: number }
 ) => {
   if (!food || food.length === 0) return;
-  
+
   // カリング境界
   const margin = 100;
   const minX = cameraX - margin;
   const maxX = cameraX + canvasSize.width + margin;
   const minY = cameraY - margin;
   const maxY = cameraY + canvasSize.height + margin;
-  
-  ctx.fillStyle = '#ff6b6b';
+
+  ctx.fillStyle = "#ff6b6b";
   ctx.shadowBlur = 10;
-  ctx.shadowColor = '#ff6b6b';
-  
+  ctx.shadowColor = "#ff6b6b";
+
   let drawnFoodCount = 0;
-  
-  food.forEach(item => {
+
+  food.forEach((item) => {
     // 画面範囲内の食べ物のみ描画
     if (item.x >= minX && item.x <= maxX && item.y >= minY && item.y <= maxY) {
       ctx.beginPath();
@@ -229,7 +291,7 @@ const drawFood = (
       drawnFoodCount++;
     }
   });
-  
+
   ctx.shadowBlur = 0;
 };
 
@@ -241,7 +303,7 @@ const drawSnake = (
   radius: number
 ) => {
   const snake = player.snake;
-  
+
   // 死んでいる蛇は半透明に
   ctx.globalAlpha = snake.alive ? 1 : 0.3;
   ctx.fillStyle = snake.color;
@@ -283,10 +345,10 @@ const drawSnakeHead = (
 
   // 自分の蛇にはアウトラインを追加
   if (isCurrentPlayer) {
-    ctx.strokeStyle = '#ffd700';
+    ctx.strokeStyle = "#ffd700";
     ctx.lineWidth = 3;
     ctx.shadowBlur = 15;
-    ctx.shadowColor = '#ffd700';
+    ctx.shadowColor = "#ffd700";
     ctx.beginPath();
     ctx.arc(position.x, position.y, radius + 2, 0, 2 * Math.PI);
     ctx.stroke();
@@ -294,18 +356,30 @@ const drawSnakeHead = (
   }
 
   // 目を描画
-  ctx.fillStyle = '#000';
+  ctx.fillStyle = "#000";
   const eyeRadius = radius * 0.25;
   const eyeOffset = radius * 0.4;
-  
+
   ctx.beginPath();
-  ctx.arc(position.x - eyeOffset, position.y - eyeOffset, eyeRadius, 0, 2 * Math.PI);
+  ctx.arc(
+    position.x - eyeOffset,
+    position.y - eyeOffset,
+    eyeRadius,
+    0,
+    2 * Math.PI
+  );
   ctx.fill();
-  
+
   ctx.beginPath();
-  ctx.arc(position.x + eyeOffset, position.y - eyeOffset, eyeRadius, 0, 2 * Math.PI);
+  ctx.arc(
+    position.x + eyeOffset,
+    position.y - eyeOffset,
+    eyeRadius,
+    0,
+    2 * Math.PI
+  );
   ctx.fill();
-  
+
   // 色を元に戻す
   ctx.fillStyle = color;
 };
@@ -318,17 +392,22 @@ const drawPlayerName = (
   isCurrentPlayer: boolean
 ) => {
   ctx.globalAlpha = 1;
-  ctx.fillStyle = isCurrentPlayer ? '#ffd700' : '#fff';
-  ctx.font = isCurrentPlayer ? 'bold 16px Arial' : '14px Arial';
-  ctx.textAlign = 'center';
-  
+  ctx.fillStyle = isCurrentPlayer ? "#ffd700" : "#fff";
+  ctx.font = isCurrentPlayer ? "bold 16px Arial" : "14px Arial";
+  ctx.textAlign = "center";
+
   // 文字の背景（可読性向上）
   const textWidth = ctx.measureText(name).width;
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-  ctx.fillRect(headPosition.x - textWidth/2 - 4, headPosition.y - 28, textWidth + 8, 18);
-  
+  ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+  ctx.fillRect(
+    headPosition.x - textWidth / 2 - 4,
+    headPosition.y - 28,
+    textWidth + 8,
+    18
+  );
+
   // 文字を描画
-  ctx.fillStyle = isCurrentPlayer ? '#ffd700' : '#fff';
+  ctx.fillStyle = isCurrentPlayer ? "#ffd700" : "#fff";
   ctx.fillText(name, headPosition.x, headPosition.y - 15);
 };
 
@@ -337,41 +416,75 @@ const drawUI = (
   ctx: CanvasRenderingContext2D,
   currentPlayer: Player | undefined,
   canvasSize: { width: number; height: number },
-  debugMode: boolean
+  showGrid: boolean,
+  showCulling: boolean
 ) => {
   if (!currentPlayer) return;
 
   // スコア表示
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+  ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
   ctx.fillRect(10, 10, 200, 80);
-  
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 18px Arial';
-  ctx.textAlign = 'left';
+
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 18px Arial";
+  ctx.textAlign = "left";
   ctx.fillText(`Score: ${currentPlayer.score}`, 20, 35);
   ctx.fillText(`Length: ${currentPlayer.snake.body.length}`, 20, 55);
-  
+
   // 死んでいる場合はDEAD表示
   if (!currentPlayer.snake.alive) {
-    ctx.fillStyle = '#ff4444';
-    ctx.font = 'bold 20px Arial';
-    ctx.fillText('DEAD', 20, 80);
+    ctx.fillStyle = "#ff4444";
+    ctx.font = "bold 20px Arial";
+    ctx.fillText("DEAD", 20, 80);
   }
 
-  // デバッグ情報表示
-  // if (debugMode) {
-  //   ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
-  //   ctx.fillRect(10, 100, 250, 40);
-  //   
-  //   ctx.fillStyle = '#fff';
-  //   ctx.font = 'bold 14px Arial';
-  //   ctx.textAlign = 'left';
-  //   ctx.fillText('DEBUG MODE (Press D to toggle)', 20, 120);
-  //   ctx.fillText('Red border = Server culling range', 20, 135);
-  // }
+  // 表示設定とヘルプ
+  const helpLines = [];
+  if (showGrid) helpLines.push("Grid: ON (G to toggle)");
+  if (showCulling) helpLines.push("Culling: ON (C to toggle)");
+
+  if (helpLines.length > 0 || (!showGrid && !showCulling)) {
+    const boxHeight = Math.max(60, 20 + helpLines.length * 20);
+    ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+    ctx.fillRect(10, 100, 280, boxHeight);
+
+    ctx.fillStyle = "#fff";
+    ctx.font = "14px Arial";
+    ctx.textAlign = "left";
+
+    let yPos = 120;
+    if (helpLines.length === 0) {
+      ctx.fillText("Press G: Grid lines, C: Culling bounds", 20, yPos);
+    } else {
+      helpLines.forEach((line) => {
+        ctx.fillText(line, 20, yPos);
+        yPos += 20;
+      });
+      ctx.fillText("Press G/C to toggle", 20, yPos);
+    }
+  }
 
   // ミニマップ（右下）
   drawMinimap(ctx, currentPlayer, canvasSize);
+};
+
+// SpatialGridの線を描画
+const drawSpatialGrid = (
+  ctx: CanvasRenderingContext2D,
+  gridLines: GridLine[]
+) => {
+  ctx.strokeStyle = "rgba(0, 200, 255, 0.8)"; // 青色、より濃く
+  ctx.lineWidth = 1.5; // 線を太く
+  ctx.setLineDash([3, 3]); // 点線を少し長く
+
+  gridLines.forEach((line) => {
+    ctx.beginPath();
+    ctx.moveTo(line.startX, line.startY);
+    ctx.lineTo(line.endX, line.endY);
+    ctx.stroke();
+  });
+
+  ctx.setLineDash([]); // 点線をリセット
 };
 
 // ミニマップの描画
@@ -385,10 +498,10 @@ const drawMinimap = (
   const mapY = canvasSize.height - mapSize - 10;
 
   // ミニマップ背景
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+  ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
   ctx.fillRect(mapX, mapY, mapSize, mapSize);
-  
-  ctx.strokeStyle = '#333';
+
+  ctx.strokeStyle = "#333";
   ctx.lineWidth = 2;
   ctx.strokeRect(mapX, mapY, mapSize, mapSize);
 
@@ -397,8 +510,8 @@ const drawMinimap = (
     const head = currentPlayer.snake.body[0];
     const playerX = mapX + (head.x / 5000) * mapSize;
     const playerY = mapY + (head.y / 3000) * mapSize;
-    
-    ctx.fillStyle = '#ffd700';
+
+    ctx.fillStyle = "#ffd700";
     ctx.beginPath();
     ctx.arc(playerX, playerY, 3, 0, 2 * Math.PI);
     ctx.fill();

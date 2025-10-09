@@ -196,3 +196,32 @@ func (sg *SpatialGrid) IsPositionOccupiedOptimized(pos models.Position) bool {
 
 	return false
 }
+
+// GetGridLines はSpatialGridの分割線を取得する
+func (sg *SpatialGrid) GetGridLines() []models.GridLine {
+	lines := make([]models.GridLine, 0, sg.width+sg.height)
+
+	// 縦線（垂直線）
+	for i := 1; i < sg.width; i++ {
+		x := float64(i) * sg.cellSize
+		lines = append(lines, models.GridLine{
+			StartX: x,
+			StartY: 0,
+			EndX:   x,
+			EndY:   utils.FIELD_HEIGHT,
+		})
+	}
+
+	// 横線（水平線）
+	for i := 1; i < sg.height; i++ {
+		y := float64(i) * sg.cellSize
+		lines = append(lines, models.GridLine{
+			StartX: 0,
+			StartY: y,
+			EndX:   utils.FIELD_WIDTH,
+			EndY:   y,
+		})
+	}
+
+	return lines
+}

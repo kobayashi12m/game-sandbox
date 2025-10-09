@@ -51,6 +51,13 @@ export interface GameStateMessage extends WebSocketMessage {
   state: GameState;
 }
 
+export interface GridLine {
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+}
+
 export interface GameConfig {
   fieldWidth: number;
   fieldHeight: number;
@@ -59,6 +66,7 @@ export interface GameConfig {
   cullingWidth: number;
   cullingHeight: number;
   cullingMargin: number;
+  gridLines?: GridLine[];
 }
 
 export interface GameConfigMessage extends WebSocketMessage {
