@@ -6,7 +6,9 @@ import type {
   Direction,
   WebSocketMessage,
   GameConfig,
-  GameConfigMessage
+  GameConfigMessage,
+  ScoreInfo,
+  ScoreboardMessage
 } from '../types';
 import { DEFAULT_GAME_CONFIG } from '../types';
 
@@ -22,6 +24,7 @@ interface UseWebSocketReturn {
   sendDirection: (direction: Direction) => void;
   isConnecting: boolean;
   gameConfig: GameConfig;
+  scoreboard: ScoreInfo[];
 }
 
 export const useWebSocket = ({ 
@@ -33,6 +36,7 @@ export const useWebSocket = ({
   const [playerId, setPlayerId] = useState<string>('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [gameConfig, setGameConfig] = useState<GameConfig>(DEFAULT_GAME_CONFIG);
+  const [scoreboard, setScoreboard] = useState<ScoreInfo[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
 
   // メッセージハンドラー
@@ -54,6 +58,13 @@ export const useWebSocket = ({
         if ('config' in message) {
           const configMsg = message as GameConfigMessage;
           setGameConfig(configMsg.config);
+        }
+        break;
+
+      case 'scoreboard':
+        if ('scoreboard' in message) {
+          const scoreboardMsg = message as ScoreboardMessage;
+          setScoreboard(scoreboardMsg.scoreboard.players);
         }
         break;
     }
@@ -96,6 +107,7 @@ export const useWebSocket = ({
       setIsConnecting(false);
       setPlayerId('');
       setGameState({ players: [], food: [] });
+      setScoreboard([]);
     };
 
     websocket.onerror = () => {
@@ -126,6 +138,7 @@ export const useWebSocket = ({
     playerId,
     sendDirection,
     isConnecting,
-    gameConfig
+    gameConfig,
+    scoreboard
   };
 };

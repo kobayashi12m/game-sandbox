@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useMemo } from "react";
+import React, { useRef, useEffect, useState, useMemo, memo } from "react";
 import type {
   GameState,
   GameConfig,
@@ -13,99 +13,125 @@ interface GameCanvasProps {
   gameConfig: GameConfig;
 }
 
-const GameCanvas: React.FC<GameCanvasProps> = ({
-  gameState,
-  playerId,
-  gameConfig,
-}) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [showGrid, setShowGrid] = useState(true);
-  const [showCulling, setShowCulling] = useState(true);
-  // サーバー設定を基に固定サイズを計算（レイアウトシフト防止）
-  const canvasSize = useMemo(() => {
-    // 画面いっぱいにキャンバスを表示
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
+const GameCanvas: React.FC<GameCanvasProps> = memo(
+  ({ gameState, playerId, gameConfig }) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [showGrid, setShowGrid] = useState(true);
+    const [showCulling, setShowCulling] = useState(true);
+    // サーバー設定を基に固定サイズを計算（レイアウトシフト防止）
+    const canvasSize = useMemo(() => {
+      // 画面いっぱいにキャンバスを表示
+      const windowWidth = window.innerWidth;
+      const windowHeight = window.innerHeight;
 
-    return { width: windowWidth, height: windowHeight };
-  }, []);
+      return { width: windowWidth, height: windowHeight };
+    }, []);
 
-  const frameCountRef = useRef(0);
-  const lastLogTimeRef = useRef(Date.now());
+    const frameCountRef = useRef(0);
+    const lastLogTimeRef = useRef(Date.now());
 
-  // キーボードショートカット
-  useEffect(() => {
-    const handleKeyPress = (event: KeyboardEvent) => {
-      if (event.key === "g" || event.key === "G") {
-        setShowGrid((prev) => !prev);
-      }
-      if (event.key === "c" || event.key === "C") {
-        setShowCulling((prev) => !prev);
-      }
-    };
+    // 描画に必要なデータのみを抽出（パフォーマンス最適化）
+    const renderData = useMemo(
+      () => ({
+        players: gameState.players,
+        food: gameState.food,
+        playersCount: gameState.players.length,
+        foodCount: gameState.food.length,
+      }),
+      [gameState.players, gameState.food]
+    );
 
-    window.addEventListener("keydown", handleKeyPress);
-    return () => window.removeEventListener("keydown", handleKeyPress);
-  }, []);
+    // 現在のプレイヤー位置をメモ化
+    const currentPlayer = useMemo(
+      () => gameState.players.find((p) => p.id === playerId),
+      [gameState.players, playerId]
+    );
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    // キーボードショートカット
+    useEffect(() => {
+      const handleKeyPress = (event: KeyboardEvent) => {
+        if (event.key === "g" || event.key === "G") {
+          setShowGrid((prev) => !prev);
+        }
+        if (event.key === "c" || event.key === "C") {
+          setShowCulling((prev) => !prev);
+        }
+      };
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+      window.addEventListener("keydown", handleKeyPress);
+      return () => window.removeEventListener("keydown", handleKeyPress);
+    }, []);
 
-    // パフォーマンス監視
-    const startTime = performance.now();
-    frameCountRef.current++;
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
 
-    try {
-      drawGame(
-        ctx,
-        gameState,
-        playerId,
-        gameConfig,
-        canvasSize,
-        showGrid,
-        showCulling
-      );
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-      // 20秒毎に軽量ログ出力
-      const now = Date.now();
-      if (now - lastLogTimeRef.current > 20000) {
-        const drawTime = performance.now() - startTime;
-        const playerCount = gameState.players?.length || 0;
-        const totalSegments =
-          gameState.players?.reduce(
-            (sum, p) => sum + (p.snake?.body?.length || 0),
-            0
-          ) || 0;
-        const foodCount = gameState.food?.length || 0;
+      // パフォーマンス監視
+      const startTime = performance.now();
+      frameCountRef.current++;
 
-        console.log(`🎮 CLIENT PERFORMANCE:
+      try {
+        drawGame(
+          ctx,
+          gameState,
+          playerId,
+          gameConfig,
+          canvasSize,
+          showGrid,
+          showCulling
+        );
+
+        // 20秒毎に軽量ログ出力
+        const now = Date.now();
+        if (now - lastLogTimeRef.current > 20000) {
+          const drawTime = performance.now() - startTime;
+          const playerCount = gameState.players?.length || 0;
+          const totalSegments =
+            gameState.players?.reduce(
+              (sum, p) => sum + (p.snake?.body?.length || 0),
+              0
+            ) || 0;
+          const foodCount = gameState.food?.length || 0;
+
+          console.log(`🎮 CLIENT PERFORMANCE:
 Frame: ${frameCountRef.current}
 Players: ${playerCount} (Segments: ${totalSegments})
 Food: ${foodCount}
 Draw Time: ${drawTime.toFixed(2)}ms`);
 
-        lastLogTimeRef.current = now;
+          lastLogTimeRef.current = now;
+        }
+      } catch (error) {
+        console.error("🚨 DRAW ERROR:", error);
+        console.error("GameState:", gameState);
+        console.error("PlayerID:", playerId);
       }
-    } catch (error) {
-      console.error("🚨 DRAW ERROR:", error);
-      console.error("GameState:", gameState);
-      console.error("PlayerID:", playerId);
-    }
-  }, [gameState, playerId, gameConfig, canvasSize, showGrid, showCulling]);
+    }, [
+      renderData,
+      currentPlayer,
+      gameConfig.fieldWidth,
+      gameConfig.fieldHeight,
+      canvasSize.width,
+      canvasSize.height,
+      showGrid,
+      showCulling,
+    ]);
 
-  return (
-    <canvas
-      ref={canvasRef}
-      width={canvasSize.width}
-      height={canvasSize.height}
-      style={{ display: "block" }}
-    />
-  );
-};
+    return (
+      <canvas
+        ref={canvasRef}
+        width={canvasSize.width}
+        height={canvasSize.height}
+        style={{ display: "block" }}
+      />
+    );
+  }
+);
+
+GameCanvas.displayName = "GameCanvas";
 
 // メインの描画関数（カメラ追従付き）
 const drawGame = (

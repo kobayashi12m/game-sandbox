@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import './SnakeGame.css';
-import TouchControls from './TouchControls';
-import GameCanvas from './GameCanvas';
-import Scoreboard from './Scoreboard';
-import { useWebSocket } from '../hooks/useWebSocket';
-import { useGameInput } from '../hooks/useGameInput';
+import React, { useState, useEffect } from "react";
+import "./SnakeGame.css";
+import TouchControls from "./TouchControls";
+import GameCanvas from "./GameCanvas";
+import Scoreboard from "./Scoreboard";
+import { useWebSocket } from "../hooks/useWebSocket";
+import { useGameInput } from "../hooks/useGameInput";
 
 const SnakeGame: React.FC = () => {
-  const [playerName] = useState<string>('Player');
-  const [roomId] = useState<string>('default');
+  const [playerName] = useState<string>("Player");
+  const [roomId] = useState<string>("default");
   const [isConnected, setIsConnected] = useState(false);
   const [hasInitiallyConnected, setHasInitiallyConnected] = useState(false);
 
@@ -19,15 +19,22 @@ const SnakeGame: React.FC = () => {
   }, []);
 
   // カスタムフックを使用
-  const { gameState, playerId, sendDirection, isConnecting, gameConfig } = useWebSocket({
+  const {
+    gameState,
+    playerId,
+    sendDirection,
+    isConnecting,
+    gameConfig,
+    scoreboard,
+  } = useWebSocket({
     roomId,
     playerName,
-    isConnected
+    isConnected,
   });
 
   const { handleTouchDirection } = useGameInput({
     onDirectionChange: sendDirection,
-    isEnabled: isConnected
+    isEnabled: isConnected,
   });
 
   const handleConnect = () => {
@@ -40,18 +47,18 @@ const SnakeGame: React.FC = () => {
 
   // 接続状況の表示テキスト
   const getConnectionStatus = () => {
-    if (isConnecting) return '接続中...';
-    if (isConnected && playerId) return '接続済み';
-    if (isConnected && !playerId) return '接続中...';
-    return '未接続';
+    if (isConnecting) return "接続中...";
+    if (isConnected && playerId) return "接続済み";
+    if (isConnected && !playerId) return "接続中...";
+    return "未接続";
   };
 
   // 接続状況の色
   const getConnectionStatusColor = () => {
-    if (isConnecting) return '#FFA500';
-    if (isConnected && playerId) return '#4CAF50';
-    if (isConnected && !playerId) return '#FFA500';
-    return '#F44336';
+    if (isConnecting) return "#FFA500";
+    if (isConnected && playerId) return "#4CAF50";
+    if (isConnected && !playerId) return "#FFA500";
+    return "#F44336";
   };
 
   return (
@@ -60,31 +67,31 @@ const SnakeGame: React.FC = () => {
       {isConnected ? (
         <div className="game-container">
           {/* メインのゲーム画面 */}
-          <GameCanvas 
+          <GameCanvas
             gameState={gameState}
             playerId={playerId}
             gameConfig={gameConfig}
           />
-          
+
           {/* オーバーレイUI */}
           <div className="overlay-ui">
             {/* 接続状況（左上） */}
             <div className="connection-status-overlay">
-              <span 
+              <span
                 className="status-indicator"
                 style={{ color: getConnectionStatusColor() }}
               >
                 ● {getConnectionStatus()}
               </span>
               {isConnected ? (
-                <button 
+                <button
                   className="disconnect-button-small"
                   onClick={handleDisconnect}
                 >
                   切断
                 </button>
               ) : (
-                <button 
+                <button
                   className="connect-button-small"
                   onClick={handleConnect}
                   disabled={isConnecting}
@@ -93,17 +100,17 @@ const SnakeGame: React.FC = () => {
                 </button>
               )}
             </div>
-            
+
             {/* リーダーボード（右上） */}
             <div className="leaderboard-overlay">
-              <Scoreboard 
-                players={gameState.players}
+              <Scoreboard
+                players={scoreboard}
                 currentPlayerId={playerId}
                 roomId={roomId}
               />
             </div>
           </div>
-          
+
           {/* タッチコントロール */}
           <div className="touch-controls-overlay">
             <TouchControls onDirectionChange={handleTouchDirection} />
@@ -112,8 +119,10 @@ const SnakeGame: React.FC = () => {
       ) : hasInitiallyConnected ? (
         <div className="waiting-screen">
           <h2>🐍 Snake Game</h2>
-          <p>接続が切断されました。再接続ボタンを押してゲームに復帰してください</p>
-          <button 
+          <p>
+            接続が切断されました。再接続ボタンを押してゲームに復帰してください
+          </p>
+          <button
             className="connect-button"
             onClick={handleConnect}
             disabled={isConnecting}

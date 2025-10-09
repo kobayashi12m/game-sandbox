@@ -66,6 +66,20 @@ type PlayerState struct {
 	Score int    `json:"score"`
 }
 
+// ScoreInfo はスコアボード用の軽量プレイヤー情報を表す
+type ScoreInfo struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Score int    `json:"score"`
+	Alive bool   `json:"alive"`
+	Color string `json:"color"`
+}
+
+// ScoreUpdate はスコアボードの更新情報を表す（さらに軽量化）
+type ScoreUpdate struct {
+	Players []ScoreInfo `json:"players"`
+}
+
 // GameConfig はゲームの設定を表す
 type GameConfig struct {
 	FieldWidth    float64    `json:"fieldWidth"`

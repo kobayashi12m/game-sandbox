@@ -3,6 +3,7 @@ package game
 import (
 	"encoding/json"
 	"log"
+	"sort"
 
 	"chess-mmo/server/models"
 	"chess-mmo/server/utils"
@@ -76,6 +77,76 @@ func (g *Game) GetOptimizedState(clientPlayerID string, clientX, clientY, viewWi
 	return models.GameState{
 		Players: players,
 		Food:    food,
+	}
+}
+
+// GetScoreboard は全プレイヤーのスコア情報をソート済みで返す
+func (g *Game) GetScoreboard() []models.ScoreInfo {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	scores := make([]models.ScoreInfo, 0, len(g.Players))
+	for _, p := range g.Players {
+		scores = append(scores, models.ScoreInfo{
+			ID:    p.ID,
+			Name:  p.Name,
+			Score: p.Score,
+			Alive: p.Snake.Alive,
+			Color: p.Snake.Color,
+		})
+	}
+
+	// サーバー側でスコア順にソート（高い順）
+	// 同スコアの場合はIDでソート
+	sort.Slice(scores, func(i, j int) bool {
+		if scores[i].Score != scores[j].Score {
+			return scores[i].Score > scores[j].Score // スコア高い順
+		}
+		return scores[i].ID < scores[j].ID // 同スコアならID昇順
+	})
+
+	return scores
+}
+
+// BroadcastScoreboard はスコアボード情報を全クライアントに送信
+func (g *Game) BroadcastScoreboard() {
+	g.mu.RLock()
+	playerList := make([]*models.Player, 0, len(g.humanPlayers))
+	for _, player := range g.humanPlayers {
+		if player.Conn != nil {
+			playerList = append(playerList, player)
+		}
+	}
+	g.mu.RUnlock()
+
+	if len(playerList) == 0 {
+		return
+	}
+
+	// スコアボード情報を取得
+	scoreboard := g.GetScoreboard()
+	scoreUpdate := models.ScoreUpdate{Players: scoreboard}
+
+	message := map[string]interface{}{
+		"type":       "scoreboard",
+		"scoreboard": scoreUpdate,
+	}
+
+	data, err := json.Marshal(message)
+	if err != nil {
+		log.Printf("Error marshaling scoreboard: %v", err)
+		return
+	}
+
+	// 全クライアントに送信
+	for _, player := range playerList {
+		func() {
+			player.ConnMu.Lock()
+			defer player.ConnMu.Unlock()
+			if err := player.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
+				log.Printf("\033[31m❌ WS_ERROR: Error broadcasting scoreboard to player %s: %v\033[0m", player.ID, err)
+			}
+		}()
 	}
 }
 

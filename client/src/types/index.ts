@@ -49,6 +49,22 @@ export interface GameJoinedMessage extends WebSocketMessage {
 export interface GameStateMessage extends WebSocketMessage {
   type: 'gameState';
   state: GameState;
+  scoreboard?: ScoreInfo[];
+}
+
+export interface ScoreInfo {
+  id: string;
+  name: string;
+  score: number;
+  alive: boolean;
+  color: string;
+}
+
+export interface ScoreboardMessage extends WebSocketMessage {
+  type: 'scoreboard';
+  scoreboard: {
+    players: ScoreInfo[];
+  };
 }
 
 export interface GridLine {

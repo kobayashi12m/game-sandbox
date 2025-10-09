@@ -179,6 +179,11 @@ func (g *Game) RunGameLoop() {
 
 			// 各クライアントに最適化されたデータを個別送信
 			g.BroadcastOptimized()
+
+			// スコアボードは3秒に1回送信（180フレーム = 60FPS * 3秒）
+			if g.frameCount%180 == 0 {
+				g.BroadcastScoreboard()
+			}
 		}()
 	}
 }
