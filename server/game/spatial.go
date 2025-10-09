@@ -102,71 +102,70 @@ func (sg *SpatialGrid) AddFood(food *models.Food) {
 	}
 }
 
-// CheckCollisionAt は指定した位置で衝突しているプレイヤーを返す
-func (sg *SpatialGrid) CheckCollisionAt(position models.Position, excludePlayer *models.Player) *models.Player {
-	centerX, centerY := sg.GetCellCoords(position.X, position.Y)
-
-	// 周囲9セル（3x3）をチェック
-	for dy := -1; dy <= 1; dy++ {
-		for dx := -1; dx <= 1; dx++ {
+// iterateNearbyCells は指定位置周辺のセルに対してコールバック関数を実行する
+func (sg *SpatialGrid) iterateNearbyCells(centerX, centerY, radius int, callback func(*GridCell)) {
+	for dy := -radius; dy <= radius; dy++ {
+		for dx := -radius; dx <= radius; dx++ {
 			cellX := centerX + dx
 			cellY := centerY + dy
 
 			// 境界チェック
 			if cellX >= 0 && cellX < sg.width && cellY >= 0 && cellY < sg.height {
-				cell := sg.cells[cellY][cellX]
-
-				// 各プレイヤーのセグメントをチェック
-				for player, segments := range cell.playerSegments {
-					if player == excludePlayer || !player.Snake.Alive {
-						continue
-					}
-
-					// セグメントとの距離チェック
-					for _, segment := range segments {
-						dx := position.X - segment.X
-						dy := position.Y - segment.Y
-						dist := dx*dx + dy*dy
-						if dist < utils.SNAKE_RADIUS*utils.SNAKE_RADIUS*4 { // 2*SNAKE_RADIUSの二乗
-							return player
-						}
-					}
-				}
+				callback(sg.cells[cellY][cellX])
 			}
 		}
 	}
+}
 
-	return nil
+// CheckCollisionAt は指定した位置で衝突しているプレイヤーを返す
+func (sg *SpatialGrid) CheckCollisionAt(position models.Position, excludePlayer *models.Player) *models.Player {
+	centerX, centerY := sg.GetCellCoords(position.X, position.Y)
+
+	var result *models.Player
+	sg.iterateNearbyCells(centerX, centerY, 1, func(cell *GridCell) {
+		if result != nil {
+			return
+		}
+		for player, segments := range cell.playerSegments {
+			if player == excludePlayer || !player.Snake.Alive {
+				continue
+			}
+			for _, segment := range segments {
+				dx := position.X - segment.X
+				dy := position.Y - segment.Y
+				dist := dx*dx + dy*dy
+				if dist < utils.SNAKE_RADIUS*utils.SNAKE_RADIUS*4 {
+					result = player
+					return
+				}
+			}
+		}
+	})
+
+	return result
 }
 
 // CheckFoodCollisionAt は指定した位置で衝突している食べ物を返す
 func (sg *SpatialGrid) CheckFoodCollisionAt(position models.Position) *models.Food {
 	centerX, centerY := sg.GetCellCoords(position.X, position.Y)
 
-	// 周囲9セル（3x3）をチェック
-	for dy := -1; dy <= 1; dy++ {
-		for dx := -1; dx <= 1; dx++ {
-			cellX := centerX + dx
-			cellY := centerY + dy
-
-			// 境界チェック
-			if cellX >= 0 && cellX < sg.width && cellY >= 0 && cellY < sg.height {
-				cell := sg.cells[cellY][cellX]
-
-				// 食べ物との距離チェック
-				for _, food := range cell.food {
-					dx := position.X - food.Position.X
-					dy := position.Y - food.Position.Y
-					dist := dx*dx + dy*dy
-					if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
-						return food
-					}
-				}
+	var result *models.Food
+	sg.iterateNearbyCells(centerX, centerY, 1, func(cell *GridCell) {
+		if result != nil {
+			return
+		}
+		for _, food := range cell.food {
+			dx := position.X - food.Position.X
+			dy := position.Y - food.Position.Y
+			dist := dx*dx + dy*dy
+			if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
+				result = food
+				return
 			}
 		}
-	}
+	})
 
-	return nil
+	return result
 }
 
 // AreaResult はエリア内のプレイヤーと食べ物をまとめて返す構造体
@@ -219,45 +218,9 @@ func (sg *SpatialGrid) GetNearbyFoodSafe(position models.Position) []*models.Foo
 	centerX, centerY := sg.GetCellCoords(position.X, position.Y)
 
 	nearbyFood := make([]*models.Food, 0, 10)
-
-	// 周囲9セル（3x3）をチェック
-	for dy := -1; dy <= 1; dy++ {
-		for dx := -1; dx <= 1; dx++ {
-			cellX := centerX + dx
-			cellY := centerY + dy
-
-			// 境界チェック
-			if cellX >= 0 && cellX < sg.width && cellY >= 0 && cellY < sg.height {
-				cell := sg.cells[cellY][cellX]
-				nearbyFood = append(nearbyFood, cell.food...)
-			}
-		}
-	}
-
-	return nearbyFood
-}
-
-// GetNearbyFoodInRadius は指定した位置の半径内の食べ物を取得する（NPC用）
-func (sg *SpatialGrid) GetNearbyFoodInRadius(position models.Position, radius float64) []*models.Food {
-	// 検索範囲を決定
-	searchCells := int(radius/sg.cellSize) + 1
-	centerX, centerY := sg.GetCellCoords(position.X, position.Y)
-
-	nearbyFood := make([]*models.Food, 0, 20)
-
-	// 指定した半径内のセルをチェック
-	for dy := -searchCells; dy <= searchCells; dy++ {
-		for dx := -searchCells; dx <= searchCells; dx++ {
-			cellX := centerX + dx
-			cellY := centerY + dy
-
-			// 境界チェック
-			if cellX >= 0 && cellX < sg.width && cellY >= 0 && cellY < sg.height {
-				cell := sg.cells[cellY][cellX]
-				nearbyFood = append(nearbyFood, cell.food...)
-			}
-		}
-	}
+	sg.iterateNearbyCells(centerX, centerY, 1, func(cell *GridCell) {
+		nearbyFood = append(nearbyFood, cell.food...)
+	})
 
 	return nearbyFood
 }
@@ -266,32 +229,25 @@ func (sg *SpatialGrid) GetNearbyFoodInRadius(position models.Position, radius fl
 func (sg *SpatialGrid) IsPositionOccupiedOptimized(pos models.Position) bool {
 	centerX, centerY := sg.GetCellCoords(pos.X, pos.Y)
 
-	// 周囲9セル（3x3）をチェック
-	for dy := -1; dy <= 1; dy++ {
-		for dx := -1; dx <= 1; dx++ {
-			cellX := centerX + dx
-			cellY := centerY + dy
-
-			// 境界チェック
-			if cellX >= 0 && cellX < sg.width && cellY >= 0 && cellY < sg.height {
-				cell := sg.cells[cellY][cellX]
-
-				// 各プレイヤーのセグメントをチェック
-				for _, segments := range cell.playerSegments {
-					for _, segment := range segments {
-						dx := segment.X - pos.X
-						dy := segment.Y - pos.Y
-						dist := dx*dx + dy*dy
-						if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
-							return true
-						}
-					}
+	occupied := false
+	sg.iterateNearbyCells(centerX, centerY, 1, func(cell *GridCell) {
+		if occupied {
+			return
+		}
+		for _, segments := range cell.playerSegments {
+			for _, segment := range segments {
+				dx := segment.X - pos.X
+				dy := segment.Y - pos.Y
+				dist := dx*dx + dy*dy
+				if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
+					occupied = true
+					return
 				}
 			}
 		}
-	}
+	})
 
-	return false
+	return occupied
 }
 
 // GetGridLines はSpatialGridの分割線を取得する

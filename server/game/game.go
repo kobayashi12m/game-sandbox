@@ -126,21 +126,6 @@ func (g *Game) GenerateFood() {
 	}
 }
 
-// IsPositionOccupied は指定された位置が蛇に占有されているかチェックする
-func (g *Game) IsPositionOccupied(pos models.Position) bool {
-	for _, player := range g.Players {
-		for _, segment := range player.Snake.Body {
-			dx := segment.X - pos.X
-			dy := segment.Y - pos.Y
-			dist := dx*dx + dy*dy
-			if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // GetSpatialGridLines はSpatialGridの分割線を取得する
 func (g *Game) GetSpatialGridLines() []models.GridLine {
 	return g.spatialGrid.GetGridLines()
@@ -384,29 +369,6 @@ func (g *Game) GetOptimizedState(clientPlayerID string, clientX, clientY, viewWi
 	}
 }
 
-// Broadcast はゲーム内の全プレイヤーにメッセージを送信する
-func (g *Game) Broadcast(message interface{}) {
-	data, err := json.Marshal(message)
-	if err != nil {
-		return
-	}
-
-	for _, player := range g.Players {
-		// NPCプレイヤーにはメッセージを送信しない
-		if player.IsNPC || player.Conn == nil {
-			continue
-		}
-		// WebSocket書き込みを同期化
-		func() {
-			player.ConnMu.Lock()
-			defer player.ConnMu.Unlock()
-			if err := player.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
-				log.Printf("\033[31m❌ WS_ERROR: Error broadcasting to player %s: %v\033[0m", player.ID, err)
-			}
-		}()
-	}
-}
-
 // BroadcastOptimized は各クライアントに最適化されたデータを個別送信
 func (g *Game) BroadcastOptimized() {
 	// キャッシュされた人間プレイヤーリストを取得
@@ -463,36 +425,12 @@ func (g *Game) BroadcastOptimized() {
 	}
 }
 
-// Start はゲームループを開始する
-func (g *Game) Start() {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	g.Running = true
-	g.GenerateFood()
-	go g.RunGameLoop()
-}
-
 // GetPlayer はIDでプレイヤーを取得する
 func (g *Game) GetPlayer(id string) (*models.Player, bool) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 	player, exists := g.Players[id]
 	return player, exists
-}
-
-// GetPlayerCount はゲーム内のプレイヤー数を返す
-func (g *Game) GetPlayerCount() int {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
-	return len(g.Players)
-}
-
-// IsRunning はゲームが実行中かどうかを返す
-func (g *Game) IsRunning() bool {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
-	return g.Running
 }
 
 // ShouldStart はゲームを開始すべきかチェックし、必要なら開始する

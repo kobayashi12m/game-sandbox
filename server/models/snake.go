@@ -55,25 +55,6 @@ func (s *Snake) Move(deltaTime float64) {
 	s.updateBodySegments(newHead)
 }
 
-// Grow は蛇の成長カウンターを増加する
-func (s *Snake) Grow(amount int) {
-	s.Growing += amount
-}
-
-// CheckCollisionWith はこの蛇の頭が他の蛇と衝突した場合trueを返す
-func (s *Snake) CheckCollisionWith(other *Snake) bool {
-	if !other.Alive {
-		return false
-	}
-	head := s.Body[0]
-	for _, segment := range other.Body {
-		if wrappedDistance(head, segment) < utils.SNAKE_RADIUS*2 {
-			return true
-		}
-	}
-	return false
-}
-
 // ChangeDirection は蛇の方向を更新し、逆方向を防ぐ
 func (s *Snake) ChangeDirection(newDir utils.Direction) {
 	// 逆方向を防ぐ
@@ -141,13 +122,6 @@ func (s *Snake) updateBodySegments(newHead Position) {
 	}
 
 	s.Body = newBody
-}
-
-// distance は2点間の距離を計算する
-func distance(p1, p2 Position) float64 {
-	dx := p1.X - p2.X
-	dy := p1.Y - p2.Y
-	return math.Sqrt(dx*dx + dy*dy)
 }
 
 // wrappedDistance はラップアラウンドを考慮した2点間の距離を計算する
