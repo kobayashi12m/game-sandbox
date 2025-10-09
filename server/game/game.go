@@ -258,23 +258,16 @@ func (g *Game) Update(deltaTime float64) {
 				return
 			}
 
-			// 食べ物との衝突判定（空間分割で最適化、安全）
-			nearbyFood := g.spatialGrid.GetNearbyFoodSafe(head)
+			// 食べ物との衝突判定（空間分割で直接チェック）
+			collidedFood := g.spatialGrid.CheckFoodCollisionAt(head)
 
-			for _, food := range nearbyFood {
-				// 蛇の頭と食べ物の距離をチェック
-				dx := head.X - food.Position.X
-				dy := head.Y - food.Position.Y
-				dist := dx*dx + dy*dy
-
-				if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
-					// 食べ物をポインタで直接削除
-					g.RemoveFood(food)
-					// 蛇を成長させる
-					player.Snake.Growing = 3
-					player.Score += 10
-					return
-				}
+			if collidedFood != nil {
+				// 食べ物をポインタで直接削除
+				g.RemoveFood(collidedFood)
+				// 蛇を成長させる
+				player.Snake.Growing = 3
+				player.Score += 10
+				return
 			}
 		}()
 	}

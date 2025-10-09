@@ -139,6 +139,36 @@ func (sg *SpatialGrid) CheckCollisionAt(position models.Position, excludePlayer 
 	return nil
 }
 
+// CheckFoodCollisionAt は指定した位置で衝突している食べ物を返す
+func (sg *SpatialGrid) CheckFoodCollisionAt(position models.Position) *models.Food {
+	centerX, centerY := sg.GetCellCoords(position.X, position.Y)
+
+	// 周囲9セル（3x3）をチェック
+	for dy := -1; dy <= 1; dy++ {
+		for dx := -1; dx <= 1; dx++ {
+			cellX := centerX + dx
+			cellY := centerY + dy
+
+			// 境界チェック
+			if cellX >= 0 && cellX < sg.width && cellY >= 0 && cellY < sg.height {
+				cell := sg.cells[cellY][cellX]
+
+				// 食べ物との距離チェック
+				for _, food := range cell.food {
+					dx := position.X - food.Position.X
+					dy := position.Y - food.Position.Y
+					dist := dx*dx + dy*dy
+					if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
+						return food
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 // GetNearbyFoodSafe は指定した位置の周囲の食べ物を安全に取得する
 func (sg *SpatialGrid) GetNearbyFoodSafe(position models.Position) []*models.Food {
 	centerX, centerY := sg.GetCellCoords(position.X, position.Y)
