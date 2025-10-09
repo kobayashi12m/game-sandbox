@@ -15,14 +15,15 @@ import (
 
 // Game はゲームセッションを表す
 type Game struct {
-	ID          string
-	Players     map[string]*models.Player
-	Food        []*models.Food // 食べ物をポインタで管理
-	Running     bool
-	NPCCount    int          // NPC数の設定
-	spatialGrid *SpatialGrid // 空間分割グリッド
-	frameCount  int64        // フレームカウンター
-	mu          sync.RWMutex
+	ID           string
+	Players      map[string]*models.Player
+	Food         []*models.Food // 食べ物をポインタで管理
+	Running      bool
+	NPCCount     int              // NPC数の設定
+	spatialGrid  *SpatialGrid     // 空間分割グリッド
+	frameCount   int64            // フレームカウンター
+	humanPlayers []*models.Player // WebSocket接続する人間プレイヤーのキャッシュ
+	mu           sync.RWMutex
 }
 
 // AddPlayer はゲームに新しいプレイヤーを追加する
@@ -39,12 +40,19 @@ func (g *Game) AddPlayer(id, name string, conn *websocket.Conn) {
 	}
 	snake.Reset()
 
-	g.Players[id] = &models.Player{
+	player := &models.Player{
 		ID:    id,
 		Name:  name,
 		Snake: snake,
 		Score: 0,
 		Conn:  conn,
+	}
+
+	g.Players[id] = player
+
+	// 人間プレイヤーの場合はキャッシュに追加
+	if !player.IsNPC && player.Conn != nil {
+		g.humanPlayers = append(g.humanPlayers, player)
 	}
 }
 
@@ -52,7 +60,25 @@ func (g *Game) AddPlayer(id, name string, conn *websocket.Conn) {
 func (g *Game) RemovePlayer(id string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+
+	// プレイヤーを取得
+	player, exists := g.Players[id]
+	if !exists {
+		return
+	}
+
+	// Playersマップから削除
 	delete(g.Players, id)
+
+	// 人間プレイヤーキャッシュからも削除
+	if !player.IsNPC {
+		for i, cachedPlayer := range g.humanPlayers {
+			if cachedPlayer == player {
+				g.humanPlayers = append(g.humanPlayers[:i], g.humanPlayers[i+1:]...)
+				break
+			}
+		}
+	}
 }
 
 // GetHumanPlayerCount は人間プレイヤーの数を返す
@@ -398,12 +424,12 @@ func (g *Game) Broadcast(message interface{}) {
 
 // BroadcastOptimized は各クライアントに最適化されたデータを個別送信
 func (g *Game) BroadcastOptimized() {
-	// プレイヤーリストのスナップショットを取得
+	// キャッシュされた人間プレイヤーリストを取得
 	g.mu.RLock()
-	playerList := make([]*models.Player, 0, len(g.Players))
-	for _, player := range g.Players {
-		// NPCプレイヤーにはメッセージを送信しない
-		if player.IsNPC || player.Conn == nil {
+	playerList := make([]*models.Player, 0, len(g.humanPlayers))
+	for _, player := range g.humanPlayers {
+		// 接続が切断されていないかチェック
+		if player.Conn == nil {
 			continue
 		}
 
