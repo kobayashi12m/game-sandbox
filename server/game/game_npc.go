@@ -16,7 +16,7 @@ func (g *Game) AddNPC(count int) {
 	names := []string{"Bot Alpha", "Bot Beta", "Bot Gamma", "Bot Delta", "Bot Epsilon",
 		"Bot Zeta", "Bot Eta", "Bot Theta", "Bot Iota", "Bot Kappa"}
 
-	for i := 0; i < count; i++ {
+	for i := range count {
 		npcID := utils.GenerateID()
 		npcName := names[i%len(names)]
 		if i >= len(names) {
