@@ -241,17 +241,6 @@ func (g *Game) Update(deltaTime float64) {
 				return
 			}
 
-			// NPCは通常の当たり判定
-			// 自己衝突
-			if player.Snake.CheckSelfCollision() {
-				player.Snake.Alive = false
-				player.Score -= 10
-				if player.Score < 0 {
-					player.Score = 0
-				}
-				return
-			}
-
 			// 他の蛇との衝突（空間分割で最適化、フォールバック付き）
 			head := player.Snake.Body[0]
 			nearbyPlayerIDs := g.spatialGrid.GetNearbyPlayersUnique(head)

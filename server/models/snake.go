@@ -60,18 +60,6 @@ func (s *Snake) Grow(amount int) {
 	s.Growing += amount
 }
 
-// CheckSelfCollision は蛇の頭が体と衝突した場合trueを返す
-func (s *Snake) CheckSelfCollision() bool {
-	head := s.Body[0]
-	// 最初の数セグメントはスキップ（頭の近くは常に重なる）
-	for i := 4; i < len(s.Body); i++ {
-		if wrappedDistance(head, s.Body[i]) < utils.SNAKE_RADIUS*2 {
-			return true
-		}
-	}
-	return false
-}
-
 // CheckCollisionWith はこの蛇の頭が他の蛇と衝突した場合trueを返す
 func (s *Snake) CheckCollisionWith(other *Snake) bool {
 	if !other.Alive {
@@ -123,7 +111,7 @@ func (s *Snake) updateBodySegments(newHead Position) {
 				// セグメントを適切な距離に移動
 				curr.X += dx * (dist - utils.SNAKE_RADIUS*2)
 				curr.Y += dy * (dist - utils.SNAKE_RADIUS*2)
-				
+
 				// ラップアラウンドを適用
 				if curr.X < 0 {
 					curr.X += utils.FIELD_WIDTH
@@ -169,13 +157,13 @@ func wrappedDistance(p1, p2 Position) float64 {
 	if dx > utils.FIELD_WIDTH/2 {
 		dx = utils.FIELD_WIDTH - dx
 	}
-	
+
 	// Y軸の最短距離を計算
 	dy := math.Abs(p1.Y - p2.Y)
 	if dy > utils.FIELD_HEIGHT/2 {
 		dy = utils.FIELD_HEIGHT - dy
 	}
-	
+
 	return math.Sqrt(dx*dx + dy*dy)
 }
 
@@ -188,7 +176,7 @@ func wrappedDirection(from, to Position) (float64, float64) {
 	} else if dx < -utils.FIELD_WIDTH/2 {
 		dx += utils.FIELD_WIDTH
 	}
-	
+
 	// Y方向の計算
 	dy := to.Y - from.Y
 	if dy > utils.FIELD_HEIGHT/2 {
@@ -196,6 +184,6 @@ func wrappedDirection(from, to Position) (float64, float64) {
 	} else if dy < -utils.FIELD_HEIGHT/2 {
 		dy += utils.FIELD_HEIGHT
 	}
-	
+
 	return dx, dy
 }
