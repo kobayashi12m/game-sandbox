@@ -169,6 +169,51 @@ func (sg *SpatialGrid) CheckFoodCollisionAt(position models.Position) *models.Fo
 	return nil
 }
 
+// AreaResult はエリア内のプレイヤーと食べ物をまとめて返す構造体
+type AreaResult struct {
+	Players []*models.Player
+	Food    []*models.Food
+}
+
+// GetObjectsInArea は指定した矩形エリア内のプレイヤーと食べ物を同時に取得する
+func (sg *SpatialGrid) GetObjectsInArea(minX, maxX, minY, maxY float64) AreaResult {
+	// エリアが含まれるセル範囲を計算
+	startCellX, startCellY := sg.GetCellCoords(minX, minY)
+	endCellX, endCellY := sg.GetCellCoords(maxX, maxY)
+
+	playerSet := make(map[*models.Player]bool)
+	foodList := make([]*models.Food, 0, 50)
+
+	// 指定したエリアのセルを一度だけスキャン
+	for cellY := startCellY; cellY <= endCellY; cellY++ {
+		for cellX := startCellX; cellX <= endCellX; cellX++ {
+			// 境界チェック
+			if cellX >= 0 && cellX < sg.width && cellY >= 0 && cellY < sg.height {
+				cell := sg.cells[cellY][cellX]
+
+				// プレイヤーのセグメントをチェック（死んだプレイヤーも含む）
+				for player := range cell.playerSegments {
+					playerSet[player] = true
+				}
+
+				// 食べ物をチェック
+				foodList = append(foodList, cell.food...)
+			}
+		}
+	}
+
+	// プレイヤーセットをスライスに変換
+	visiblePlayers := make([]*models.Player, 0, len(playerSet))
+	for player := range playerSet {
+		visiblePlayers = append(visiblePlayers, player)
+	}
+
+	return AreaResult{
+		Players: visiblePlayers,
+		Food:    foodList,
+	}
+}
+
 // GetNearbyFoodSafe は指定した位置の周囲の食べ物を安全に取得する
 func (sg *SpatialGrid) GetNearbyFoodSafe(position models.Position) []*models.Food {
 	centerX, centerY := sg.GetCellCoords(position.X, position.Y)

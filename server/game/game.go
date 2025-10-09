@@ -163,7 +163,7 @@ func (g *Game) UpdateSpatialGrid() {
 
 	// プレイヤーの全セグメントをグリッドに追加
 	for _, player := range g.Players {
-		if player.Snake.Alive && len(player.Snake.Body) > 0 {
+		if len(player.Snake.Body) > 0 {
 			// 蛇の全セグメントをグリッドに登録
 			g.spatialGrid.AddPlayerSegments(player, player.Snake.Body)
 		}
@@ -355,41 +355,27 @@ func (g *Game) GetOptimizedState(clientPlayerID string, clientX, clientY, viewWi
 	minY := clientY - viewHeight/2
 	maxY := clientY + viewHeight/2
 
-	players := make([]models.PlayerState, 0, 30) // 通常画面内は30体程度
-	for _, p := range g.Players {
-		// プレイヤーが画面範囲内にいるかチェック（生死問わず）
+	// Spatial Gridで画面範囲内のプレイヤーと食べ物を同時に取得
+	areaResult := g.spatialGrid.GetObjectsInArea(minX, maxX, minY, maxY)
+
+	players := make([]models.PlayerState, 0, len(areaResult.Players))
+	for _, p := range areaResult.Players {
 		if len(p.Snake.Body) > 0 {
-			// 蛇の任意のセグメントが画面範囲内にあるかチェック
-			isVisible := false
-			for _, segment := range p.Snake.Body {
-				if segment.X >= minX && segment.X <= maxX && segment.Y >= minY && segment.Y <= maxY {
-					isVisible = true
-					break
-				}
-			}
+			// 元のデータを変更しないよう蛇のコピーを作成
+			snakeCopy := *p.Snake
 
-			if isVisible {
-				// 元のデータを変更しないよう蛇のコピーを作成
-				snakeCopy := *p.Snake
-
-				// 体の一部でも画面内にあれば全身を送信（セグメント削除無し）
-
-				players = append(players, models.PlayerState{
-					ID:    p.ID,
-					Name:  p.Name,
-					Snake: &snakeCopy,
-					Score: p.Score,
-				})
-			}
+			players = append(players, models.PlayerState{
+				ID:    p.ID,
+				Name:  p.Name,
+				Snake: &snakeCopy,
+				Score: p.Score,
+			})
 		}
 	}
 
-	// 画面範囲内の食べ物のみ
-	food := make([]models.Position, 0, 50)
-	for _, f := range g.Food {
-		if f.Position.X >= minX && f.Position.X <= maxX && f.Position.Y >= minY && f.Position.Y <= maxY {
-			food = append(food, f.Position)
-		}
+	food := make([]models.Position, 0, len(areaResult.Food))
+	for _, f := range areaResult.Food {
+		food = append(food, f.Position)
 	}
 
 	return models.GameState{
