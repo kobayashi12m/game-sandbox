@@ -30,23 +30,6 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
     const frameCountRef = useRef(0);
     const lastLogTimeRef = useRef(Date.now());
 
-    // 描画に必要なデータのみを抽出（パフォーマンス最適化）
-    const renderData = useMemo(
-      () => ({
-        players: gameState.players,
-        food: gameState.food,
-        playersCount: gameState.players.length,
-        foodCount: gameState.food.length,
-      }),
-      [gameState.players, gameState.food]
-    );
-
-    // 現在のプレイヤー位置をメモ化
-    const currentPlayer = useMemo(
-      () => gameState.players.find((p) => p.id === playerId),
-      [gameState.players, playerId]
-    );
-
     // キーボードショートカット
     useEffect(() => {
       const handleKeyPress = (event: KeyboardEvent) => {
@@ -109,16 +92,7 @@ Draw Time: ${drawTime.toFixed(2)}ms`);
         console.error("GameState:", gameState);
         console.error("PlayerID:", playerId);
       }
-    }, [
-      renderData,
-      currentPlayer,
-      gameConfig.fieldWidth,
-      gameConfig.fieldHeight,
-      canvasSize.width,
-      canvasSize.height,
-      showGrid,
-      showCulling,
-    ]);
+    }, [gameState, playerId, gameConfig, canvasSize, showGrid, showCulling]);
 
     return (
       <canvas
