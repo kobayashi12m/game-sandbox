@@ -12,8 +12,8 @@ import (
 // NPCを追加
 func (g *Game) AddNPC(count int) {
 	log.Printf("Adding %d NPCs to game", count)
-	
-	names := []string{"Bot Alpha", "Bot Beta", "Bot Gamma", "Bot Delta", "Bot Epsilon", 
+
+	names := []string{"Bot Alpha", "Bot Beta", "Bot Gamma", "Bot Delta", "Bot Epsilon",
 		"Bot Zeta", "Bot Eta", "Bot Theta", "Bot Iota", "Bot Kappa"}
 
 	for i := 0; i < count; i++ {
@@ -27,7 +27,7 @@ func (g *Game) AddNPC(count int) {
 
 		// 既存のAddPlayer関数を使ってNPCを追加（WebSocket接続はnil）
 		g.AddPlayer(npcID, npcName, nil)
-		
+
 		// NPCフラグを設定
 		if player, exists := g.Players[npcID]; exists {
 			player.IsNPC = true
@@ -37,14 +37,14 @@ func (g *Game) AddNPC(count int) {
 			log.Printf("Failed to add NPC %s", npcName)
 		}
 	}
-	
+
 	log.Printf("Total players after adding NPCs: %d", len(g.Players))
 }
 
 // NPCの方向をより自然に更新
 func (g *Game) updateNPCDirections() {
 	now := time.Now()
-	
+
 	for _, player := range g.Players {
 		if !player.IsNPC || !player.Snake.Alive {
 			continue
@@ -57,9 +57,9 @@ func (g *Game) updateNPCDirections() {
 
 		// 食べ物に向かう行動を優先
 		targetFood := g.findNearestFood(player.Snake.Body[0])
-		
+
 		var newDirection *utils.Direction
-		
+
 		if targetFood != nil && rand.Float64() < 0.7 { // 70%の確率で食べ物に向かう
 			newDirection = g.calculateDirectionToTarget(player.Snake.Body[0], *targetFood)
 		} else if rand.Float64() < 0.3 { // 30%の確率でランダムに方向変更
@@ -88,10 +88,10 @@ func (g *Game) findNearestFood(head models.Position) *models.Position {
 	minDistance := math.MaxFloat64
 
 	for _, food := range g.Food {
-		distance := g.calculateDistance(head, food)
+		distance := g.calculateDistance(head, food.Position)
 		if distance < minDistance {
 			minDistance = distance
-			nearestFood = &food
+			nearestFood = &food.Position
 		}
 	}
 
@@ -158,11 +158,11 @@ func (g *Game) calculateDirectionToTarget(from, to models.Position) *utils.Direc
 // 指定された方向が有効かチェック（逆方向への移動を防止）
 func (g *Game) isValidDirection(player *models.Player, newDir utils.Direction) bool {
 	currentDir := player.Snake.Direction
-	
+
 	// 逆方向への移動を防止
 	if newDir.X == -currentDir.X && newDir.Y == -currentDir.Y {
 		return false
 	}
-	
+
 	return true
 }

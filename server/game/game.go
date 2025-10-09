@@ -15,14 +15,14 @@ import (
 
 // Game はゲームセッションを表す
 type Game struct {
-	ID           string
-	Players      map[string]*models.Player
-	Food         []models.Position
-	Running      bool
-	NPCCount     int // NPC数の設定
-	spatialGrid  *SpatialGrid // 空間分割グリッド
-	frameCount   int64 // フレームカウンター
-	mu           sync.RWMutex
+	ID          string
+	Players     map[string]*models.Player
+	Food        []*models.Food // 食べ物をポインタで管理
+	Running     bool
+	NPCCount    int          // NPC数の設定
+	spatialGrid *SpatialGrid // 空間分割グリッド
+	frameCount  int64        // フレームカウンター
+	mu          sync.RWMutex
 }
 
 // AddPlayer はゲームに新しいプレイヤーを追加する
@@ -59,7 +59,7 @@ func (g *Game) RemovePlayer(id string) {
 func (g *Game) GetHumanPlayerCount() int {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
-	
+
 	count := 0
 	for _, player := range g.Players {
 		if !player.IsNPC {
@@ -71,14 +71,12 @@ func (g *Game) GetHumanPlayerCount() int {
 
 // GenerateFood はゲームフィールドに食べ物を生成する
 func (g *Game) GenerateFood() {
-	targetFoodCount := 5  // 最小数を増加
+	targetFoodCount := 5 // 最小数を増加
 	if len(g.Players) > 0 {
-		targetFoodCount = int(float64(len(g.Players)) * 2.0)  // プレイヤー数の2倍に増加
-		if targetFoodCount < 5 {
-			targetFoodCount = 5
-		}
+		// プレイヤー数の2倍に増加
+		targetFoodCount = max(int(float64(len(g.Players))*2.0), 5)
 	}
-	
+
 	for len(g.Food) < targetFoodCount {
 		var pos models.Position
 		attempts := 0
@@ -93,15 +91,13 @@ func (g *Game) GenerateFood() {
 			attempts++
 		}
 		if attempts <= 100 {
-			g.Food = append(g.Food, pos)
+			g.Food = append(g.Food, &models.Food{Position: pos})
 		} else {
-			log.Printf("Failed to place food after 100 attempts (current food: %d, target: %d)", 
+			log.Printf("Failed to place food after 100 attempts (current food: %d, target: %d)",
 				len(g.Food), targetFoodCount)
-			break  // 無限ループを防ぐ
+			break // 無限ループを防ぐ
 		}
 	}
-	
-	// フードログを削除（ログが多すぎるため）
 }
 
 // IsPositionOccupied は指定された位置が蛇に占有されているかチェックする
@@ -119,22 +115,32 @@ func (g *Game) IsPositionOccupied(pos models.Position) bool {
 	return false
 }
 
+// RemoveFood は食べ物をポインタで効率的に削除する
+func (g *Game) RemoveFood(targetFood *models.Food) {
+	for i, food := range g.Food {
+		if food == targetFood {
+			g.Food = append(g.Food[:i], g.Food[i+1:]...)
+			return
+		}
+	}
+}
+
 // UpdateSpatialGrid は空間分割グリッドを更新する
 func (g *Game) UpdateSpatialGrid() {
 	// グリッドをクリア
 	g.spatialGrid.Clear()
-	
+
 	// プレイヤーの全セグメントをグリッドに追加
 	for playerID, player := range g.Players {
 		if player.Snake.Alive && len(player.Snake.Body) > 0 {
-			// 蛇の全セグメントをグリッドに登録（完璧な当たり判定のため）
+			// 蛇の全セグメントをグリッドに登録
 			g.spatialGrid.AddPlayerSegments(playerID, player.Snake.Body)
 		}
 	}
-	
+
 	// 食べ物をグリッドに追加
-	for i, food := range g.Food {
-		g.spatialGrid.AddFood(i, food)
+	for _, food := range g.Food {
+		g.spatialGrid.AddFood(food)
 	}
 }
 
@@ -146,7 +152,7 @@ func (g *Game) Update(deltaTime float64) {
 
 	// フレームカウンターを増加
 	g.frameCount++
-	
+
 	// デバッグ用：詳細なゲーム状態をログ出力
 	if g.frameCount%300 == 0 { // 5秒に1回
 		totalSegments := 0
@@ -154,28 +160,28 @@ func (g *Game) Update(deltaTime float64) {
 		maxSnakeLength := 0
 		minSnakeLength := 999999
 		deadPlayers := 0
-		
+
 		for _, player := range g.Players {
 			segments := len(player.Snake.Body)
 			totalSegments += segments
-			
+
 			if !player.IsNPC {
 				humanPlayers++
 			}
-			
+
 			if segments > maxSnakeLength {
 				maxSnakeLength = segments
 			}
 			if segments < minSnakeLength {
 				minSnakeLength = segments
 			}
-			
+
 			if !player.Snake.Alive {
 				deadPlayers++
 			}
 		}
-		
-		log.Printf("🎮 SERVER STATE: Frame %d | Players: %d (Human: %d, Dead: %d) | Food: %d | Segments: %d (Max: %d, Min: %d)", 
+
+		log.Printf("🎮 SERVER STATE: Frame %d | Players: %d (Human: %d, Dead: %d) | Food: %d | Segments: %d (Max: %d, Min: %d)",
 			g.frameCount, len(g.Players), humanPlayers, deadPlayers, len(g.Food), totalSegments, maxSnakeLength, minSnakeLength)
 	}
 
@@ -206,7 +212,7 @@ func (g *Game) Update(deltaTime float64) {
 					log.Printf("\033[35m🚨 PANIC_RECOVERED in collision detection for player %s: %v, Frame: %d\033[0m", player.Name, r, g.frameCount)
 				}
 			}()
-			
+
 			if !player.Snake.Alive {
 				return
 			}
@@ -215,25 +221,20 @@ func (g *Game) Update(deltaTime float64) {
 			if !player.IsNPC && utils.DISABLE_COLLISION {
 				// 食べ物との衝突判定のみ実行
 				head := player.Snake.Body[0]
-				nearbyFood := g.spatialGrid.GetNearbyFoodSafe(head, g.Food)
-				
-				for _, foodPos := range nearbyFood {
+				nearbyFood := g.spatialGrid.GetNearbyFoodSafe(head)
+
+				for _, food := range nearbyFood {
 					// 蛇の頭と食べ物の距離をチェック
-					dx := head.X - foodPos.X
-					dy := head.Y - foodPos.Y
+					dx := head.X - food.Position.X
+					dy := head.Y - food.Position.Y
 					dist := dx*dx + dy*dy
 
 					if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
-						// 食べ物を配列から安全に除去
-						for i := len(g.Food) - 1; i >= 0; i-- {
-							if g.Food[i].X == foodPos.X && g.Food[i].Y == foodPos.Y {
-								g.Food = append(g.Food[:i], g.Food[i+1:]...)
-								// 蛇を成長させる
-								player.Snake.Growing = 3
-								player.Score += 10
-								return
-							}
-						}
+						// 食べ物をポインタで直接削除
+						g.RemoveFood(food)
+						// 蛇を成長させる
+						player.Snake.Growing = 3
+						player.Score += 10
 						return
 					}
 				}
@@ -254,7 +255,7 @@ func (g *Game) Update(deltaTime float64) {
 			// 他の蛇との衝突（空間分割で最適化、フォールバック付き）
 			head := player.Snake.Body[0]
 			nearbyPlayerIDs := g.spatialGrid.GetNearbyPlayersUnique(head)
-			
+
 			// 空間分割で候補が見つからない場合は全体検索（安全性確保）
 			if len(nearbyPlayerIDs) == 0 {
 				for otherPlayerID := range g.Players {
@@ -263,11 +264,11 @@ func (g *Game) Update(deltaTime float64) {
 					}
 				}
 			}
-			
+
 			for _, otherPlayerID := range nearbyPlayerIDs {
-				if otherPlayer, exists := g.Players[otherPlayerID]; exists && 
-				   player.ID != otherPlayer.ID && 
-				   player.Snake.CheckCollisionWith(otherPlayer.Snake) {
+				if otherPlayer, exists := g.Players[otherPlayerID]; exists &&
+					player.ID != otherPlayer.ID &&
+					player.Snake.CheckCollisionWith(otherPlayer.Snake) {
 					player.Snake.Alive = false
 					player.Score -= 10
 					if player.Score < 0 {
@@ -279,25 +280,20 @@ func (g *Game) Update(deltaTime float64) {
 			}
 
 			// 食べ物との衝突判定（空間分割で最適化、安全）
-			nearbyFood := g.spatialGrid.GetNearbyFoodSafe(head, g.Food)
-			
-			for _, foodPos := range nearbyFood {
+			nearbyFood := g.spatialGrid.GetNearbyFoodSafe(head)
+
+			for _, food := range nearbyFood {
 				// 蛇の頭と食べ物の距離をチェック
-				dx := head.X - foodPos.X
-				dy := head.Y - foodPos.Y
+				dx := head.X - food.Position.X
+				dy := head.Y - food.Position.Y
 				dist := dx*dx + dy*dy
 
 				if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
-					// 食べ物を配列から安全に除去
-					for i := len(g.Food) - 1; i >= 0; i-- {
-						if g.Food[i].X == foodPos.X && g.Food[i].Y == foodPos.Y {
-							g.Food = append(g.Food[:i], g.Food[i+1:]...)
-							// 蛇を成長させる
-							player.Snake.Growing = 3
-							player.Score += 10
-							return
-						}
-					}
+					// 食べ物をポインタで直接削除
+					g.RemoveFood(food)
+					// 蛇を成長させる
+					player.Snake.Growing = 3
+					player.Score += 10
 					return
 				}
 			}
@@ -338,9 +334,15 @@ func (g *Game) GetState() models.GameState {
 			Score: p.Score,
 		})
 	}
+	// Food を Position に変換
+	foodPositions := make([]models.Position, len(g.Food))
+	for i, food := range g.Food {
+		foodPositions[i] = food.Position
+	}
+
 	return models.GameState{
 		Players: players,
-		Food:    g.Food,
+		Food:    foodPositions,
 	}
 }
 
@@ -368,11 +370,11 @@ func (g *Game) GetOptimizedState(clientPlayerID string, clientX, clientY, viewWi
 					break
 				}
 			}
-			
+
 			if isVisible {
 				// 元のデータを変更しないよう蛇のコピーを作成
 				snakeCopy := *p.Snake
-				
+
 				// 体の一部でも画面内にあれば全身を送信（セグメント削除無し）
 
 				players = append(players, models.PlayerState{
@@ -388,8 +390,8 @@ func (g *Game) GetOptimizedState(clientPlayerID string, clientX, clientY, viewWi
 	// 画面範囲内の食べ物のみ
 	food := make([]models.Position, 0, 50)
 	for _, f := range g.Food {
-		if f.X >= minX && f.X <= maxX && f.Y >= minY && f.Y <= maxY {
-			food = append(food, f)
+		if f.Position.X >= minX && f.Position.X <= maxX && f.Position.Y >= minY && f.Position.Y <= maxY {
+			food = append(food, f.Position)
 		}
 	}
 
@@ -432,12 +434,12 @@ func (g *Game) BroadcastOptimized() {
 		if player.IsNPC || player.Conn == nil {
 			continue
 		}
-		
+
 		// プレイヤーの位置を取得（死んでいても送信を続ける）
 		if len(player.Snake.Body) == 0 {
 			continue
 		}
-		
+
 		playerList = append(playerList, player)
 	}
 	g.mu.RUnlock()
@@ -567,29 +569,27 @@ func (g *Game) RunGameLoop() {
 	defer log.Printf("\033[33m⚠️ GAME_LOOP: Ended for game %s\033[0m", g.ID)
 
 	for g.Running {
-		select {
-		case <-ticker.C:
-			now := time.Now()
-			deltaTime := now.Sub(lastUpdate).Seconds()
-			lastUpdate = now
+		<-ticker.C
+		now := time.Now()
+		deltaTime := now.Sub(lastUpdate).Seconds()
+		lastUpdate = now
 
-			// 更新処理をゴルーチン安全にラップ
-			func() {
-				defer func() {
-					if r := recover(); r != nil {
-						log.Printf("\033[35m🚨 PANIC_RECOVERED in game update for game %s: %v\033[0m", g.ID, r)
-					}
-				}()
-
-				g.mu.Lock()
-				// NPCの方向を更新
-				g.updateNPCDirections()
-				g.Update(deltaTime)
-				g.mu.Unlock()
-
-				// 各クライアントに最適化されたデータを個別送信
-				g.BroadcastOptimized()
+		// 更新処理をゴルーチン安全にラップ
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("\033[35m🚨 PANIC_RECOVERED in game update for game %s: %v\033[0m", g.ID, r)
+				}
 			}()
-		}
+
+			g.mu.Lock()
+			// NPCの方向を更新
+			g.updateNPCDirections()
+			g.Update(deltaTime)
+			g.mu.Unlock()
+
+			// 各クライアントに最適化されたデータを個別送信
+			g.BroadcastOptimized()
+		}()
 	}
 }

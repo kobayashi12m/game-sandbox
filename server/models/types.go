@@ -14,6 +14,11 @@ type Position struct {
 	Y float64 `json:"y"`
 }
 
+// Food はゲーム内の食べ物を表す
+type Food struct {
+	Position Position `json:"position"`
+}
+
 // Snake はゲーム内の蛇を表す
 type Snake struct {
 	ID         string          `json:"id"`
@@ -29,14 +34,14 @@ type Snake struct {
 
 // Player はゲーム内のプレイヤーを表す
 type Player struct {
-	ID              string `json:"id"`
-	Name            string `json:"name"`
-	Snake           *Snake `json:"snake"`
-	Score           int    `json:"score"`
-	Conn            *websocket.Conn
-	IsNPC           bool      `json:"-"` // NPCかどうかのフラグ
-	LastDirectionChange time.Time `json:"-"` // 最後に方向を変えた時刻
-	ConnMu          sync.Mutex `json:"-"` // WebSocket書き込み用mutex
+	ID                  string `json:"id"`
+	Name                string `json:"name"`
+	Snake               *Snake `json:"snake"`
+	Score               int    `json:"score"`
+	Conn                *websocket.Conn
+	IsNPC               bool       `json:"-"` // NPCかどうかのフラグ
+	LastDirectionChange time.Time  `json:"-"` // 最後に方向を変えた時刻
+	ConnMu              sync.Mutex `json:"-"` // WebSocket書き込み用mutex
 }
 
 // GameState はクライアントに送信される現在の状態を表す
@@ -55,11 +60,11 @@ type PlayerState struct {
 
 // GameConfig はゲームの設定を表す
 type GameConfig struct {
-	FieldWidth      float64 `json:"fieldWidth"`
-	FieldHeight     float64 `json:"fieldHeight"`
-	SnakeRadius     float64 `json:"snakeRadius"`
-	FoodRadius      float64 `json:"foodRadius"`
-	CullingWidth    float64 `json:"cullingWidth"`
-	CullingHeight   float64 `json:"cullingHeight"`
-	CullingMargin   float64 `json:"cullingMargin"`
+	FieldWidth    float64 `json:"fieldWidth"`
+	FieldHeight   float64 `json:"fieldHeight"`
+	SnakeRadius   float64 `json:"snakeRadius"`
+	FoodRadius    float64 `json:"foodRadius"`
+	CullingWidth  float64 `json:"cullingWidth"`
+	CullingHeight float64 `json:"cullingHeight"`
+	CullingMargin float64 `json:"cullingMargin"`
 }
