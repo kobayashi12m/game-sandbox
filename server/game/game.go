@@ -195,18 +195,16 @@ func (g *Game) Update(deltaTime float64) {
 		player.Snake.Move(deltaTime)
 	}
 
-	// 空間分割グリッドを3フレームに1回更新（負荷軽減）
-	if g.frameCount%3 == 0 {
-		// defer文でパニックをキャッチ
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					log.Printf("\033[35m🚨 PANIC_RECOVERED in UpdateSpatialGrid: %v, Frame: %d\033[0m", r, g.frameCount)
-				}
-			}()
-			g.UpdateSpatialGrid()
+	// 空間分割グリッドを毎フレーム更新
+	// defer文でパニックをキャッチ
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("\033[35m🚨 PANIC_RECOVERED in UpdateSpatialGrid: %v, Frame: %d\033[0m", r, g.frameCount)
+			}
 		}()
-	}
+		g.UpdateSpatialGrid()
+	}()
 
 	// 衝突判定
 	for _, player := range g.Players {
@@ -250,15 +248,7 @@ func (g *Game) Update(deltaTime float64) {
 			head := player.Snake.Body[0]
 			nearbyPlayers := g.spatialGrid.GetNearbyPlayersUnique(head)
 
-			// 空間分割で候補が見つからない場合は全体検索（安全性確保）
-			if len(nearbyPlayers) == 0 {
-				for _, otherPlayer := range g.Players {
-					if otherPlayer.ID != player.ID {
-						nearbyPlayers = append(nearbyPlayers, otherPlayer)
-					}
-				}
-			}
-
+			collisionFound := false
 			for _, otherPlayer := range nearbyPlayers {
 				if player.ID != otherPlayer.ID &&
 					player.Snake.CheckCollisionWith(otherPlayer.Snake) {
@@ -268,8 +258,13 @@ func (g *Game) Update(deltaTime float64) {
 						player.Score = 0
 					}
 					otherPlayer.Score += 5
-					return
+					collisionFound = true
+					break
 				}
+			}
+
+			if collisionFound {
+				return
 			}
 
 			// 食べ物との衝突判定（空間分割で最適化、安全）
