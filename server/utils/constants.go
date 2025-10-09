@@ -12,10 +12,9 @@ const (
 	NPC_COUNT    = 100                   // デフォルトNPC数
 
 	// カリング設定
-	CULLING_WIDTH  = 800.0  // カリング範囲の幅
-	CULLING_HEIGHT = 600.0  // カリング範囲の高さ
-	CULLING_MARGIN = 500.0  // カリング境界のマージン
-	
+	CULLING_WIDTH  = 1300.0 // カリング範囲の幅
+	CULLING_HEIGHT = 800.0  // カリング範囲の高さ
+
 	// デバッグ設定
 	DISABLE_COLLISION = false // trueで当たり判定を無効化
 )

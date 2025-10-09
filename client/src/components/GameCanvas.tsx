@@ -73,7 +73,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       // 20秒毎に軽量ログ出力
       const now = Date.now();
       if (now - lastLogTimeRef.current > 20000) {
-        const memory = (performance as any).memory;
         const drawTime = performance.now() - startTime;
         const playerCount = gameState.players?.length || 0;
         const totalSegments =
@@ -87,13 +86,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 Frame: ${frameCountRef.current}
 Players: ${playerCount} (Segments: ${totalSegments})
 Food: ${foodCount}
-Draw Time: ${drawTime.toFixed(2)}ms
-Memory Used: ${
-          memory ? (memory.usedJSHeapSize / 1024 / 1024).toFixed(1) : "N/A"
-        }MB
-Memory Limit: ${
-          memory ? (memory.jsHeapSizeLimit / 1024 / 1024).toFixed(1) : "N/A"
-        }MB`);
+Draw Time: ${drawTime.toFixed(2)}ms`);
 
         lastLogTimeRef.current = now;
       }
@@ -150,14 +143,7 @@ const drawGame = (
 
   // サーバーカリング範囲を描画
   if (showCulling) {
-    drawServerCullingBounds(
-      ctx,
-      playerPosition,
-      cameraX,
-      cameraY,
-      canvasSize,
-      gameConfig
-    );
+    drawServerCullingBounds(ctx, playerPosition, gameConfig);
   }
 
   // 食べ物を描画（カリング付き）
@@ -179,9 +165,6 @@ const drawGame = (
     const minY = cameraY - cullingMargin;
     const maxY = cameraY + canvasSize.height + cullingMargin;
 
-    let drawnCount = 0;
-    let culledCount = 0;
-
     gameState.players.forEach((player) => {
       // プレイヤーが画面範囲内にいるかチェック
       if (player.snake?.body?.[0]) {
@@ -200,9 +183,6 @@ const drawGame = (
             player.id === playerId,
             gameConfig.snakeRadius
           );
-          drawnCount++;
-        } else {
-          culledCount++;
         }
       }
     });
@@ -233,9 +213,6 @@ const drawFieldBoundary = (
 const drawServerCullingBounds = (
   ctx: CanvasRenderingContext2D,
   playerPosition: Position | undefined,
-  cameraX: number,
-  cameraY: number,
-  canvasSize: { width: number; height: number },
   gameConfig: GameConfig
 ) => {
   if (!playerPosition) return;
@@ -243,12 +220,11 @@ const drawServerCullingBounds = (
   // サーバーから受信したカリング範囲を使用
   const serverViewWidth = gameConfig.cullingWidth;
   const serverViewHeight = gameConfig.cullingHeight;
-  const margin = gameConfig.cullingMargin;
 
-  const minX = playerPosition.x - serverViewWidth / 2 - margin;
-  const maxX = playerPosition.x + serverViewWidth / 2 + margin;
-  const minY = playerPosition.y - serverViewHeight / 2 - margin;
-  const maxY = playerPosition.y + serverViewHeight / 2 + margin;
+  const minX = playerPosition.x - serverViewWidth / 2;
+  const maxX = playerPosition.x + serverViewWidth / 2;
+  const minY = playerPosition.y - serverViewHeight / 2;
+  const maxY = playerPosition.y + serverViewHeight / 2;
 
   // カリング境界を赤い点線で描画
   ctx.strokeStyle = "#ff0000";
@@ -280,15 +256,12 @@ const drawFood = (
   ctx.shadowBlur = 10;
   ctx.shadowColor = "#ff6b6b";
 
-  let drawnFoodCount = 0;
-
   food.forEach((item) => {
     // 画面範囲内の食べ物のみ描画
     if (item.x >= minX && item.x <= maxX && item.y >= minY && item.y <= maxY) {
       ctx.beginPath();
       ctx.arc(item.x, item.y, radius, 0, 2 * Math.PI);
       ctx.fill();
-      drawnFoodCount++;
     }
   });
 

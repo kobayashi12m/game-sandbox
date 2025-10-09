@@ -65,7 +65,6 @@ export interface GameConfig {
   foodRadius: number;
   cullingWidth: number;
   cullingHeight: number;
-  cullingMargin: number;
   gridLines?: GridLine[];
 }
 
@@ -83,7 +82,6 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   fieldHeight: 600,
   snakeRadius: 7.5,
   foodRadius: 5,
-  cullingWidth: 800,
-  cullingHeight: 600,
-  cullingMargin: 500,
+  cullingWidth: 1300,
+  cullingHeight: 800,
 };

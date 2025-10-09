@@ -350,11 +350,10 @@ func (g *Game) GetOptimizedState(clientPlayerID string, clientX, clientY, viewWi
 	defer g.mu.RUnlock()
 
 	// クライアントの画面範囲計算
-	margin := utils.CULLING_MARGIN // 余裕を持った範囲
-	minX := clientX - viewWidth/2 - margin
-	maxX := clientX + viewWidth/2 + margin
-	minY := clientY - viewHeight/2 - margin
-	maxY := clientY + viewHeight/2 + margin
+	minX := clientX - viewWidth/2
+	maxX := clientX + viewWidth/2
+	minY := clientY - viewHeight/2
+	maxY := clientY + viewHeight/2
 
 	players := make([]models.PlayerState, 0, 30) // 通常画面内は30体程度
 	for _, p := range g.Players {

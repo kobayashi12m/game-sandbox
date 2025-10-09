@@ -87,7 +87,6 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 						FoodRadius:    utils.FOOD_RADIUS,
 						CullingWidth:  utils.CULLING_WIDTH,
 						CullingHeight: utils.CULLING_HEIGHT,
-						CullingMargin: utils.CULLING_MARGIN,
 						GridLines:     gridLines,
 					}
 					configMsg := map[string]interface{}{

@@ -74,6 +74,5 @@ type GameConfig struct {
 	FoodRadius    float64    `json:"foodRadius"`
 	CullingWidth  float64    `json:"cullingWidth"`
 	CullingHeight float64    `json:"cullingHeight"`
-	CullingMargin float64    `json:"cullingMargin"`
 	GridLines     []GridLine `json:"gridLines,omitempty"` // SpatialGrid可視化用
 }
