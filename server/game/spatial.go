@@ -15,8 +15,8 @@ type SpatialGrid struct {
 
 // GridCell は各グリッドセルに含まれるオブジェクト
 type GridCell struct {
-	players []string       // このセルに含まれるプレイヤーID
-	food    []*models.Food // このセルに含まれる食べ物のポインタ
+	players []*models.Player // このセルに含まれるプレイヤーのポインタ
+	food    []*models.Food   // このセルに含まれる食べ物のポインタ
 }
 
 // NewSpatialGrid は新しい空間分割グリッドを作成する
@@ -32,7 +32,7 @@ func NewSpatialGrid() *SpatialGrid {
 		cells[i] = make([]*GridCell, width)
 		for j := range cells[i] {
 			cells[i][j] = &GridCell{
-				players: make([]string, 0, 4),
+				players: make([]*models.Player, 0, 4),
 				food:    make([]*models.Food, 0, 4),
 			}
 		}
@@ -51,7 +51,7 @@ func (sg *SpatialGrid) Clear() {
 	for i := range sg.cells {
 		for j := range sg.cells[i] {
 			// 完全に新しいスライスを作成してメモリリークを防ぐ
-			sg.cells[i][j].players = make([]string, 0, 4)
+			sg.cells[i][j].players = make([]*models.Player, 0, 4)
 			sg.cells[i][j].food = make([]*models.Food, 0, 4)
 		}
 	}
@@ -79,13 +79,13 @@ func (sg *SpatialGrid) GetCellCoords(x, y float64) (int, int) {
 }
 
 // AddPlayer はプレイヤーの全セグメントをグリッドに追加する
-func (sg *SpatialGrid) AddPlayerSegments(playerID string, segments []models.Position) {
+func (sg *SpatialGrid) AddPlayerSegments(player *models.Player, segments []models.Position) {
 	for _, segment := range segments {
 		cellX, cellY := sg.GetCellCoords(segment.X, segment.Y)
 
 		// 安全性チェック
 		if cellY >= 0 && cellY < sg.height && cellX >= 0 && cellX < sg.width {
-			sg.cells[cellY][cellX].players = append(sg.cells[cellY][cellX].players, playerID)
+			sg.cells[cellY][cellX].players = append(sg.cells[cellY][cellX].players, player)
 		}
 	}
 }
@@ -100,11 +100,11 @@ func (sg *SpatialGrid) AddFood(food *models.Food) {
 	}
 }
 
-// GetNearbyPlayersUnique は指定した位置の周囲のプレイヤーIDを重複なしで取得する
-func (sg *SpatialGrid) GetNearbyPlayersUnique(position models.Position) []string {
+// GetNearbyPlayersUnique は指定した位置の周囲のプレイヤーを重複なしで取得する
+func (sg *SpatialGrid) GetNearbyPlayersUnique(position models.Position) []*models.Player {
 	centerX, centerY := sg.GetCellCoords(position.X, position.Y)
 
-	playerSet := make(map[string]bool)
+	playerSet := make(map[*models.Player]bool)
 
 	// 周囲9セル（3x3）をチェック
 	for dy := -1; dy <= 1; dy++ {
@@ -115,17 +115,17 @@ func (sg *SpatialGrid) GetNearbyPlayersUnique(position models.Position) []string
 			// 境界チェック
 			if cellX >= 0 && cellX < sg.width && cellY >= 0 && cellY < sg.height {
 				cell := sg.cells[cellY][cellX]
-				for _, playerID := range cell.players {
-					playerSet[playerID] = true
+				for _, player := range cell.players {
+					playerSet[player] = true
 				}
 			}
 		}
 	}
 
 	// セットをスライスに変換
-	nearbyPlayers := make([]string, 0, len(playerSet))
-	for playerID := range playerSet {
-		nearbyPlayers = append(nearbyPlayers, playerID)
+	nearbyPlayers := make([]*models.Player, 0, len(playerSet))
+	for player := range playerSet {
+		nearbyPlayers = append(nearbyPlayers, player)
 	}
 
 	return nearbyPlayers
@@ -180,18 +180,16 @@ func (sg *SpatialGrid) GetNearbyFoodInRadius(position models.Position, radius fl
 }
 
 // IsPositionOccupiedOptimized は空間分割を使った効率的な占有チェック
-func (sg *SpatialGrid) IsPositionOccupiedOptimized(pos models.Position, players map[string]*models.Player) bool {
-	nearbyPlayerIDs := sg.GetNearbyPlayersUnique(pos)
+func (sg *SpatialGrid) IsPositionOccupiedOptimized(pos models.Position) bool {
+	nearbyPlayers := sg.GetNearbyPlayersUnique(pos)
 
-	for _, playerID := range nearbyPlayerIDs {
-		if player, exists := players[playerID]; exists {
-			for _, segment := range player.Snake.Body {
-				dx := segment.X - pos.X
-				dy := segment.Y - pos.Y
-				dist := dx*dx + dy*dy
-				if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
-					return true
-				}
+	for _, player := range nearbyPlayers {
+		for _, segment := range player.Snake.Body {
+			dx := segment.X - pos.X
+			dy := segment.Y - pos.Y
+			dist := dx*dx + dy*dy
+			if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
+				return true
 			}
 		}
 	}

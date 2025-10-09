@@ -85,7 +85,7 @@ func (g *Game) GenerateFood() {
 				X: rand.Float64() * utils.FIELD_WIDTH,
 				Y: rand.Float64() * utils.FIELD_HEIGHT,
 			}
-			if !g.IsPositionOccupied(pos) || attempts > 100 {
+			if !g.spatialGrid.IsPositionOccupiedOptimized(pos) || attempts > 100 {
 				break
 			}
 			attempts++
@@ -131,10 +131,10 @@ func (g *Game) UpdateSpatialGrid() {
 	g.spatialGrid.Clear()
 
 	// プレイヤーの全セグメントをグリッドに追加
-	for playerID, player := range g.Players {
+	for _, player := range g.Players {
 		if player.Snake.Alive && len(player.Snake.Body) > 0 {
 			// 蛇の全セグメントをグリッドに登録
-			g.spatialGrid.AddPlayerSegments(playerID, player.Snake.Body)
+			g.spatialGrid.AddPlayerSegments(player, player.Snake.Body)
 		}
 	}
 
@@ -241,22 +241,21 @@ func (g *Game) Update(deltaTime float64) {
 				return
 			}
 
-			// 他の蛇との衝突（空間分割で最適化、フォールバック付き）
+			// 他の蛇との衝突（空間分割で最適化、ポインタベース）
 			head := player.Snake.Body[0]
-			nearbyPlayerIDs := g.spatialGrid.GetNearbyPlayersUnique(head)
+			nearbyPlayers := g.spatialGrid.GetNearbyPlayersUnique(head)
 
 			// 空間分割で候補が見つからない場合は全体検索（安全性確保）
-			if len(nearbyPlayerIDs) == 0 {
-				for otherPlayerID := range g.Players {
-					if otherPlayerID != player.ID {
-						nearbyPlayerIDs = append(nearbyPlayerIDs, otherPlayerID)
+			if len(nearbyPlayers) == 0 {
+				for _, otherPlayer := range g.Players {
+					if otherPlayer.ID != player.ID {
+						nearbyPlayers = append(nearbyPlayers, otherPlayer)
 					}
 				}
 			}
 
-			for _, otherPlayerID := range nearbyPlayerIDs {
-				if otherPlayer, exists := g.Players[otherPlayerID]; exists &&
-					player.ID != otherPlayer.ID &&
+			for _, otherPlayer := range nearbyPlayers {
+				if player.ID != otherPlayer.ID &&
 					player.Snake.CheckCollisionWith(otherPlayer.Snake) {
 					player.Snake.Alive = false
 					player.Score -= 10
