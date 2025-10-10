@@ -113,8 +113,8 @@ func (o *OrganismBody) Move(deltaTime float64) {
 	// 全ノードの物理シミュレーション
 	o.updatePhysics(deltaTime)
 
-	// フィールド境界でのラップアラウンド
-	o.applyBoundaryWrapping()
+	// フィールド境界での衝突処理
+	o.applyBoundaryCollision()
 }
 
 // updatePhysics は物理シミュレーションを実行する
@@ -179,31 +179,40 @@ func (o *OrganismBody) updatePhysics(deltaTime float64) {
 	}
 }
 
-// applyBoundaryWrapping はフィールド境界でのラップアラウンドを適用
-func (o *OrganismBody) applyBoundaryWrapping() {
-	// コアのラップアラウンド
-	if o.Core.Position.X < 0 {
-		o.Core.Position.X += utils.FIELD_WIDTH
-	} else if o.Core.Position.X >= utils.FIELD_WIDTH {
-		o.Core.Position.X -= utils.FIELD_WIDTH
+// applyBoundaryCollision はフィールド境界での衝突処理を適用
+func (o *OrganismBody) applyBoundaryCollision() {
+	// コアの境界衝突処理
+	if o.Core.Position.X-o.Core.Radius < 0 {
+		o.Core.Position.X = o.Core.Radius
+		o.Core.Velocity.X = -o.Core.Velocity.X * 0.5 // 反発係数0.5
+	} else if o.Core.Position.X+o.Core.Radius >= utils.FIELD_WIDTH {
+		o.Core.Position.X = utils.FIELD_WIDTH - o.Core.Radius
+		o.Core.Velocity.X = -o.Core.Velocity.X * 0.5
 	}
-	if o.Core.Position.Y < 0 {
-		o.Core.Position.Y += utils.FIELD_HEIGHT
-	} else if o.Core.Position.Y >= utils.FIELD_HEIGHT {
-		o.Core.Position.Y -= utils.FIELD_HEIGHT
+	if o.Core.Position.Y-o.Core.Radius < 0 {
+		o.Core.Position.Y = o.Core.Radius
+		o.Core.Velocity.Y = -o.Core.Velocity.Y * 0.5
+	} else if o.Core.Position.Y+o.Core.Radius >= utils.FIELD_HEIGHT {
+		o.Core.Position.Y = utils.FIELD_HEIGHT - o.Core.Radius
+		o.Core.Velocity.Y = -o.Core.Velocity.Y * 0.5
 	}
 
-	// ノードのラップアラウンド
+	// ノードの境界衝突処理
 	for i := range o.Nodes {
-		if o.Nodes[i].Position.X < 0 {
-			o.Nodes[i].Position.X += utils.FIELD_WIDTH
-		} else if o.Nodes[i].Position.X >= utils.FIELD_WIDTH {
-			o.Nodes[i].Position.X -= utils.FIELD_WIDTH
+		node := o.Nodes[i]
+		if node.Position.X-node.Radius < 0 {
+			node.Position.X = node.Radius
+			node.Velocity.X = -node.Velocity.X * 0.5
+		} else if node.Position.X+node.Radius >= utils.FIELD_WIDTH {
+			node.Position.X = utils.FIELD_WIDTH - node.Radius
+			node.Velocity.X = -node.Velocity.X * 0.5
 		}
-		if o.Nodes[i].Position.Y < 0 {
-			o.Nodes[i].Position.Y += utils.FIELD_HEIGHT
-		} else if o.Nodes[i].Position.Y >= utils.FIELD_HEIGHT {
-			o.Nodes[i].Position.Y -= utils.FIELD_HEIGHT
+		if node.Position.Y-node.Radius < 0 {
+			node.Position.Y = node.Radius
+			node.Velocity.Y = -node.Velocity.Y * 0.5
+		} else if node.Position.Y+node.Radius >= utils.FIELD_HEIGHT {
+			node.Position.Y = utils.FIELD_HEIGHT - node.Radius
+			node.Velocity.Y = -node.Velocity.Y * 0.5
 		}
 	}
 }

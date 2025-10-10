@@ -98,19 +98,10 @@ func (g *Game) findNearestFood(head models.Position) *models.Position {
 	return nearestFood
 }
 
-// 2点間の距離を計算（ラップアラウンドを考慮）
+// 2点間の距離を計算
 func (g *Game) calculateDistance(p1 models.Position, p2 models.Position) float64 {
-	dx := math.Abs(p1.X - p2.X)
-	dy := math.Abs(p1.Y - p2.Y)
-
-	// ラップアラウンドを考慮
-	if dx > utils.FIELD_WIDTH/2 {
-		dx = utils.FIELD_WIDTH - dx
-	}
-	if dy > utils.FIELD_HEIGHT/2 {
-		dy = utils.FIELD_HEIGHT - dy
-	}
-
+	dx := p1.X - p2.X
+	dy := p1.Y - p2.Y
 	return math.Sqrt(dx*dx + dy*dy)
 }
 
@@ -118,22 +109,6 @@ func (g *Game) calculateDistance(p1 models.Position, p2 models.Position) float64
 func (g *Game) calculateDirectionToTarget(from, to models.Position) *utils.Direction {
 	dx := to.X - from.X
 	dy := to.Y - from.Y
-
-	// ラップアラウンドを考慮
-	if math.Abs(dx) > utils.FIELD_WIDTH/2 {
-		if dx > 0 {
-			dx = dx - utils.FIELD_WIDTH
-		} else {
-			dx = dx + utils.FIELD_WIDTH
-		}
-	}
-	if math.Abs(dy) > utils.FIELD_HEIGHT/2 {
-		if dy > 0 {
-			dy = dy - utils.FIELD_HEIGHT
-		} else {
-			dy = dy + utils.FIELD_HEIGHT
-		}
-	}
 
 	// より大きい成分の方向を選択
 	if math.Abs(dx) > math.Abs(dy) {
