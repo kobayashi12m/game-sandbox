@@ -114,6 +114,24 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 				if newDir, ok := utils.DIRECTIONS[direction]; ok {
 					gameInstance.ChangePlayerDirection(playerID, newDir)
 				}
+
+			case "setAcceleration":
+				if player == nil || gameInstance == nil {
+					continue
+				}
+
+				x, xOk := msg["x"].(float64)
+				y, yOk := msg["y"].(float64)
+				if xOk && yOk {
+					gameInstance.SetPlayerAcceleration(playerID, x, y)
+				}
+
+			case "stopMovement":
+				if player == nil || gameInstance == nil {
+					continue
+				}
+
+				gameInstance.StopPlayerMovement(playerID)
 			}
 		}
 

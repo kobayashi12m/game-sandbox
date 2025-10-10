@@ -26,16 +26,20 @@ type Connection struct {
 
 // OrganismBody は新しい球体＋線構造のエンティティを表す
 type OrganismBody struct {
-	Core        *PhysicsNode    `json:"core"`        // 中心球
-	Nodes       []*PhysicsNode  `json:"nodes"`       // 周辺球
-	Connections []*Connection   `json:"connections"` // 制約
-	Color       string          `json:"color"`
-	Alive       bool            `json:"alive"`
-	Growing     int             `json:"-"`
-	Respawning  bool            `json:"-"`
-	DeathTime   time.Time       `json:"-"`
-	Speed       float64         `json:"-"` // 移動速度（コアの基準速度）
-	Direction   utils.Direction `json:"-"` // 現在の移動方向
+	Core        *PhysicsNode   `json:"core"`        // 中心球
+	Nodes       []*PhysicsNode `json:"nodes"`       // 周辺球
+	Connections []*Connection  `json:"connections"` // 制約
+	Color       string         `json:"color"`
+	Alive       bool           `json:"alive"`
+	Growing     int            `json:"-"`
+	Respawning  bool           `json:"-"`
+	DeathTime   time.Time      `json:"-"`
+
+	// 新しい移動システム用
+	Acceleration Position `json:"-"` // 現在の加速度
+	MaxSpeed     float64  `json:"-"` // 最大速度
+	AccelForce   float64  `json:"-"` // 加速力
+	InputActive  bool     `json:"-"` // 入力が有効かどうか
 }
 
 // Reset は球体構造を初期状態に初期化する
@@ -86,11 +90,15 @@ func (o *OrganismBody) Reset() {
 		},
 	}
 
-	o.Direction = utils.DIRECTIONS["RIGHT"]
 	o.Growing = 0
 	o.Alive = true
 	o.Respawning = false
-	o.Speed = utils.SNAKE_SPEED
+
+	// 新しい移動システムのパラメータ
+	o.Acceleration = Position{X: 0, Y: 0}
+	o.MaxSpeed = utils.SNAKE_SPEED
+	o.AccelForce = 2000.0 // 加速力（きびきび動く）
+	o.InputActive = false
 }
 
 // Move は球体構造を物理シミュレーションで移動させる
@@ -99,16 +107,19 @@ func (o *OrganismBody) Move(deltaTime float64) {
 		return
 	}
 
-	// コアを目標方向に移動（プレイヤー入力による駆動力）
-	targetVel := Position{
-		X: o.Direction.X * o.Speed,
-		Y: o.Direction.Y * o.Speed,
+	// 加速度ベースの移動システム
+	if o.InputActive {
+		// キーが押されている間は加速度を適用
+		o.Core.Velocity.X += o.Acceleration.X * deltaTime
+		o.Core.Velocity.Y += o.Acceleration.Y * deltaTime
 	}
 
-	// コアの速度を徐々に目標速度に近づける
-	damping := 0.1
-	o.Core.Velocity.X += (targetVel.X - o.Core.Velocity.X) * damping
-	o.Core.Velocity.Y += (targetVel.Y - o.Core.Velocity.Y) * damping
+	// 最大速度制限
+	speed := math.Sqrt(o.Core.Velocity.X*o.Core.Velocity.X + o.Core.Velocity.Y*o.Core.Velocity.Y)
+	if speed > o.MaxSpeed {
+		o.Core.Velocity.X = (o.Core.Velocity.X / speed) * o.MaxSpeed
+		o.Core.Velocity.Y = (o.Core.Velocity.Y / speed) * o.MaxSpeed
+	}
 
 	// 全ノードの物理シミュレーション
 	o.updatePhysics(deltaTime)
@@ -153,10 +164,15 @@ func (o *OrganismBody) updatePhysics(deltaTime float64) {
 			forceX := totalForce * nx
 			forceY := totalForce * ny
 
-			nodeA.Velocity.X += forceX * deltaTime / nodeA.Mass
-			nodeA.Velocity.Y += forceY * deltaTime / nodeA.Mass
-			nodeB.Velocity.X -= forceX * deltaTime / nodeB.Mass
-			nodeB.Velocity.Y -= forceY * deltaTime / nodeB.Mass
+			// コア（中心球）には物理制約を適用しない（加速度のみで制御）
+			if nodeA != o.Core {
+				nodeA.Velocity.X += forceX * deltaTime / nodeA.Mass
+				nodeA.Velocity.Y += forceY * deltaTime / nodeA.Mass
+			}
+			if nodeB != o.Core {
+				nodeB.Velocity.X -= forceX * deltaTime / nodeB.Mass
+				nodeB.Velocity.Y -= forceY * deltaTime / nodeB.Mass
+			}
 		}
 	}
 
@@ -169,8 +185,12 @@ func (o *OrganismBody) updatePhysics(deltaTime float64) {
 		o.Nodes[i].Position.Y += o.Nodes[i].Velocity.Y * deltaTime
 	}
 
-	// 空気抵抗
-	airResistance := 0.95
+	// 空気抵抗（キーを離した時の減速効果）
+	airResistance := 0.98
+	if !o.InputActive {
+		// キーが押されていない時は非常に強い抵抗（ほぼ即座に停止）
+		airResistance = 0.1
+	}
 	o.Core.Velocity.X *= airResistance
 	o.Core.Velocity.Y *= airResistance
 	for i := range o.Nodes {
@@ -217,9 +237,25 @@ func (o *OrganismBody) applyBoundaryCollision() {
 	}
 }
 
-// ChangeDirection は移動方向を変更する
-func (o *OrganismBody) ChangeDirection(newDir utils.Direction) {
-	o.Direction = newDir
+// StartMoving は指定方向への移動を開始する（キー押下開始）
+func (o *OrganismBody) StartMoving(direction utils.Direction) {
+	o.Acceleration.X = direction.X * o.AccelForce
+	o.Acceleration.Y = direction.Y * o.AccelForce
+	o.InputActive = true
+}
+
+// SetAcceleration は加速度を直接設定する（360度自由移動用）
+func (o *OrganismBody) SetAcceleration(x, y float64) {
+	o.Acceleration.X = x * o.AccelForce
+	o.Acceleration.Y = y * o.AccelForce
+	o.InputActive = true
+}
+
+// StopMoving は移動を停止する（キー離した時）
+func (o *OrganismBody) StopMoving() {
+	o.Acceleration.X = 0
+	o.Acceleration.Y = 0
+	o.InputActive = false
 }
 
 // AddNode は新しいノードを追加する（成長時）

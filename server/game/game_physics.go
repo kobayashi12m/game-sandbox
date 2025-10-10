@@ -2,6 +2,7 @@ package game
 
 import (
 	"log"
+	"math"
 	"time"
 
 	"chess-mmo/server/models"
@@ -103,18 +104,13 @@ func (g *Game) Update(deltaTime float64) {
 				return
 			}
 
-			// 他の球体構造との衝突（空間分割で最適化、コア直接チェック）
+			// 他の球体構造との衝突（セグメント同士の物理的反発）
 			head := player.Organism.Core.Position
 			collidedPlayer := g.spatialGrid.CheckCollisionAt(head, player)
 
 			if collidedPlayer != nil {
-				player.Organism.Alive = false
-				player.Score -= 10
-				if player.Score < 0 {
-					player.Score = 0
-				}
-				collidedPlayer.Score += 5
-				return
+				// 死亡処理はせず、物理的反発のみ
+				g.applyCollisionRepulsion(player, collidedPlayer, head)
 			}
 
 			// 食べ物との衝突判定（空間分割で直接チェック）
@@ -146,6 +142,36 @@ func (g *Game) Update(deltaTime float64) {
 
 	// 食べ物の補充
 	g.GenerateFood()
+}
+
+// applyCollisionRepulsion はプレイヤー間の衝突反発を処理する
+func (g *Game) applyCollisionRepulsion(player1, player2 *models.Player, collisionPoint models.Position) {
+	// プレイヤー1のコア位置
+	core1 := player1.Organism.Core.Position
+	// プレイヤー2のコア位置
+	core2 := player2.Organism.Core.Position
+
+	// 衝突方向ベクトルを計算
+	dx := core1.X - core2.X
+	dy := core1.Y - core2.Y
+	distance := math.Sqrt(dx*dx + dy*dy)
+
+	if distance > 0 {
+		// 正規化
+		nx := dx / distance
+		ny := dy / distance
+
+		// 反発力の強さ
+		repulsionForce := 50.0
+
+		// プレイヤー1のコアに反発力を適用
+		player1.Organism.Core.Velocity.X += nx * repulsionForce
+		player1.Organism.Core.Velocity.Y += ny * repulsionForce
+
+		// プレイヤー2のコアに逆方向の反発力を適用
+		player2.Organism.Core.Velocity.X -= nx * repulsionForce
+		player2.Organism.Core.Velocity.Y -= ny * repulsionForce
+	}
 }
 
 // UpdateSpatialGrid は空間分割グリッドを更新する

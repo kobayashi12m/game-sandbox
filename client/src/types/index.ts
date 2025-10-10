@@ -58,6 +58,16 @@ export interface DirectionMessage extends WebSocketMessage {
   direction: Direction;
 }
 
+export interface AccelerationMessage extends WebSocketMessage {
+  type: 'setAcceleration';
+  x: number;
+  y: number;
+}
+
+export interface StopMovementMessage extends WebSocketMessage {
+  type: 'stopMovement';
+}
+
 export interface GameJoinedMessage extends WebSocketMessage {
   type: 'gameJoined';
   playerId: string;

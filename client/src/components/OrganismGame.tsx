@@ -23,6 +23,8 @@ const OrganismGame: React.FC = () => {
     gameState,
     playerId,
     sendDirection,
+    sendAcceleration,
+    sendStopMovement,
     isConnecting,
     gameConfig,
     scoreboard,
@@ -34,6 +36,8 @@ const OrganismGame: React.FC = () => {
 
   const { handleTouchDirection } = useGameInput({
     onDirectionChange: sendDirection,
+    onAccelerationChange: sendAcceleration,
+    onMovementStop: sendStopMovement,
     isEnabled: isConnected,
   });
 

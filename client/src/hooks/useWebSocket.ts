@@ -3,6 +3,8 @@ import type {
   GameState, 
   JoinMessage, 
   DirectionMessage, 
+  AccelerationMessage,
+  StopMovementMessage,
   Direction,
   WebSocketMessage,
   GameConfig,
@@ -22,6 +24,8 @@ interface UseWebSocketReturn {
   gameState: GameState;
   playerId: string;
   sendDirection: (direction: Direction) => void;
+  sendAcceleration: (x: number, y: number) => void;
+  sendStopMovement: () => void;
   isConnecting: boolean;
   gameConfig: GameConfig;
   scoreboard: ScoreInfo[];
@@ -133,10 +137,38 @@ export const useWebSocket = ({
     websocket.send(JSON.stringify(directionMessage));
   }, []);
 
+  // 加速度送信（360度自由移動用）
+  const sendAcceleration = useCallback((x: number, y: number) => {
+    const websocket = wsRef.current;
+    if (!websocket || websocket.readyState !== WebSocket.OPEN) return;
+
+    const accelerationMessage: AccelerationMessage = {
+      type: 'setAcceleration',
+      x,
+      y
+    };
+    
+    websocket.send(JSON.stringify(accelerationMessage));
+  }, []);
+
+  // 移動停止メッセージの送信
+  const sendStopMovement = useCallback(() => {
+    const websocket = wsRef.current;
+    if (!websocket || websocket.readyState !== WebSocket.OPEN) return;
+
+    const stopMessage: StopMovementMessage = {
+      type: 'stopMovement'
+    };
+    
+    websocket.send(JSON.stringify(stopMessage));
+  }, []);
+
   return {
     gameState,
     playerId,
     sendDirection,
+    sendAcceleration,
+    sendStopMovement,
     isConnecting,
     gameConfig,
     scoreboard

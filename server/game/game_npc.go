@@ -71,8 +71,8 @@ func (g *Game) updateNPCDirections() {
 		}
 
 		// 新しい方向が決まった場合のみ変更
-		if newDirection != nil && g.isValidDirection(player, *newDirection) {
-			player.Organism.Direction = *newDirection
+		if newDirection != nil {
+			player.Organism.StartMoving(*newDirection)
 			player.LastDirectionChange = now
 		}
 	}
@@ -130,14 +130,7 @@ func (g *Game) calculateDirectionToTarget(from, to models.Position) *utils.Direc
 	}
 }
 
-// 指定された方向が有効かチェック（逆方向への移動を防止）
-func (g *Game) isValidDirection(player *models.Player, newDir utils.Direction) bool {
-	currentDir := player.Organism.Direction
-
-	// 逆方向への移動を防止
-	if newDir.X == -currentDir.X && newDir.Y == -currentDir.Y {
-		return false
-	}
-
-	return true
-}
+// NPCは方向制限を削除（加速度ベースでは不要）
+// func (g *Game) isValidDirection(player *models.Player, newDir utils.Direction) bool {
+//	return true
+// }
