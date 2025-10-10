@@ -83,13 +83,13 @@ func (g *Game) Update(deltaTime float64) {
 			// プレイヤー（人間）の当たり判定をスキップ
 			if !player.IsNPC && utils.DISABLE_COLLISION {
 				// 食べ物との衝突判定のみ実行
-				head := player.Organism.Core.Position
-				nearbyFood := g.spatialGrid.GetNearbyFoodSafe(head)
+				core := player.Organism.Core.Position
+				nearbyFood := g.spatialGrid.GetNearbyFoodSafe(core)
 
 				for _, food := range nearbyFood {
-					// 蛇の頭と食べ物の距離をチェック
-					dx := head.X - food.Position.X
-					dy := head.Y - food.Position.Y
+					// コアと食べ物の距離をチェック
+					dx := core.X - food.Position.X
+					dy := core.Y - food.Position.Y
 					dist := dx*dx + dy*dy
 
 					if dist < (utils.ORGANISM_RADIUS+utils.FOOD_RADIUS)*(utils.ORGANISM_RADIUS+utils.FOOD_RADIUS) {
@@ -104,27 +104,12 @@ func (g *Game) Update(deltaTime float64) {
 				return
 			}
 
-			// 他の球体構造との衝突（コア＋全ノード）
-			// コアの衝突チェック
-			head := player.Organism.Core.Position
-			collidedPlayer := g.spatialGrid.CheckCollisionAt(head, player)
-
-			if collidedPlayer != nil {
-				// 死亡処理はせず、物理的反発のみ
-				g.applyCollisionRepulsion(player, collidedPlayer, head)
-			}
-
-			// 各ノードの衝突チェック
-			for _, node := range player.Organism.Nodes {
-				collidedPlayerFromNode := g.spatialGrid.CheckCollisionAt(node.Position, player)
-				if collidedPlayerFromNode != nil {
-					// ノード位置での反発
-					g.applyCollisionRepulsion(player, collidedPlayerFromNode, node.Position)
-				}
-			}
+			// 他の球体構造との衝突（組織レベルでの統合衝突判定）
+			g.checkOrganismCollision(player)
 
 			// 食べ物との衝突判定（空間分割で直接チェック）
-			collidedFood := g.spatialGrid.CheckFoodCollisionAt(head)
+			core := player.Organism.Core.Position
+			collidedFood := g.spatialGrid.CheckFoodCollisionAt(core)
 
 			if collidedFood != nil {
 				// 食べ物をポインタで直接削除
@@ -154,11 +139,36 @@ func (g *Game) Update(deltaTime float64) {
 	g.GenerateFood()
 }
 
-// applyCollisionRepulsion はプレイヤー間の衝突反発を処理する
-func (g *Game) applyCollisionRepulsion(player1, player2 *models.Player, collisionPoint models.Position) {
-	// プレイヤー1のコア位置
+// checkOrganismCollision は組織レベルでの統合衝突判定を行う
+func (g *Game) checkOrganismCollision(player *models.Player) {
+	// コア＋全ノードから衝突した相手プレイヤーを収集
+	collidedPlayers := make(map[string]*models.Player)
+	
+	// コアの衝突チェック
+	core := player.Organism.Core.Position
+	collidedPlayer := g.spatialGrid.CheckCollisionAt(core, player)
+	if collidedPlayer != nil {
+		collidedPlayers[collidedPlayer.ID] = collidedPlayer
+	}
+
+	// 各ノードの衝突チェック
+	for _, node := range player.Organism.Nodes {
+		collidedPlayerFromNode := g.spatialGrid.CheckCollisionAt(node.Position, player)
+		if collidedPlayerFromNode != nil {
+			collidedPlayers[collidedPlayerFromNode.ID] = collidedPlayerFromNode
+		}
+	}
+
+	// 衝突した各プレイヤーに対して1回だけ反発力を適用
+	for _, collidedPlayer := range collidedPlayers {
+		g.applyOrganismCollisionRepulsion(player, collidedPlayer)
+	}
+}
+
+// applyOrganismCollisionRepulsion は組織間の物理的反発を処理する（1回のみ）
+func (g *Game) applyOrganismCollisionRepulsion(player1, player2 *models.Player) {
+	// 両組織のコア間の方向を基準にする
 	core1 := player1.Organism.Core.Position
-	// プレイヤー2のコア位置
 	core2 := player2.Organism.Core.Position
 
 	// 衝突方向ベクトルを計算
@@ -171,8 +181,15 @@ func (g *Game) applyCollisionRepulsion(player1, player2 *models.Player, collisio
 		nx := dx / distance
 		ny := dy / distance
 
-		// 反発力の強さ
-		repulsionForce := 50.0
+		// 反発力の強さ（距離に応じて調整）
+		minDistance := utils.ORGANISM_RADIUS * 2.0
+		repulsionForce := 30.0 // 以前より弱く設定
+		
+		// 距離が近いほど強い反発
+		if distance < minDistance {
+			repulsionForce *= (minDistance - distance) / minDistance
+			repulsionForce = math.Min(repulsionForce, 80.0) // 最大値制限
+		}
 
 		// プレイヤー1のコアに反発力を適用
 		player1.Organism.Core.Velocity.X += nx * repulsionForce
