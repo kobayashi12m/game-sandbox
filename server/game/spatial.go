@@ -127,7 +127,7 @@ func (sg *SpatialGrid) CheckCollisionAt(position models.Position, excludePlayer 
 			return
 		}
 		for player, segments := range cell.playerSegments {
-			if player == excludePlayer || !player.Snake.Alive {
+			if player == excludePlayer || !player.Organism.Alive {
 				continue
 			}
 			for _, segment := range segments {

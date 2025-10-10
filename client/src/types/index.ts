@@ -5,9 +5,26 @@ export interface Position {
   y: number;
 }
 
-export interface Snake {
-  id: string;
-  body: Position[];
+// 物理ノード（球）
+export interface PhysicsNode {
+  position: Position;
+  velocity: Position;
+  radius: number;
+  mass: number;
+}
+
+// 接続（線/制約）
+export interface Connection {
+  restLength: number;
+  stiffness: number;
+  damping: number;
+}
+
+// 球体構造
+export interface OrganismBody {
+  core: PhysicsNode;
+  nodes: PhysicsNode[];
+  connections: Connection[];
   color: string;
   alive: boolean;
 }
@@ -15,7 +32,7 @@ export interface Snake {
 export interface Player {
   id: string;
   name: string;
-  snake: Snake;
+  organism: OrganismBody;
   score: number;
 }
 
@@ -77,7 +94,7 @@ export interface GridLine {
 export interface GameConfig {
   fieldWidth: number;
   fieldHeight: number;
-  snakeRadius: number;
+  organismRadius: number;
   foodRadius: number;
   cullingWidth: number;
   cullingHeight: number;
@@ -96,7 +113,7 @@ export type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 export const DEFAULT_GAME_CONFIG: GameConfig = {
   fieldWidth: 600,
   fieldHeight: 600,
-  snakeRadius: 7.5,
+  organismRadius: 7.5,
   foodRadius: 5,
   cullingWidth: 1300,
   cullingHeight: 800,

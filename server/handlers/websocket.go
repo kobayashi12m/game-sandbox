@@ -81,13 +81,13 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 					gridLines := gameInstance.GetSpatialGridLines()
 
 					config := models.GameConfig{
-						FieldWidth:    utils.FIELD_WIDTH,
-						FieldHeight:   utils.FIELD_HEIGHT,
-						SnakeRadius:   utils.SNAKE_RADIUS,
-						FoodRadius:    utils.FOOD_RADIUS,
-						CullingWidth:  utils.CULLING_WIDTH,
-						CullingHeight: utils.CULLING_HEIGHT,
-						GridLines:     gridLines,
+						FieldWidth:     utils.FIELD_WIDTH,
+						FieldHeight:    utils.FIELD_HEIGHT,
+						OrganismRadius: utils.SNAKE_RADIUS,
+						FoodRadius:     utils.FOOD_RADIUS,
+						CullingWidth:   utils.CULLING_WIDTH,
+						CullingHeight:  utils.CULLING_HEIGHT,
+						GridLines:      gridLines,
 					}
 					configMsg := map[string]interface{}{
 						"type":   "gameConfig",

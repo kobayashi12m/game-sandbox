@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-import "./SnakeGame.css";
+import "./OrganismGame.css";
 import TouchControls from "./TouchControls";
 import GameCanvas from "./GameCanvas";
 import Scoreboard from "./Scoreboard";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { useGameInput } from "../hooks/useGameInput";
 
-const SnakeGame: React.FC = () => {
+const OrganismGame: React.FC = () => {
   const [playerName] = useState<string>("Player");
   const [roomId] = useState<string>("default");
   const [isConnected, setIsConnected] = useState(false);
@@ -62,7 +62,7 @@ const SnakeGame: React.FC = () => {
   };
 
   return (
-    <div className="snake-game">
+    <div className="organism-game">
       {/* ゲームコンテンツ */}
       {isConnected ? (
         <div className="game-container">
@@ -118,7 +118,7 @@ const SnakeGame: React.FC = () => {
         </div>
       ) : hasInitiallyConnected ? (
         <div className="waiting-screen">
-          <h2>🐍 Snake Game</h2>
+          <h2>🔵 Organism Game</h2>
           <p>
             接続が切断されました。再接続ボタンを押してゲームに復帰してください
           </p>
@@ -132,7 +132,7 @@ const SnakeGame: React.FC = () => {
         </div>
       ) : (
         <div className="waiting-screen">
-          <h2>🐍 Snake Game</h2>
+          <h2>🔵 Organism Game</h2>
           <p>ゲームに接続中...</p>
         </div>
       )}
@@ -140,4 +140,4 @@ const SnakeGame: React.FC = () => {
   );
 };
 
-export default SnakeGame;
+export default OrganismGame;

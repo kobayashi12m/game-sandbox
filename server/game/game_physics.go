@@ -4,6 +4,7 @@ import (
 	"log"
 	"time"
 
+	"chess-mmo/server/models"
 	"chess-mmo/server/utils"
 )
 
@@ -20,37 +21,37 @@ func (g *Game) Update(deltaTime float64) {
 	if g.frameCount%300 == 0 { // 5秒に1回
 		totalSegments := 0
 		humanPlayers := 0
-		maxSnakeLength := 0
-		minSnakeLength := 999999
+		maxOrganismLength := 0
+		minOrganismLength := 999999
 		deadPlayers := 0
 
 		for _, player := range g.Players {
-			segments := len(player.Snake.Body)
+			segments := len(player.Organism.Nodes) + 1 // コア + ノード
 			totalSegments += segments
 
 			if !player.IsNPC {
 				humanPlayers++
 			}
 
-			if segments > maxSnakeLength {
-				maxSnakeLength = segments
+			if segments > maxOrganismLength {
+				maxOrganismLength = segments
 			}
-			if segments < minSnakeLength {
-				minSnakeLength = segments
+			if segments < minOrganismLength {
+				minOrganismLength = segments
 			}
 
-			if !player.Snake.Alive {
+			if !player.Organism.Alive {
 				deadPlayers++
 			}
 		}
 
 		log.Printf("🎮 SERVER STATE: Frame %d | Players: %d (Human: %d, Dead: %d) | Food: %d | Segments: %d (Max: %d, Min: %d)",
-			g.frameCount, len(g.Players), humanPlayers, deadPlayers, len(g.Food), totalSegments, maxSnakeLength, minSnakeLength)
+			g.frameCount, len(g.Players), humanPlayers, deadPlayers, len(g.Food), totalSegments, maxOrganismLength, minOrganismLength)
 	}
 
-	// 全ての蛇を移動
+	// 全ての球体構造を移動
 	for _, player := range g.Players {
-		player.Snake.Move(deltaTime)
+		player.Organism.Move(deltaTime)
 	}
 
 	// 空間分割グリッドを毎フレーム更新
@@ -74,14 +75,14 @@ func (g *Game) Update(deltaTime float64) {
 				}
 			}()
 
-			if !player.Snake.Alive {
+			if !player.Organism.Alive {
 				return
 			}
 
 			// プレイヤー（人間）の当たり判定をスキップ
 			if !player.IsNPC && utils.DISABLE_COLLISION {
 				// 食べ物との衝突判定のみ実行
-				head := player.Snake.Body[0]
+				head := player.Organism.Core.Position
 				nearbyFood := g.spatialGrid.GetNearbyFoodSafe(head)
 
 				for _, food := range nearbyFood {
@@ -93,8 +94,8 @@ func (g *Game) Update(deltaTime float64) {
 					if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
 						// 食べ物をポインタで直接削除
 						g.RemoveFood(food)
-						// 蛇を成長させる
-						player.Snake.Growing = 3
+						// 球体構造を成長させる
+						player.Organism.Growing = 3
 						player.Score += 10
 						return
 					}
@@ -102,12 +103,12 @@ func (g *Game) Update(deltaTime float64) {
 				return
 			}
 
-			// 他の蛇との衝突（空間分割で最適化、セグメント直接チェック）
-			head := player.Snake.Body[0]
+			// 他の球体構造との衝突（空間分割で最適化、コア直接チェック）
+			head := player.Organism.Core.Position
 			collidedPlayer := g.spatialGrid.CheckCollisionAt(head, player)
 
 			if collidedPlayer != nil {
-				player.Snake.Alive = false
+				player.Organism.Alive = false
 				player.Score -= 10
 				if player.Score < 0 {
 					player.Score = 0
@@ -122,24 +123,24 @@ func (g *Game) Update(deltaTime float64) {
 			if collidedFood != nil {
 				// 食べ物をポインタで直接削除
 				g.RemoveFood(collidedFood)
-				// 蛇を成長させる
-				player.Snake.Growing = 3
+				// 球体構造を成長させる
+				player.Organism.Growing = 3
 				player.Score += 10
 				return
 			}
 		}()
 	}
 
-	// 死んだ蛇のリスポーン処理
+	// 死んだ球体構造のリスポーン処理
 	for _, player := range g.Players {
-		if !player.Snake.Alive && !player.Snake.Respawning {
-			player.Snake.Respawning = true
-			player.Snake.DeathTime = time.Now()
+		if !player.Organism.Alive && !player.Organism.Respawning {
+			player.Organism.Respawning = true
+			player.Organism.DeathTime = time.Now()
 		}
 
-		if player.Snake.Respawning && time.Since(player.Snake.DeathTime) > 3*time.Second {
-			player.Snake.Reset()
-			player.Snake.Respawning = false
+		if player.Organism.Respawning && time.Since(player.Organism.DeathTime) > 3*time.Second {
+			player.Organism.Reset()
+			player.Organism.Respawning = false
 		}
 	}
 
@@ -152,11 +153,16 @@ func (g *Game) UpdateSpatialGrid() {
 	// グリッドをクリア
 	g.spatialGrid.Clear()
 
-	// プレイヤーの全セグメントをグリッドに追加
+	// プレイヤーの全球体をグリッドに追加
 	for _, player := range g.Players {
-		if len(player.Snake.Body) > 0 {
-			// 蛇の全セグメントをグリッドに登録
-			g.spatialGrid.AddPlayerSegments(player, player.Snake.Body)
+		if player.Organism.Core != nil {
+			// 球体構造の全ノードをグリッドに登録
+			var positions []models.Position
+			positions = append(positions, player.Organism.Core.Position)
+			for _, node := range player.Organism.Nodes {
+				positions = append(positions, node.Position)
+			}
+			g.spatialGrid.AddPlayerSegments(player, positions)
 		}
 	}
 

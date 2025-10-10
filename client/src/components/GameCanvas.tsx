@@ -74,7 +74,7 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
           const playerCount = gameState.players?.length || 0;
           const totalSegments =
             gameState.players?.reduce(
-              (sum, p) => sum + (p.snake?.body?.length || 0),
+              (sum, p) => sum + (p.organism?.nodes?.length || 0) + 1, // コア + ノード
               0
             ) || 0;
           const foodCount = gameState.food?.length || 0;
@@ -119,7 +119,7 @@ const drawGame = (
 ) => {
   // プレイヤーの位置を取得
   const currentPlayer = gameState.players?.find((p) => p.id === playerId);
-  const playerPosition = currentPlayer?.snake?.body?.[0];
+  const playerPosition = currentPlayer?.organism?.core?.position;
 
   // カメラの中心位置を計算
   const cameraX = playerPosition ? playerPosition.x - canvasSize.width / 2 : 0;
@@ -167,8 +167,8 @@ const drawGame = (
 
     gameState.players.forEach((player) => {
       // プレイヤーが画面範囲内にいるかチェック
-      if (player.snake?.body?.[0]) {
-        const head = player.snake.body[0];
+      if (player.organism?.core?.position) {
+        const head = player.organism.core.position;
 
         // 頭が画面範囲内にあるかチェック
         if (
@@ -177,12 +177,7 @@ const drawGame = (
           head.y >= minY &&
           head.y <= maxY
         ) {
-          drawSnake(
-            ctx,
-            player,
-            player.id === playerId,
-            gameConfig.snakeRadius
-          );
+          drawOrganism(ctx, player, player.id === playerId);
         }
       }
     });
@@ -268,43 +263,68 @@ const drawFood = (
   ctx.shadowBlur = 0;
 };
 
-// 蛇の描画
-const drawSnake = (
+// 球体構造の描画
+const drawOrganism = (
   ctx: CanvasRenderingContext2D,
   player: Player,
-  isCurrentPlayer: boolean,
-  radius: number
+  isCurrentPlayer: boolean
 ) => {
-  const snake = player.snake;
+  const organism = player.organism;
 
-  // 死んでいる蛇は半透明に
-  ctx.globalAlpha = snake.alive ? 1 : 0.3;
-  ctx.fillStyle = snake.color;
+  // 死んでいる球体構造は半透明に
+  ctx.globalAlpha = organism.alive ? 1 : 0.3;
+  ctx.fillStyle = organism.color;
 
-  // 蛇の体を描画
-  snake.body.forEach((segment, index) => {
-    if (index === 0) {
-      // 頭部を描画
-      drawSnakeHead(ctx, segment, radius, snake.color, isCurrentPlayer);
-    } else {
-      // 体を描画（半径が負にならないよう制限）
-      const segmentRadius = Math.max(radius * (1 - index * 0.02), radius * 0.1);
+  // 接続（線）を先に描画
+  ctx.strokeStyle = organism.color;
+  ctx.lineWidth = 3;
+  organism.connections.forEach((connection, index) => {
+    // コアと最初のノードの接続
+    if (index === 0 && organism.nodes[0]) {
       ctx.beginPath();
-      ctx.arc(segment.x, segment.y, segmentRadius, 0, 2 * Math.PI);
-      ctx.fill();
+      ctx.moveTo(organism.core.position.x, organism.core.position.y);
+      ctx.lineTo(organism.nodes[0].position.x, organism.nodes[0].position.y);
+      ctx.stroke();
+    }
+    // ノード間の接続
+    else if (index > 0 && organism.nodes[index] && organism.nodes[index - 1]) {
+      ctx.beginPath();
+      ctx.moveTo(
+        organism.nodes[index - 1].position.x,
+        organism.nodes[index - 1].position.y
+      );
+      ctx.lineTo(
+        organism.nodes[index].position.x,
+        organism.nodes[index].position.y
+      );
+      ctx.stroke();
     }
   });
 
+  // コア（中心球）を描画
+  drawOrganismHead(
+    ctx,
+    organism.core.position,
+    organism.core.radius,
+    organism.color,
+    isCurrentPlayer
+  );
+
+  // ノード（周辺球）を描画
+  organism.nodes.forEach((node) => {
+    ctx.beginPath();
+    ctx.arc(node.position.x, node.position.y, node.radius, 0, 2 * Math.PI);
+    ctx.fill();
+  });
+
   // プレイヤー名を描画
-  if (snake.body.length > 0) {
-    drawPlayerName(ctx, player.name, snake.body[0], isCurrentPlayer);
-  }
+  drawPlayerName(ctx, player.name, organism.core.position, isCurrentPlayer);
 
   ctx.globalAlpha = 1;
 };
 
-// 蛇の頭部の描画
-const drawSnakeHead = (
+// 球体構造の頭部（コア）の描画
+const drawOrganismHead = (
   ctx: CanvasRenderingContext2D,
   position: Position,
   radius: number,
@@ -316,7 +336,7 @@ const drawSnakeHead = (
   ctx.arc(position.x, position.y, radius, 0, 2 * Math.PI);
   ctx.fill();
 
-  // 自分の蛇にはアウトラインを追加
+  // 自分の球体構造にはアウトラインを追加
   if (isCurrentPlayer) {
     ctx.strokeStyle = "#ffd700";
     ctx.lineWidth = 3;
@@ -402,10 +422,10 @@ const drawUI = (
   ctx.font = "bold 18px Arial";
   ctx.textAlign = "left";
   ctx.fillText(`Score: ${currentPlayer.score}`, 20, 35);
-  ctx.fillText(`Length: ${currentPlayer.snake.body.length}`, 20, 55);
+  ctx.fillText(`Length: ${currentPlayer.organism.nodes.length + 1}`, 20, 55);
 
   // 死んでいる場合はDEAD表示
-  if (!currentPlayer.snake.alive) {
+  if (!currentPlayer.organism.alive) {
     ctx.fillStyle = "#ff4444";
     ctx.font = "bold 20px Arial";
     ctx.fillText("DEAD", 20, 80);
@@ -479,8 +499,8 @@ const drawMinimap = (
   ctx.strokeRect(mapX, mapY, mapSize, mapSize);
 
   // プレイヤーの位置を表示
-  if (currentPlayer.snake.body.length > 0) {
-    const head = currentPlayer.snake.body[0];
+  if (currentPlayer.organism.core) {
+    const head = currentPlayer.organism.core.position;
     const playerX = mapX + (head.x / 5000) * mapSize;
     const playerY = mapY + (head.y / 3000) * mapSize;
 

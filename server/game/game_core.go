@@ -32,18 +32,17 @@ func (g *Game) AddPlayer(id, name string, conn *websocket.Conn) {
 	colors := []string{"#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#DDA0DD", "#F4A460"}
 	color := colors[len(g.Players)%len(colors)]
 
-	snake := &models.Snake{
-		ID:    id,
+	organism := &models.OrganismBody{
 		Color: color,
 	}
-	snake.Reset()
+	organism.Reset()
 
 	player := &models.Player{
-		ID:    id,
-		Name:  name,
-		Snake: snake,
-		Score: 0,
-		Conn:  conn,
+		ID:       id,
+		Name:     name,
+		Organism: organism,
+		Score:    0,
+		Conn:     conn,
 	}
 
 	g.Players[id] = player
@@ -129,8 +128,8 @@ func (g *Game) ChangePlayerDirection(playerID string, direction utils.Direction)
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	if player, exists := g.Players[playerID]; exists && player.Snake.Alive {
-		player.Snake.ChangeDirection(direction)
+	if player, exists := g.Players[playerID]; exists && player.Organism.Alive {
+		player.Organism.ChangeDirection(direction)
 	}
 }
 

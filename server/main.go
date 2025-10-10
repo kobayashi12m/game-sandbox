@@ -14,12 +14,12 @@ func main() {
 
 	// Setup routes
 	http.HandleFunc("/ws", handlers.WebSocketHandler(hub))
-	
+
 	// Serve static files
 	fs := http.FileServer(http.Dir("../client/dist"))
 	http.Handle("/", fs)
 
 	// Start server
-	log.Println("Snake game server running on :8081")
+	log.Println("Organism game server running on :8081")
 	log.Fatal(http.ListenAndServe(":8081", nil))
 }

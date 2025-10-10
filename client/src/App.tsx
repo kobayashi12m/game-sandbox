@@ -1,8 +1,8 @@
-import SnakeGame from './components/SnakeGame'
-import './App.css'
+import OrganismGame from "./components/OrganismGame";
+import "./App.css";
 
 function App() {
-  return <SnakeGame />
+  return <OrganismGame />;
 }
 
-export default App
+export default App;
