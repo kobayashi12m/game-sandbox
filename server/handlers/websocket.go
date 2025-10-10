@@ -83,7 +83,7 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 					config := models.GameConfig{
 						FieldWidth:     utils.FIELD_WIDTH,
 						FieldHeight:    utils.FIELD_HEIGHT,
-						OrganismRadius: utils.SNAKE_RADIUS,
+						OrganismRadius: utils.ORGANISM_RADIUS,
 						FoodRadius:     utils.FOOD_RADIUS,
 						CullingWidth:   utils.CULLING_WIDTH,
 						CullingHeight:  utils.CULLING_HEIGHT,

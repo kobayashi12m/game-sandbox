@@ -11,10 +11,11 @@ interface GameCanvasProps {
   gameState: GameState;
   playerId: string;
   gameConfig: GameConfig;
+  onMouseMove: (x: number, y: number) => void;
 }
 
 const GameCanvas: React.FC<GameCanvasProps> = memo(
-  ({ gameState, playerId, gameConfig }) => {
+  ({ gameState, playerId, gameConfig, onMouseMove }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [showGrid, setShowGrid] = useState(true);
     const [showCulling, setShowCulling] = useState(true);
@@ -44,6 +45,48 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
       window.addEventListener("keydown", handleKeyPress);
       return () => window.removeEventListener("keydown", handleKeyPress);
     }, []);
+
+    // マウス移動の処理
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const handleMouseMove = (event: MouseEvent) => {
+        const rect = canvas.getBoundingClientRect();
+        const currentPlayer = gameState.players?.find((p) => p.id === playerId);
+        const playerPosition = currentPlayer?.organism?.core?.position;
+
+        if (!playerPosition) return;
+
+        // カメラオフセットを考慮したワールド座標に変換
+        const cameraX = playerPosition.x - canvasSize.width / 2;
+        const cameraY = playerPosition.y - canvasSize.height / 2;
+
+        const worldX = event.clientX - rect.left + cameraX;
+        const worldY = event.clientY - rect.top + cameraY;
+
+        // コアからマウス位置への方向ベクトルを計算
+        const dx = worldX - playerPosition.x;
+        const dy = worldY - playerPosition.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // 一定距離以上離れている場合のみ移動
+        const minDistance = 150; // 最小距離
+        if (distance > minDistance) {
+          // 正規化された方向ベクトル
+          const normalizedX = dx / distance;
+          const normalizedY = dy / distance;
+
+          onMouseMove(normalizedX, normalizedY);
+        } else {
+          // 距離が近い場合は停止
+          onMouseMove(0, 0);
+        }
+      };
+
+      canvas.addEventListener("mousemove", handleMouseMove);
+      return () => canvas.removeEventListener("mousemove", handleMouseMove);
+    }, [gameState, playerId, canvasSize, onMouseMove]);
 
     useEffect(() => {
       const canvas = canvasRef.current;
@@ -275,31 +318,34 @@ const drawOrganism = (
   ctx.globalAlpha = organism.alive ? 1 : 0.3;
   ctx.fillStyle = organism.color;
 
-  // 接続（線）を先に描画
+  // 接続（線）を先に描画 - 原子構造（コアから各ノードへの放射状＋ノード間環状）
   ctx.strokeStyle = organism.color;
-  ctx.lineWidth = 3;
-  organism.connections.forEach((connection, index) => {
-    // コアと最初のノードの接続
-    if (index === 0 && organism.nodes[0]) {
-      ctx.beginPath();
-      ctx.moveTo(organism.core.position.x, organism.core.position.y);
-      ctx.lineTo(organism.nodes[0].position.x, organism.nodes[0].position.y);
-      ctx.stroke();
-    }
-    // ノード間の接続
-    else if (index > 0 && organism.nodes[index] && organism.nodes[index - 1]) {
-      ctx.beginPath();
-      ctx.moveTo(
-        organism.nodes[index - 1].position.x,
-        organism.nodes[index - 1].position.y
-      );
-      ctx.lineTo(
-        organism.nodes[index].position.x,
-        organism.nodes[index].position.y
-      );
-      ctx.stroke();
-    }
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = 0.6; // 線を少し透明に
+
+  // コアから各ノードへの線を描画
+  organism.nodes.forEach((node) => {
+    ctx.beginPath();
+    ctx.moveTo(organism.core.position.x, organism.core.position.y);
+    ctx.lineTo(node.position.x, node.position.y);
+    ctx.stroke();
   });
+
+  // ノード間の環状接続を描画
+  ctx.lineWidth = 1.5;
+  ctx.globalAlpha = 0.4; // より薄く
+  for (let i = 0; i < organism.nodes.length; i++) {
+    const nextIndex = (i + 1) % organism.nodes.length;
+    const currentNode = organism.nodes[i];
+    const nextNode = organism.nodes[nextIndex];
+
+    ctx.beginPath();
+    ctx.moveTo(currentNode.position.x, currentNode.position.y);
+    ctx.lineTo(nextNode.position.x, nextNode.position.y);
+    ctx.stroke();
+  }
+
+  ctx.globalAlpha = organism.alive ? 1 : 0.3; // 透明度を戻す
 
   // コア（中心球）を描画
   drawOrganismHead(

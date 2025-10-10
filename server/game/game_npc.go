@@ -129,8 +129,3 @@ func (g *Game) calculateDirectionToTarget(from, to models.Position) *utils.Direc
 		}
 	}
 }
-
-// NPCは方向制限を削除（加速度ベースでは不要）
-// func (g *Game) isValidDirection(player *models.Player, newDir utils.Direction) bool {
-//	return true
-// }

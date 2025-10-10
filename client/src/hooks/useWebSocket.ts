@@ -5,6 +5,7 @@ import type {
   DirectionMessage, 
   AccelerationMessage,
   StopMovementMessage,
+  MouseMoveMessage,
   Direction,
   WebSocketMessage,
   GameConfig,
@@ -25,6 +26,7 @@ interface UseWebSocketReturn {
   playerId: string;
   sendDirection: (direction: Direction) => void;
   sendAcceleration: (x: number, y: number) => void;
+  sendMouseMove: (x: number, y: number) => void;
   sendStopMovement: () => void;
   isConnecting: boolean;
   gameConfig: GameConfig;
@@ -151,6 +153,20 @@ export const useWebSocket = ({
     websocket.send(JSON.stringify(accelerationMessage));
   }, []);
 
+  // マウス位置送信（マウス追従移動用）
+  const sendMouseMove = useCallback((x: number, y: number) => {
+    const websocket = wsRef.current;
+    if (!websocket || websocket.readyState !== WebSocket.OPEN) return;
+
+    const mouseMessage: MouseMoveMessage = {
+      type: 'mouseMove',
+      x,
+      y
+    };
+    
+    websocket.send(JSON.stringify(mouseMessage));
+  }, []);
+
   // 移動停止メッセージの送信
   const sendStopMovement = useCallback(() => {
     const websocket = wsRef.current;
@@ -168,6 +184,7 @@ export const useWebSocket = ({
     playerId,
     sendDirection,
     sendAcceleration,
+    sendMouseMove,
     sendStopMovement,
     isConnecting,
     gameConfig,

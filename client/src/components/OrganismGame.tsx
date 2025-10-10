@@ -75,6 +75,7 @@ const OrganismGame: React.FC = () => {
             gameState={gameState}
             playerId={playerId}
             gameConfig={gameConfig}
+            onMouseMove={sendAcceleration}
           />
 
           {/* オーバーレイUI */}

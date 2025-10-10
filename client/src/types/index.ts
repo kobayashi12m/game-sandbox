@@ -68,6 +68,12 @@ export interface StopMovementMessage extends WebSocketMessage {
   type: 'stopMovement';
 }
 
+export interface MouseMoveMessage extends WebSocketMessage {
+  type: 'mouseMove';
+  x: number;
+  y: number;
+}
+
 export interface GameJoinedMessage extends WebSocketMessage {
   type: 'gameJoined';
   playerId: string;

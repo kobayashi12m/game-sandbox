@@ -92,7 +92,7 @@ func (g *Game) Update(deltaTime float64) {
 					dy := head.Y - food.Position.Y
 					dist := dx*dx + dy*dy
 
-					if dist < (utils.SNAKE_RADIUS+utils.FOOD_RADIUS)*(utils.SNAKE_RADIUS+utils.FOOD_RADIUS) {
+					if dist < (utils.ORGANISM_RADIUS+utils.FOOD_RADIUS)*(utils.ORGANISM_RADIUS+utils.FOOD_RADIUS) {
 						// 食べ物をポインタで直接削除
 						g.RemoveFood(food)
 						// 球体構造を成長させる
@@ -104,13 +104,23 @@ func (g *Game) Update(deltaTime float64) {
 				return
 			}
 
-			// 他の球体構造との衝突（セグメント同士の物理的反発）
+			// 他の球体構造との衝突（コア＋全ノード）
+			// コアの衝突チェック
 			head := player.Organism.Core.Position
 			collidedPlayer := g.spatialGrid.CheckCollisionAt(head, player)
 
 			if collidedPlayer != nil {
 				// 死亡処理はせず、物理的反発のみ
 				g.applyCollisionRepulsion(player, collidedPlayer, head)
+			}
+
+			// 各ノードの衝突チェック
+			for _, node := range player.Organism.Nodes {
+				collidedPlayerFromNode := g.spatialGrid.CheckCollisionAt(node.Position, player)
+				if collidedPlayerFromNode != nil {
+					// ノード位置での反発
+					g.applyCollisionRepulsion(player, collidedPlayerFromNode, node.Position)
+				}
 			}
 
 			// 食べ物との衝突判定（空間分割で直接チェック）
