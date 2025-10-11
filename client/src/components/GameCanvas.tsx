@@ -51,7 +51,24 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
       const canvas = canvasRef.current;
       if (!canvas) return;
 
-      const handleMouseMove = (event: MouseEvent) => {
+      let animationFrameId: number | null = null;
+      let pendingMouseEvent: MouseEvent | null = null;
+      let lastSendTime = 0;
+      const SEND_INTERVAL = 33; // 約30fps（33ms間隔）
+
+      const processMouseMove = () => {
+        if (!pendingMouseEvent) return;
+
+        const now = Date.now();
+        if (now - lastSendTime < SEND_INTERVAL) {
+          // まだ送信間隔に達していない場合は次のフレームで再試行
+          animationFrameId = requestAnimationFrame(processMouseMove);
+          return;
+        }
+
+        const event = pendingMouseEvent;
+        pendingMouseEvent = null;
+        lastSendTime = now;
         const rect = canvas.getBoundingClientRect();
         const currentPlayer = gameState.players?.find((p) => p.id === playerId);
         const playerPosition = currentPlayer?.organism?.core?.position;
@@ -70,8 +87,9 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
         const dy = worldY - playerPosition.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // 一定距離以上離れている場合のみ移動
-        const minDistance = 150; // 最小距離
+        // 最小距離チェック（デッドゾーン） px
+        const minDistance = 150;
+
         if (distance > minDistance) {
           // 正規化された方向ベクトル
           const normalizedX = dx / distance;
@@ -84,8 +102,31 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
         }
       };
 
+      const handleMouseMove = (event: MouseEvent) => {
+        pendingMouseEvent = event;
+
+        if (!animationFrameId) {
+          animationFrameId = requestAnimationFrame(() => {
+            processMouseMove();
+            animationFrameId = null;
+          });
+        }
+      };
+
+      const handleMouseLeave = () => {
+        onMouseMove(0, 0); // マウスがウィンドウ外に出たら停止
+      };
+
       canvas.addEventListener("mousemove", handleMouseMove);
-      return () => canvas.removeEventListener("mousemove", handleMouseMove);
+      canvas.addEventListener("mouseleave", handleMouseLeave);
+
+      return () => {
+        canvas.removeEventListener("mousemove", handleMouseMove);
+        canvas.removeEventListener("mouseleave", handleMouseLeave);
+        if (animationFrameId) {
+          cancelAnimationFrame(animationFrameId);
+        }
+      };
     }, [gameState, playerId, canvasSize, onMouseMove]);
 
     useEffect(() => {

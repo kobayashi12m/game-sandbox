@@ -116,7 +116,7 @@ export const useGameInput = ({ onDirectionChange, onAccelerationChange, onMoveme
       window.removeEventListener('keyup', handleKeyUp);
       pressedDirections.current.clear();
     };
-  }, [onDirectionChange, onMovementStop, isEnabled]);
+  }, [onDirectionChange, onAccelerationChange, onMovementStop, isEnabled]);
 
   // タッチ・マウス入力の処理（TouchControlsから呼び出される）
   const handleTouchDirection = useCallback((direction: Direction) => {
