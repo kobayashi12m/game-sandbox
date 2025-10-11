@@ -3,13 +3,16 @@ package utils
 import "time"
 
 const (
-	FIELD_WIDTH     = 5000.0                // フィールドの幅（大幅拡大）
-	FIELD_HEIGHT    = 3000.0                // フィールドの高さ（大幅拡大）
-	ORGANISM_RADIUS = 15.0                  // オーガニズムの半径
-	FOOD_RADIUS     = 10.0                  // 食べ物の半径
-	ORGANISM_SPEED  = 300.0                 // オーガニズムの速度（ユニット/秒）
-	GAME_TICK       = 16 * time.Millisecond // ゲーム更新間隔（60FPS）
-	NPC_COUNT       = 100                   // デフォルトNPC数
+	FIELD_WIDTH          = 5000.0                // フィールドの幅
+	FIELD_HEIGHT         = 3000.0                // フィールドの高さ
+	ORGANISM_RADIUS      = 15.0                  // オーガニズムの半径
+	FOOD_RADIUS          = 10.0                  // 食べ物の半径
+	ORGANISM_SPEED       = 2000.0                // オーガニズムの速度（ユニット/秒）
+	ORGANISM_ACCEL_FORCE = 1000.0                // オーガニズムの加速力
+	AIR_RESISTANCE       = 0.98                  // 空気抵抗（非アクティブ時の減衰）
+	STOP_THRESHOLD_RATIO = 0.02                  // 停止閾値（最大速度の2%）
+	GAME_TICK            = 16 * time.Millisecond // ゲーム更新間隔（60FPS）
+	NPC_COUNT            = 50                    // デフォルトNPC数
 
 	// カリング設定
 	CULLING_WIDTH  = 1300.0 // カリング範囲の幅
@@ -19,12 +22,12 @@ const (
 	DISABLE_COLLISION = false // trueで当たり判定を無効化
 
 	// 物理シミュレーション定数
-	CONNECTION_STIFFNESS      = 50.0  // ばね定数（復元力の強さ）- 大幅強化
-	CONNECTION_DAMPING        = 1.5   // ダンピング係数（振動抑制）- 強化
+	CONNECTION_STIFFNESS      = 50.0  // ばね定数（復元力の強さ）
+	CONNECTION_DAMPING        = 1.5   // ダンピング係数（振動抑制）
 	CONNECTION_NATURAL_RATIO  = 4.0   // 自然長の倍率（半径の何倍か）
 	CONNECTION_MAX_RATIO      = 16.0  // 最大長の倍率（半径の何倍か）
-	RING_CONNECTION_STRENGTH  = 2.0   // 環状接続の強度 - 大幅強化
-	NODE_REPULSION_FORCE      = 200.0 // ノード間反発力 - 大幅強化
+	RING_CONNECTION_STRENGTH  = 2.0   // 環状接続の強度
+	NODE_REPULSION_FORCE      = 200.0 // ノード間反発力
 	ANGULAR_RESTORATION_FORCE = 30.0  // 角度復元力（絡まり防止）
 )
 

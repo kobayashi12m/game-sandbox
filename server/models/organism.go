@@ -115,7 +115,7 @@ func (o *OrganismBody) Reset() {
 	// 新しい移動システムのパラメータ
 	o.Acceleration = Position{X: 0, Y: 0}
 	o.MaxSpeed = utils.ORGANISM_SPEED
-	o.AccelForce = 800.0 // 加速力（距離による速度制御対応）
+	o.AccelForce = utils.ORGANISM_ACCEL_FORCE // 加速力
 	o.InputActive = false
 }
 
@@ -212,17 +212,24 @@ func (o *OrganismBody) updatePhysics(deltaTime float64) {
 	// 角度復元力を適用（絡まり防止）
 	o.applyAngularRestoration(deltaTime)
 
-	// 空気抵抗（キーを離した時の減速効果）
-	airResistance := 0.98
-	if !o.InputActive {
-		// キーが押されていない時は非常に強い抵抗（ほぼ即座に停止）
-		airResistance = 0.1
-	}
+	// 空気抵抗
+	airResistance := utils.AIR_RESISTANCE
 	o.Core.Velocity.X *= airResistance
 	o.Core.Velocity.Y *= airResistance
 	for i := range o.Nodes {
 		o.Nodes[i].Velocity.X *= airResistance
 		o.Nodes[i].Velocity.Y *= airResistance
+	}
+
+	// 低速時の停止判定（updatePhysics の最後で実行）
+	if !o.InputActive {
+		speed := math.Sqrt(o.Core.Velocity.X*o.Core.Velocity.X + o.Core.Velocity.Y*o.Core.Velocity.Y)
+		stopThreshold := o.MaxSpeed * utils.STOP_THRESHOLD_RATIO
+
+		if speed < stopThreshold {
+			o.Core.Velocity.X = 0
+			o.Core.Velocity.Y = 0
+		}
 	}
 }
 

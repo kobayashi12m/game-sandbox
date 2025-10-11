@@ -104,9 +104,13 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
           );
 
           onMouseMove(normalizedX * speedRatio, normalizedY * speedRatio);
+          lastWasInDeadZone = false;
         } else {
-          // 距離が近い場合は停止
-          onMouseMove(0, 0);
+          // デッドゾーンに入った時、一度だけ停止信号を送信
+          if (!lastWasInDeadZone) {
+            onMouseMove(0, 0);
+            lastWasInDeadZone = true;
+          }
         }
       };
 
@@ -121,16 +125,28 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
         }
       };
 
+      let hasLeftWindow = false;
+      let lastWasInDeadZone = false;
+
       const handleMouseLeave = () => {
-        onMouseMove(0, 0); // マウスがウィンドウ外に出たら停止
+        if (!hasLeftWindow) {
+          hasLeftWindow = true;
+          onMouseMove(0, 0); // マウスがウィンドウ外に出たら停止
+        }
+      };
+
+      const handleMouseEnter = () => {
+        hasLeftWindow = false;
       };
 
       canvas.addEventListener("mousemove", handleMouseMove);
       canvas.addEventListener("mouseleave", handleMouseLeave);
+      canvas.addEventListener("mouseenter", handleMouseEnter);
 
       return () => {
         canvas.removeEventListener("mousemove", handleMouseMove);
         canvas.removeEventListener("mouseleave", handleMouseLeave);
+        canvas.removeEventListener("mouseenter", handleMouseEnter);
         if (animationFrameId) {
           cancelAnimationFrame(animationFrameId);
         }

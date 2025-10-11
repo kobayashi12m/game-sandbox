@@ -72,7 +72,7 @@ func (g *Game) updateNPCDirections() {
 
 		// 新しい方向が決まった場合のみ変更
 		if newDirection != nil {
-			player.Organism.StartMoving(*newDirection)
+			player.Organism.SetAcceleration(newDirection.X, newDirection.Y)
 			player.LastDirectionChange = now
 		}
 	}
