@@ -105,16 +105,6 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 					conn.WriteJSON(stateMsg)
 				}()
 
-			case "changeDirection":
-				if player == nil || gameInstance == nil {
-					continue
-				}
-
-				direction, _ := msg["direction"].(string)
-				if newDir, ok := utils.DIRECTIONS[direction]; ok {
-					gameInstance.ChangePlayerDirection(playerID, newDir)
-				}
-
 			case "setAcceleration":
 				if player == nil || gameInstance == nil {
 					continue
@@ -125,13 +115,6 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 				if xOk && yOk {
 					gameInstance.SetPlayerAcceleration(playerID, x, y)
 				}
-
-			case "stopMovement":
-				if player == nil || gameInstance == nil {
-					continue
-				}
-
-				gameInstance.StopPlayerMovement(playerID)
 			}
 		}
 

@@ -87,15 +87,23 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
         const dy = worldY - playerPosition.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // 最小距離チェック（デッドゾーン） px
-        const minDistance = 150;
+        // 距離に応じた速度制御
+        const minDistance = 150; // デッドゾーン
+        const maxDistance = 400; // 最大速度に達する距離
 
         if (distance > minDistance) {
           // 正規化された方向ベクトル
           const normalizedX = dx / distance;
           const normalizedY = dy / distance;
 
-          onMouseMove(normalizedX, normalizedY);
+          // 距離に応じた速度倍率（0.1〜1.5）
+          const speedRatio = Math.min(
+            0.1 +
+              1.4 * ((distance - minDistance) / (maxDistance - minDistance)),
+            1.5
+          );
+
+          onMouseMove(normalizedX * speedRatio, normalizedY * speedRatio);
         } else {
           // 距離が近い場合は停止
           onMouseMove(0, 0);

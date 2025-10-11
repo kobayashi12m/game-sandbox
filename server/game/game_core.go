@@ -123,16 +123,6 @@ func (g *Game) ShouldStart() bool {
 	return false
 }
 
-// ChangePlayerDirection はプレイヤーの蛇の方向を変更する
-func (g *Game) ChangePlayerDirection(playerID string, direction utils.Direction) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	if player, exists := g.Players[playerID]; exists && player.Organism.Alive {
-		player.Organism.StartMoving(direction)
-	}
-}
-
 // SetPlayerAcceleration はプレイヤーの加速度を直接設定する（360度自由移動）
 func (g *Game) SetPlayerAcceleration(playerID string, x, y float64) {
 	g.mu.Lock()
@@ -140,16 +130,6 @@ func (g *Game) SetPlayerAcceleration(playerID string, x, y float64) {
 
 	if player, exists := g.Players[playerID]; exists && player.Organism.Alive {
 		player.Organism.SetAcceleration(x, y)
-	}
-}
-
-// StopPlayerMovement はプレイヤーの移動を停止する
-func (g *Game) StopPlayerMovement(playerID string) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	if player, exists := g.Players[playerID]; exists && player.Organism.Alive {
-		player.Organism.StopMoving()
 	}
 }
 

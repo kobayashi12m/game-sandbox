@@ -115,7 +115,7 @@ func (o *OrganismBody) Reset() {
 	// 新しい移動システムのパラメータ
 	o.Acceleration = Position{X: 0, Y: 0}
 	o.MaxSpeed = utils.ORGANISM_SPEED
-	o.AccelForce = 2000.0 // 加速力（きびきび動く）
+	o.AccelForce = 800.0 // 加速力（距離による速度制御対応）
 	o.InputActive = false
 }
 
@@ -264,25 +264,11 @@ func (o *OrganismBody) applyBoundaryCollision() {
 	}
 }
 
-// StartMoving は指定方向への移動を開始する（キー押下開始）
-func (o *OrganismBody) StartMoving(direction utils.Direction) {
-	o.Acceleration.X = direction.X * o.AccelForce
-	o.Acceleration.Y = direction.Y * o.AccelForce
-	o.InputActive = true
-}
-
 // SetAcceleration は加速度を直接設定する（360度自由移動用）
 func (o *OrganismBody) SetAcceleration(x, y float64) {
 	o.Acceleration.X = x * o.AccelForce
 	o.Acceleration.Y = y * o.AccelForce
-	o.InputActive = true
-}
-
-// StopMoving は移動を停止する（キー離した時）
-func (o *OrganismBody) StopMoving() {
-	o.Acceleration.X = 0
-	o.Acceleration.Y = 0
-	o.InputActive = false
+	o.InputActive = (x != 0 || y != 0)
 }
 
 // AddNode は新しいノードを追加する（成長時）- 原子構造を維持
