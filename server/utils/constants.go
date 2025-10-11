@@ -29,6 +29,10 @@ const (
 	RING_CONNECTION_STRENGTH  = 2.0   // 環状接続の強度
 	NODE_REPULSION_FORCE      = 200.0 // ノード間反発力
 	ANGULAR_RESTORATION_FORCE = 30.0  // 角度復元力（絡まり防止）
+	
+	// 衝突物理定数
+	COLLISION_RESTITUTION     = 0.3   // 反発係数（0-1、0は完全非弾性）
+	COLLISION_MIN_DISTANCE    = 2.0   // 最小衝突距離（半径の倍数）
 )
 
 // Direction represents movement direction (normalized vector)

@@ -139,33 +139,109 @@ func (g *Game) Update(deltaTime float64) {
 	g.GenerateFood()
 }
 
-// checkOrganismCollision は組織レベルでの統合衝突判定を行う
+// checkOrganismCollision は球体レベルでの個別衝突判定を行う
 func (g *Game) checkOrganismCollision(player *models.Player) {
-	// コア＋全ノードから衝突した相手プレイヤーを収集
-	collidedPlayers := make(map[string]*models.Player)
-	
-	// コアの衝突チェック
-	core := player.Organism.Core.Position
-	collidedPlayer := g.spatialGrid.CheckCollisionAt(core, player)
-	if collidedPlayer != nil {
-		collidedPlayers[collidedPlayer.ID] = collidedPlayer
+	// プレイヤーの全球体（Core + Nodes）
+	var playerSpheres []*models.PhysicsNode
+	playerSpheres = append(playerSpheres, player.Organism.Core)
+	for i := range player.Organism.Nodes {
+		playerSpheres = append(playerSpheres, player.Organism.Nodes[i])
 	}
 
-	// 各ノードの衝突チェック
-	for _, node := range player.Organism.Nodes {
-		collidedPlayerFromNode := g.spatialGrid.CheckCollisionAt(node.Position, player)
-		if collidedPlayerFromNode != nil {
-			collidedPlayers[collidedPlayerFromNode.ID] = collidedPlayerFromNode
+	// 各球体について衝突をチェック
+	for _, sphere := range playerSpheres {
+		collidedPlayer := g.spatialGrid.CheckCollisionAt(sphere.Position, player)
+		if collidedPlayer != nil {
+			// 衝突した相手プレイヤーの球体を特定
+			targetSphere := g.findCollidedSphere(sphere, collidedPlayer)
+			if targetSphere != nil {
+				// 個別の球体間で衝突処理
+				g.applySphereCollision(sphere, targetSphere)
+			}
 		}
-	}
-
-	// 衝突した各プレイヤーに対して1回だけ反発力を適用
-	for _, collidedPlayer := range collidedPlayers {
-		g.applyOrganismCollisionRepulsion(player, collidedPlayer)
 	}
 }
 
-// applyOrganismCollisionRepulsion は組織間の物理的反発を処理する（1回のみ）
+// findCollidedSphere は衝突している相手の球体を特定する
+func (g *Game) findCollidedSphere(sphere *models.PhysicsNode, targetPlayer *models.Player) *models.PhysicsNode {
+	// Core との衝突をチェック
+	dx := sphere.Position.X - targetPlayer.Organism.Core.Position.X
+	dy := sphere.Position.Y - targetPlayer.Organism.Core.Position.Y
+	dist := dx*dx + dy*dy
+	collisionDist := (sphere.Radius + targetPlayer.Organism.Core.Radius) * (sphere.Radius + targetPlayer.Organism.Core.Radius)
+	
+	if dist < collisionDist {
+		return targetPlayer.Organism.Core
+	}
+
+	// Nodes との衝突をチェック
+	for i := range targetPlayer.Organism.Nodes {
+		node := targetPlayer.Organism.Nodes[i]
+		dx = sphere.Position.X - node.Position.X
+		dy = sphere.Position.Y - node.Position.Y
+		dist = dx*dx + dy*dy
+		collisionDist = (sphere.Radius + node.Radius) * (sphere.Radius + node.Radius)
+		
+		if dist < collisionDist {
+			return node
+		}
+	}
+
+	return nil
+}
+
+// applySphereCollision は個別の球体間の衝突を処理する
+func (g *Game) applySphereCollision(sphere1, sphere2 *models.PhysicsNode) {
+	// 衝突方向ベクトルを計算
+	dx := sphere1.Position.X - sphere2.Position.X
+	dy := sphere1.Position.Y - sphere2.Position.Y
+	distance := math.Sqrt(dx*dx + dy*dy)
+
+	// 最小衝突距離をチェック
+	minDistance := sphere1.Radius + sphere2.Radius
+	if distance > 0 && distance < minDistance {
+		// 正規化された衝突方向
+		nx := dx / distance
+		ny := dy / distance
+
+		// 相対速度を計算
+		relVelX := sphere1.Velocity.X - sphere2.Velocity.X
+		relVelY := sphere1.Velocity.Y - sphere2.Velocity.Y
+
+		// 法線方向の相対速度
+		relVelNormal := relVelX*nx + relVelY*ny
+
+		// 接近している場合のみ衝突処理を適用
+		if relVelNormal > 0 {
+			// 衝突インパルスを計算
+			impulse := -(1 + utils.COLLISION_RESTITUTION) * relVelNormal / (1/sphere1.Mass + 1/sphere2.Mass)
+
+			// 各球体の速度変化を計算
+			deltaV1X := impulse * nx / sphere1.Mass
+			deltaV1Y := impulse * ny / sphere1.Mass
+			deltaV2X := -impulse * nx / sphere2.Mass
+			deltaV2Y := -impulse * ny / sphere2.Mass
+
+			// 速度を更新
+			sphere1.Velocity.X += deltaV1X
+			sphere1.Velocity.Y += deltaV1Y
+			sphere2.Velocity.X += deltaV2X
+			sphere2.Velocity.Y += deltaV2Y
+
+			// 位置分離（重なりを解消）
+			overlap := minDistance - distance
+			separationX := nx * overlap * 0.5
+			separationY := ny * overlap * 0.5
+
+			sphere1.Position.X += separationX
+			sphere1.Position.Y += separationY
+			sphere2.Position.X -= separationX
+			sphere2.Position.Y -= separationY
+		}
+	}
+}
+
+// applyOrganismCollisionRepulsion は組織間の物理的反発を処理する（物理法則に基づく）
 func (g *Game) applyOrganismCollisionRepulsion(player1, player2 *models.Player) {
 	// 両組織のコア間の方向を基準にする
 	core1 := player1.Organism.Core.Position
@@ -176,28 +252,51 @@ func (g *Game) applyOrganismCollisionRepulsion(player1, player2 *models.Player) 
 	dy := core1.Y - core2.Y
 	distance := math.Sqrt(dx*dx + dy*dy)
 
-	if distance > 0 {
-		// 正規化
+	// 最小衝突距離をチェック
+	minDistance := utils.ORGANISM_RADIUS * utils.COLLISION_MIN_DISTANCE
+	if distance > 0 && distance < minDistance {
+		// 正規化された衝突方向
 		nx := dx / distance
 		ny := dy / distance
 
-		// 反発力の強さ（距離に応じて調整）
-		minDistance := utils.ORGANISM_RADIUS * 2.0
-		repulsionForce := 30.0 // 以前より弱く設定
-		
-		// 距離が近いほど強い反発
-		if distance < minDistance {
-			repulsionForce *= (minDistance - distance) / minDistance
-			repulsionForce = math.Min(repulsionForce, 80.0) // 最大値制限
+		// 相対速度を計算
+		relVelX := player1.Organism.Core.Velocity.X - player2.Organism.Core.Velocity.X
+		relVelY := player1.Organism.Core.Velocity.Y - player2.Organism.Core.Velocity.Y
+
+		// 法線方向の相対速度
+		relVelNormal := relVelX*nx + relVelY*ny
+
+		// 接近している場合のみ衝突処理を適用
+		if relVelNormal > 0 {
+			// 質量（簡単のため同じ質量とする）
+			mass1 := player1.Organism.Core.Mass
+			mass2 := player2.Organism.Core.Mass
+
+			// 衝突インパルスを計算（物理法則に基づく）
+			impulse := -(1 + utils.COLLISION_RESTITUTION) * relVelNormal / (1/mass1 + 1/mass2)
+
+			// 各プレイヤーの速度変化を計算
+			deltaV1X := impulse * nx / mass1
+			deltaV1Y := impulse * ny / mass1
+			deltaV2X := -impulse * nx / mass2
+			deltaV2Y := -impulse * ny / mass2
+
+			// 速度を更新（加算ではなく物理的な速度変化）
+			player1.Organism.Core.Velocity.X += deltaV1X
+			player1.Organism.Core.Velocity.Y += deltaV1Y
+			player2.Organism.Core.Velocity.X += deltaV2X
+			player2.Organism.Core.Velocity.Y += deltaV2Y
+
+			// 位置分離（重なりを解消）
+			overlap := minDistance - distance
+			separationX := nx * overlap * 0.5
+			separationY := ny * overlap * 0.5
+
+			player1.Organism.Core.Position.X += separationX
+			player1.Organism.Core.Position.Y += separationY
+			player2.Organism.Core.Position.X -= separationX
+			player2.Organism.Core.Position.Y -= separationY
 		}
-
-		// プレイヤー1のコアに反発力を適用
-		player1.Organism.Core.Velocity.X += nx * repulsionForce
-		player1.Organism.Core.Velocity.Y += ny * repulsionForce
-
-		// プレイヤー2のコアに逆方向の反発力を適用
-		player2.Organism.Core.Velocity.X -= nx * repulsionForce
-		player2.Organism.Core.Velocity.Y -= ny * repulsionForce
 	}
 }
 

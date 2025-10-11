@@ -134,7 +134,7 @@ func (sg *SpatialGrid) CheckCollisionAt(position models.Position, excludePlayer 
 				dx := position.X - segment.X
 				dy := position.Y - segment.Y
 				dist := dx*dx + dy*dy
-				if dist < utils.ORGANISM_RADIUS*utils.ORGANISM_RADIUS*4 {
+				if dist < (utils.ORGANISM_RADIUS*2)*(utils.ORGANISM_RADIUS*2) {
 					result = player
 					return
 				}

@@ -73,8 +73,8 @@ func (o *OrganismBody) Reset() {
 		node := &PhysicsNode{
 			Position: Position{X: nodeX, Y: nodeY},
 			Velocity: Position{X: 0, Y: 0},
-			Radius:   utils.ORGANISM_RADIUS * 0.7,
-			Mass:     0.6,
+			Radius:   utils.ORGANISM_RADIUS,
+			Mass:     1.0,
 		}
 
 		// ノードをコアに接続
@@ -294,8 +294,8 @@ func (o *OrganismBody) AddNode() {
 	newNode := &PhysicsNode{
 		Position: Position{X: nodeX, Y: nodeY},
 		Velocity: Position{X: 0, Y: 0},
-		Radius:   utils.ORGANISM_RADIUS * 0.6,
-		Mass:     0.5,
+		Radius:   utils.ORGANISM_RADIUS,
+		Mass:     1.0,
 	}
 
 	// 新しいノードをコアに直接接続（原子構造）
