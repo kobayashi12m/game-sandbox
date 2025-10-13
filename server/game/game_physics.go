@@ -50,9 +50,9 @@ func (g *Game) Update(deltaTime float64) {
 			g.frameCount, len(g.Players), humanPlayers, deadPlayers, len(g.Food), totalSegments, maxOrganismLength, minOrganismLength)
 	}
 
-	// 全ての球体構造を移動
+	// 全ての天体システムの運動を更新
 	for _, player := range g.Players {
-		player.Organism.Move(deltaTime)
+		player.Organism.UpdateMotion(deltaTime)
 	}
 
 	// 空間分割グリッドを毎フレーム更新
@@ -92,7 +92,7 @@ func (g *Game) Update(deltaTime float64) {
 					dy := core.Y - food.Position.Y
 					dist := dx*dx + dy*dy
 
-					if dist < (utils.ORGANISM_RADIUS+utils.FOOD_RADIUS)*(utils.ORGANISM_RADIUS+utils.FOOD_RADIUS) {
+					if dist < (utils.SPHERE_RADIUS+utils.FOOD_RADIUS)*(utils.SPHERE_RADIUS+utils.FOOD_RADIUS) {
 						// 食べ物をポインタで直接削除
 						g.RemoveFood(food)
 						// 球体構造を成長させる
@@ -142,7 +142,7 @@ func (g *Game) Update(deltaTime float64) {
 // checkOrganismCollision は球体レベルでの個別衝突判定を行う
 func (g *Game) checkOrganismCollision(player *models.Player) {
 	// プレイヤーの全球体（Core + Nodes）
-	var playerSpheres []*models.PhysicsNode
+	var playerSpheres []*models.Sphere
 	playerSpheres = append(playerSpheres, player.Organism.Core)
 	for i := range player.Organism.Nodes {
 		playerSpheres = append(playerSpheres, player.Organism.Nodes[i])
@@ -163,13 +163,13 @@ func (g *Game) checkOrganismCollision(player *models.Player) {
 }
 
 // findCollidedSphere は衝突している相手の球体を特定する
-func (g *Game) findCollidedSphere(sphere *models.PhysicsNode, targetPlayer *models.Player) *models.PhysicsNode {
+func (g *Game) findCollidedSphere(sphere *models.Sphere, targetPlayer *models.Player) *models.Sphere {
 	// Core との衝突をチェック
 	dx := sphere.Position.X - targetPlayer.Organism.Core.Position.X
 	dy := sphere.Position.Y - targetPlayer.Organism.Core.Position.Y
 	dist := dx*dx + dy*dy
 	collisionDist := (sphere.Radius + targetPlayer.Organism.Core.Radius) * (sphere.Radius + targetPlayer.Organism.Core.Radius)
-	
+
 	if dist < collisionDist {
 		return targetPlayer.Organism.Core
 	}
@@ -181,7 +181,7 @@ func (g *Game) findCollidedSphere(sphere *models.PhysicsNode, targetPlayer *mode
 		dy = sphere.Position.Y - node.Position.Y
 		dist = dx*dx + dy*dy
 		collisionDist = (sphere.Radius + node.Radius) * (sphere.Radius + node.Radius)
-		
+
 		if dist < collisionDist {
 			return node
 		}
@@ -191,7 +191,7 @@ func (g *Game) findCollidedSphere(sphere *models.PhysicsNode, targetPlayer *mode
 }
 
 // applySphereCollision は個別の球体間の衝突を処理する
-func (g *Game) applySphereCollision(sphere1, sphere2 *models.PhysicsNode) {
+func (g *Game) applySphereCollision(sphere1, sphere2 *models.Sphere) {
 	// 衝突方向ベクトルを計算
 	dx := sphere1.Position.X - sphere2.Position.X
 	dy := sphere1.Position.Y - sphere2.Position.Y
@@ -253,7 +253,7 @@ func (g *Game) applyOrganismCollisionRepulsion(player1, player2 *models.Player) 
 	distance := math.Sqrt(dx*dx + dy*dy)
 
 	// 最小衝突距離をチェック
-	minDistance := utils.ORGANISM_RADIUS * utils.COLLISION_MIN_DISTANCE
+	minDistance := utils.SPHERE_RADIUS * utils.COLLISION_MIN_DISTANCE
 	if distance > 0 && distance < minDistance {
 		// 正規化された衝突方向
 		nx := dx / distance

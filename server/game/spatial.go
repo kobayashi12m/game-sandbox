@@ -22,7 +22,7 @@ type GridCell struct {
 // NewSpatialGrid は新しい空間分割グリッドを作成する
 func NewSpatialGrid() *SpatialGrid {
 	// セルサイズを蛇の半径の4倍に設定（効率的な衝突判定のため）
-	cellSize := utils.ORGANISM_RADIUS * 4.0
+	cellSize := utils.SPHERE_RADIUS * 4.0
 	width := int(utils.FIELD_WIDTH/cellSize) + 1
 	height := int(utils.FIELD_HEIGHT/cellSize) + 1
 
@@ -134,7 +134,7 @@ func (sg *SpatialGrid) CheckCollisionAt(position models.Position, excludePlayer 
 				dx := position.X - segment.X
 				dy := position.Y - segment.Y
 				dist := dx*dx + dy*dy
-				if dist < (utils.ORGANISM_RADIUS*2)*(utils.ORGANISM_RADIUS*2) {
+				if dist < (utils.SPHERE_RADIUS*2)*(utils.SPHERE_RADIUS*2) {
 					result = player
 					return
 				}
@@ -158,7 +158,7 @@ func (sg *SpatialGrid) CheckFoodCollisionAt(position models.Position) *models.Fo
 			dx := position.X - food.Position.X
 			dy := position.Y - food.Position.Y
 			dist := dx*dx + dy*dy
-			if dist < (utils.ORGANISM_RADIUS+utils.FOOD_RADIUS)*(utils.ORGANISM_RADIUS+utils.FOOD_RADIUS) {
+			if dist < (utils.SPHERE_RADIUS+utils.FOOD_RADIUS)*(utils.SPHERE_RADIUS+utils.FOOD_RADIUS) {
 				result = food
 				return
 			}
@@ -239,7 +239,7 @@ func (sg *SpatialGrid) IsPositionOccupiedOptimized(pos models.Position) bool {
 				dx := segment.X - pos.X
 				dy := segment.Y - pos.Y
 				dist := dx*dx + dy*dy
-				if dist < (utils.ORGANISM_RADIUS+utils.FOOD_RADIUS)*(utils.ORGANISM_RADIUS+utils.FOOD_RADIUS) {
+				if dist < (utils.SPHERE_RADIUS+utils.FOOD_RADIUS)*(utils.SPHERE_RADIUS+utils.FOOD_RADIUS) {
 					occupied = true
 					return
 				}

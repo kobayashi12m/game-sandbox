@@ -20,10 +20,10 @@ type Food struct {
 
 // Player はゲーム内のプレイヤーを表す
 type Player struct {
-	ID                  string        `json:"id"`
-	Name                string        `json:"name"`
-	Organism            *OrganismBody `json:"organism"`
-	Score               int           `json:"score"`
+	ID                  string           `json:"id"`
+	Name                string           `json:"name"`
+	Organism            *CelestialSystem `json:"organism"`
+	Score               int              `json:"score"`
 	Conn                *websocket.Conn
 	IsNPC               bool       `json:"-"` // NPCかどうかのフラグ
 	LastDirectionChange time.Time  `json:"-"` // 最後に方向を変えた時刻
@@ -46,10 +46,10 @@ type GridLine struct {
 
 // PlayerState はクライアント同期用のプレイヤーデータを表す
 type PlayerState struct {
-	ID       string        `json:"id"`
-	Name     string        `json:"name"`
-	Organism *OrganismBody `json:"organism"`
-	Score    int           `json:"score"`
+	ID       string           `json:"id"`
+	Name     string           `json:"name"`
+	Organism *CelestialSystem `json:"organism"`
+	Score    int              `json:"score"`
 }
 
 // ScoreInfo はスコアボード用の軽量プレイヤー情報を表す
@@ -68,11 +68,11 @@ type ScoreUpdate struct {
 
 // GameConfig はゲームの設定を表す
 type GameConfig struct {
-	FieldWidth     float64    `json:"fieldWidth"`
-	FieldHeight    float64    `json:"fieldHeight"`
-	OrganismRadius float64    `json:"organismRadius"`
-	FoodRadius     float64    `json:"foodRadius"`
-	CullingWidth   float64    `json:"cullingWidth"`
-	CullingHeight  float64    `json:"cullingHeight"`
-	GridLines      []GridLine `json:"gridLines,omitempty"` // SpatialGrid可視化用
+	FieldWidth    float64    `json:"fieldWidth"`
+	FieldHeight   float64    `json:"fieldHeight"`
+	SphereRadius  float64    `json:"sphereRadius"`
+	FoodRadius    float64    `json:"foodRadius"`
+	CullingWidth  float64    `json:"cullingWidth"`
+	CullingHeight float64    `json:"cullingHeight"`
+	GridLines     []GridLine `json:"gridLines,omitempty"` // SpatialGrid可視化用
 }

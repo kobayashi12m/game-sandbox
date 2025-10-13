@@ -32,7 +32,7 @@ func (g *Game) AddPlayer(id, name string, conn *websocket.Conn) {
 	colors := []string{"#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#DDA0DD", "#F4A460"}
 	color := colors[len(g.Players)%len(colors)]
 
-	organism := &models.OrganismBody{
+	organism := &models.CelestialSystem{
 		Color: color,
 	}
 	organism.Reset()

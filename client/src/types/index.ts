@@ -5,26 +5,27 @@ export interface Position {
   y: number;
 }
 
-// 物理ノード（球）
-export interface PhysicsNode {
+// 球体の物理特性
+export interface Sphere {
   position: Position;
   velocity: Position;
   radius: number;
   mass: number;
 }
 
-// 接続（線/制約）
-export interface Connection {
-  restLength: number;
-  stiffness: number;
-  damping: number;
+// 軌道上を回転する衛星
+export interface Satellite {
+  node: Sphere;
+  angle: number;
+  orbitalSpeed: number;
+  radius: number;
 }
 
-// 球体構造
-export interface OrganismBody {
-  core: PhysicsNode;
-  nodes: PhysicsNode[];
-  connections: Connection[];
+// 核と衛星からなる天体システム
+export interface CelestialSystem {
+  core: Sphere;
+  nodes: Sphere[];
+  satellites: Satellite[];
   color: string;
   alive: boolean;
 }
@@ -32,7 +33,7 @@ export interface OrganismBody {
 export interface Player {
   id: string;
   name: string;
-  organism: OrganismBody;
+  organism: CelestialSystem;
   score: number;
 }
 
@@ -110,7 +111,7 @@ export interface GridLine {
 export interface GameConfig {
   fieldWidth: number;
   fieldHeight: number;
-  organismRadius: number;
+  sphereRadius: number;
   foodRadius: number;
   cullingWidth: number;
   cullingHeight: number;
@@ -129,7 +130,7 @@ export type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 export const DEFAULT_GAME_CONFIG: GameConfig = {
   fieldWidth: 600,
   fieldHeight: 600,
-  organismRadius: 7.5,
+  sphereRadius: 7.5,
   foodRadius: 5,
   cullingWidth: 1300,
   cullingHeight: 800,

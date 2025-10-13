@@ -285,7 +285,7 @@ const drawGame = (
           head.y >= minY &&
           head.y <= maxY
         ) {
-          drawOrganism(ctx, player, player.id === playerId);
+          drawCelestialSystem(ctx, player, player.id === playerId);
         }
       }
     });
@@ -372,26 +372,29 @@ const drawFood = (
 };
 
 // 球体構造の描画
-const drawOrganism = (
+const drawCelestialSystem = (
   ctx: CanvasRenderingContext2D,
   player: Player,
   isCurrentPlayer: boolean
 ) => {
-  const organism = player.organism;
+  const celestialSystem = player.organism;
 
-  // 死んでいる球体構造は半透明に
-  ctx.globalAlpha = organism.alive ? 1 : 0.3;
-  ctx.fillStyle = organism.color;
+  // 死んでいる天体システムは半透明に
+  ctx.globalAlpha = celestialSystem.alive ? 1 : 0.3;
+  ctx.fillStyle = celestialSystem.color;
 
-  // 接続（線）を先に描画 - 原子構造（コアから各ノードへの放射状＋ノード間環状）
-  ctx.strokeStyle = organism.color;
+  // 軌道を先に描画 - 核から各衛星への放射状線
+  ctx.strokeStyle = celestialSystem.color;
   ctx.lineWidth = 2;
   ctx.globalAlpha = 0.6; // 線を少し透明に
 
   // コアから各ノードへの線を描画
-  organism.nodes.forEach((node) => {
+  celestialSystem.nodes.forEach((node) => {
     ctx.beginPath();
-    ctx.moveTo(organism.core.position.x, organism.core.position.y);
+    ctx.moveTo(
+      celestialSystem.core.position.x,
+      celestialSystem.core.position.y
+    );
     ctx.lineTo(node.position.x, node.position.y);
     ctx.stroke();
   });
@@ -399,10 +402,10 @@ const drawOrganism = (
   // ノード間の環状接続を描画
   ctx.lineWidth = 1.5;
   ctx.globalAlpha = 0.4; // より薄く
-  for (let i = 0; i < organism.nodes.length; i++) {
-    const nextIndex = (i + 1) % organism.nodes.length;
-    const currentNode = organism.nodes[i];
-    const nextNode = organism.nodes[nextIndex];
+  for (let i = 0; i < celestialSystem.nodes.length; i++) {
+    const nextIndex = (i + 1) % celestialSystem.nodes.length;
+    const currentNode = celestialSystem.nodes[i];
+    const nextNode = celestialSystem.nodes[nextIndex];
 
     ctx.beginPath();
     ctx.moveTo(currentNode.position.x, currentNode.position.y);
@@ -410,32 +413,37 @@ const drawOrganism = (
     ctx.stroke();
   }
 
-  ctx.globalAlpha = organism.alive ? 1 : 0.3; // 透明度を戻す
+  ctx.globalAlpha = celestialSystem.alive ? 1 : 0.3; // 透明度を戻す
 
   // コア（中心球）を描画
-  drawOrganismHead(
+  drawCoreHead(
     ctx,
-    organism.core.position,
-    organism.core.radius,
-    organism.color,
+    celestialSystem.core.position,
+    celestialSystem.core.radius,
+    celestialSystem.color,
     isCurrentPlayer
   );
 
   // ノード（周辺球）を描画
-  organism.nodes.forEach((node) => {
+  celestialSystem.nodes.forEach((node) => {
     ctx.beginPath();
     ctx.arc(node.position.x, node.position.y, node.radius, 0, 2 * Math.PI);
     ctx.fill();
   });
 
   // プレイヤー名を描画
-  drawPlayerName(ctx, player.name, organism.core.position, isCurrentPlayer);
+  drawPlayerName(
+    ctx,
+    player.name,
+    celestialSystem.core.position,
+    isCurrentPlayer
+  );
 
   ctx.globalAlpha = 1;
 };
 
 // 球体構造の頭部（コア）の描画
-const drawOrganismHead = (
+const drawCoreHead = (
   ctx: CanvasRenderingContext2D,
   position: Position,
   radius: number,
