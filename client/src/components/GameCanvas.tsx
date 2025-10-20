@@ -71,7 +71,7 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
         lastSendTime = now;
         const rect = canvas.getBoundingClientRect();
         const currentPlayer = gameState.players?.find((p) => p.id === playerId);
-        const playerPosition = currentPlayer?.organism?.core?.position;
+        const playerPosition = currentPlayer?.celestial?.core?.position;
 
         if (!playerPosition) return;
 
@@ -182,7 +182,7 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
           const playerCount = gameState.players?.length || 0;
           const totalSegments =
             gameState.players?.reduce(
-              (sum, p) => sum + (p.organism?.nodes?.length || 0) + 1, // コア + ノード
+              (sum, p) => sum + (p.celestial?.nodes?.length || 0) + 1, // コア + ノード
               0
             ) || 0;
           const foodCount = gameState.food?.length || 0;
@@ -227,7 +227,7 @@ const drawGame = (
 ) => {
   // プレイヤーの位置を取得
   const currentPlayer = gameState.players?.find((p) => p.id === playerId);
-  const playerPosition = currentPlayer?.organism?.core?.position;
+  const playerPosition = currentPlayer?.celestial?.core?.position;
 
   // カメラの中心位置を計算
   const cameraX = playerPosition ? playerPosition.x - canvasSize.width / 2 : 0;
@@ -275,8 +275,8 @@ const drawGame = (
 
     gameState.players.forEach((player) => {
       // プレイヤーが画面範囲内にいるかチェック
-      if (player.organism?.core?.position) {
-        const head = player.organism.core.position;
+      if (player.celestial?.core?.position) {
+        const head = player.celestial.core.position;
 
         // 頭が画面範囲内にあるかチェック
         if (
@@ -377,7 +377,7 @@ const drawCelestialSystem = (
   player: Player,
   isCurrentPlayer: boolean
 ) => {
-  const celestialSystem = player.organism;
+  const celestialSystem = player.celestial;
 
   // 死んでいる天体システムは半透明に
   ctx.globalAlpha = celestialSystem.alive ? 1 : 0.3;
@@ -541,10 +541,10 @@ const drawUI = (
   ctx.font = "bold 18px Arial";
   ctx.textAlign = "left";
   ctx.fillText(`Score: ${currentPlayer.score}`, 20, 35);
-  ctx.fillText(`Length: ${currentPlayer.organism.nodes.length + 1}`, 20, 55);
+  ctx.fillText(`Length: ${currentPlayer.celestial.nodes.length + 1}`, 20, 55);
 
   // 死んでいる場合はDEAD表示
-  if (!currentPlayer.organism.alive) {
+  if (!currentPlayer.celestial.alive) {
     ctx.fillStyle = "#ff4444";
     ctx.font = "bold 20px Arial";
     ctx.fillText("DEAD", 20, 80);
@@ -618,8 +618,8 @@ const drawMinimap = (
   ctx.strokeRect(mapX, mapY, mapSize, mapSize);
 
   // プレイヤーの位置を表示
-  if (currentPlayer.organism.core) {
-    const head = currentPlayer.organism.core.position;
+  if (currentPlayer.celestial.core) {
+    const head = currentPlayer.celestial.core.position;
     const playerX = mapX + (head.x / 5000) * mapSize;
     const playerY = mapY + (head.y / 3000) * mapSize;
 

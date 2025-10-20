@@ -32,17 +32,17 @@ func (g *Game) AddPlayer(id, name string, conn *websocket.Conn) {
 	colors := []string{"#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#DDA0DD", "#F4A460"}
 	color := colors[len(g.Players)%len(colors)]
 
-	organism := &models.CelestialSystem{
+	celestial := &models.Celestial{
 		Color: color,
 	}
-	organism.Reset()
+	celestial.Reset()
 
 	player := &models.Player{
-		ID:       id,
-		Name:     name,
-		Organism: organism,
-		Score:    0,
-		Conn:     conn,
+		ID:        id,
+		Name:      name,
+		Celestial: celestial,
+		Score:     0,
+		Conn:      conn,
 	}
 
 	g.Players[id] = player
@@ -105,7 +105,6 @@ func (g *Game) ShouldStart() bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	// 人間プレイヤーが1人以上いて、ゲームが開始されていない場合
 	humanPlayers := 0
 	for _, player := range g.Players {
 		if !player.IsNPC {
@@ -113,6 +112,7 @@ func (g *Game) ShouldStart() bool {
 		}
 	}
 
+	// 人間プレイヤーが1人以上いて、ゲームが開始されていない場合
 	if humanPlayers >= 1 && !g.Running {
 		g.Running = true
 		g.GenerateFood()
@@ -128,8 +128,8 @@ func (g *Game) SetPlayerAcceleration(playerID string, x, y float64) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	if player, exists := g.Players[playerID]; exists && player.Organism.Alive {
-		player.Organism.SetAcceleration(x, y)
+	if player, exists := g.Players[playerID]; exists && player.Celestial.Alive {
+		player.Celestial.SetAcceleration(x, y)
 	}
 }
 

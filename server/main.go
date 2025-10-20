@@ -20,6 +20,6 @@ func main() {
 	http.Handle("/", fs)
 
 	// Start server
-	log.Println("Organism game server running on :8081")
+	log.Println("game server running on :8081")
 	log.Fatal(http.ListenAndServe(":8081", nil))
 }

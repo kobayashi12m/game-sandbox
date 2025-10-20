@@ -19,13 +19,13 @@ func (g *Game) GetState() models.GameState {
 	players := make([]models.PlayerState, 0, len(g.Players))
 	for _, p := range g.Players {
 		// 元のデータを変更しないよう球体構造のコピーを作成
-		organismCopy := *p.Organism
+		celestialCopy := *p.Celestial
 
 		players = append(players, models.PlayerState{
-			ID:       p.ID,
-			Name:     p.Name,
-			Organism: &organismCopy,
-			Score:    p.Score,
+			ID:        p.ID,
+			Name:      p.Name,
+			Celestial: &celestialCopy,
+			Score:     p.Score,
 		})
 	}
 	// Food を Position に変換
@@ -56,15 +56,15 @@ func (g *Game) GetOptimizedState(clientPlayerID string, clientX, clientY, viewWi
 
 	players := make([]models.PlayerState, 0, len(areaResult.Players))
 	for _, p := range areaResult.Players {
-		if p.Organism.Core != nil {
+		if p.Celestial.Core != nil {
 			// 元のデータを変更しないよう球体構造のコピーを作成
-			organismCopy := *p.Organism
+			celestialCopy := *p.Celestial
 
 			players = append(players, models.PlayerState{
-				ID:       p.ID,
-				Name:     p.Name,
-				Organism: &organismCopy,
-				Score:    p.Score,
+				ID:        p.ID,
+				Name:      p.Name,
+				Celestial: &celestialCopy,
+				Score:     p.Score,
 			})
 		}
 	}
@@ -91,8 +91,8 @@ func (g *Game) GetScoreboard() []models.ScoreInfo {
 			ID:    p.ID,
 			Name:  p.Name,
 			Score: p.Score,
-			Alive: p.Organism.Alive,
-			Color: p.Organism.Color,
+			Alive: p.Celestial.Alive,
+			Color: p.Celestial.Color,
 		})
 	}
 
@@ -162,7 +162,7 @@ func (g *Game) BroadcastOptimized() {
 		}
 
 		// プレイヤーの位置を取得（死んでいても送信を続ける）
-		if player.Organism.Core == nil {
+		if player.Celestial.Core == nil {
 			continue
 		}
 
@@ -172,7 +172,7 @@ func (g *Game) BroadcastOptimized() {
 
 	// スナップショットを使って各プレイヤーに送信（デッドロック回避）
 	for _, player := range playerList {
-		head := player.Organism.Core.Position
+		head := player.Celestial.Core.Position
 		// constants.goからカリング範囲を取得
 		viewWidth := utils.CULLING_WIDTH
 		viewHeight := utils.CULLING_HEIGHT

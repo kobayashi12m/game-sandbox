@@ -21,7 +21,7 @@ type GridCell struct {
 
 // NewSpatialGrid は新しい空間分割グリッドを作成する
 func NewSpatialGrid() *SpatialGrid {
-	// セルサイズを蛇の半径の4倍に設定（効率的な衝突判定のため）
+	// セルサイズの設定
 	cellSize := utils.SPHERE_RADIUS * 4.0
 	width := int(utils.FIELD_WIDTH/cellSize) + 1
 	height := int(utils.FIELD_HEIGHT/cellSize) + 1
@@ -127,7 +127,7 @@ func (sg *SpatialGrid) CheckCollisionAt(position models.Position, excludePlayer 
 			return
 		}
 		for player, segments := range cell.playerSegments {
-			if player == excludePlayer || !player.Organism.Alive {
+			if player == excludePlayer || !player.Celestial.Alive {
 				continue
 			}
 			for _, segment := range segments {

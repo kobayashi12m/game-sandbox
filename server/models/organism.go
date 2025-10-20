@@ -16,24 +16,24 @@ type Sphere struct {
 	Mass         float64  `json:"-"` // 質量
 }
 
-// Satellite は軌道上を回転する衛星を表す
-type Satellite struct {
+// Orbit は軌道を表す
+type Orbit struct {
 	Node         *Sphere `json:"-"`            // 球体（JSON送信不要）
 	Angle        float64 `json:"angle"`        // 現在の角度（ラジアン）
 	OrbitalSpeed float64 `json:"orbitalSpeed"` // 軌道速度（ラジアン/秒）
 	Radius       float64 `json:"radius"`       // 軌道半径
 }
 
-// CelestialSystem は核と衛星からなる天体システムを表す
-type CelestialSystem struct {
-	Core       *Sphere      `json:"core"`       // 中心球
-	Nodes      []*Sphere    `json:"nodes"`      // 周辺球
-	Satellites []*Satellite `json:"satellites"` // 衛星情報
-	Color      string       `json:"color"`
-	Alive      bool         `json:"alive"`
-	Growing    int          `json:"-"`
-	Respawning bool         `json:"-"`
-	DeathTime  time.Time    `json:"-"`
+// Celestial は核と衛星からなる天体システムを表す
+type Celestial struct {
+	Core       *Sphere   `json:"core"`       // 中心球
+	Satellites []*Sphere `json:"nodes"`      // 周辺球
+	Orbits     []*Orbit  `json:"satellites"` // 衛星情報
+	Color      string    `json:"color"`
+	Alive      bool      `json:"alive"`
+	Growing    int       `json:"-"`
+	Respawning bool      `json:"-"`
+	DeathTime  time.Time `json:"-"`
 
 	// 移動システム用
 	MaxSpeed    float64 `json:"-"` // 最大速度
@@ -42,7 +42,7 @@ type CelestialSystem struct {
 }
 
 // Reset は天体システムを初期状態に初期化する
-func (o *CelestialSystem) Reset() {
+func (o *Celestial) Reset() {
 	// フィールド内のランダムな位置にスポーン
 	startX := rand.Float64()*(utils.FIELD_WIDTH-100) + 50
 	startY := rand.Float64()*(utils.FIELD_HEIGHT-100) + 50
@@ -57,8 +57,8 @@ func (o *CelestialSystem) Reset() {
 	}
 
 	// 初期ノード（衛星構造：コアの周りに4個を軌道上に配置）
-	o.Nodes = []*Sphere{}
-	o.Satellites = []*Satellite{}
+	o.Satellites = []*Sphere{}
+	o.Orbits = []*Orbit{}
 
 	// コアの周りに4個のノードを軌道上に配置
 	nodeCount := 4
@@ -83,15 +83,15 @@ func (o *CelestialSystem) Reset() {
 		}
 
 		// 軌道情報を作成
-		satellite := &Satellite{
+		satellite := &Orbit{
 			Node:         node,
 			Angle:        angle,
 			OrbitalSpeed: utils.ORBITAL_SPEED,
 			Radius:       orbitalRadius,
 		}
 
-		o.Nodes = append(o.Nodes, node)
-		o.Satellites = append(o.Satellites, satellite)
+		o.Satellites = append(o.Satellites, node)
+		o.Orbits = append(o.Orbits, satellite)
 	}
 
 	o.Growing = 0
@@ -105,7 +105,7 @@ func (o *CelestialSystem) Reset() {
 }
 
 // UpdateMotion は天体システムの運動を更新する
-func (o *CelestialSystem) UpdateMotion(deltaTime float64) {
+func (o *Celestial) UpdateMotion(deltaTime float64) {
 	if !o.Alive {
 		return
 	}
@@ -132,7 +132,7 @@ func (o *CelestialSystem) UpdateMotion(deltaTime float64) {
 }
 
 // updateOrbitalMotion は軌道運動シミュレーションを実行する
-func (o *CelestialSystem) updateOrbitalMotion(deltaTime float64) {
+func (o *Celestial) updateOrbitalMotion(deltaTime float64) {
 	// コアの速度と位置を更新
 	o.Core.Velocity.X += o.Core.Acceleration.X * deltaTime
 	o.Core.Velocity.Y += o.Core.Acceleration.Y * deltaTime
@@ -140,7 +140,7 @@ func (o *CelestialSystem) updateOrbitalMotion(deltaTime float64) {
 	o.Core.Position.Y += o.Core.Velocity.Y * deltaTime
 
 	// 各衛星の軌道を更新（核の動きとは独立）
-	for i, satellite := range o.Satellites {
+	for i, satellite := range o.Orbits {
 		node := satellite.Node
 
 		// 軌道角度を更新（一定速度で回転）
@@ -166,7 +166,7 @@ func (o *CelestialSystem) updateOrbitalMotion(deltaTime float64) {
 		node.Velocity.X = tangentX + o.Core.Velocity.X*utils.ORBITAL_VELOCITY_INHERITANCE
 		node.Velocity.Y = tangentY + o.Core.Velocity.Y*utils.ORBITAL_VELOCITY_INHERITANCE
 
-		o.Nodes[i] = node
+		o.Satellites[i] = node
 	}
 
 	// 球体間の衝突処理
@@ -187,7 +187,7 @@ func (o *CelestialSystem) updateOrbitalMotion(deltaTime float64) {
 }
 
 // applyBoundaryCollision はフィールド境界での衝突処理を適用
-func (o *CelestialSystem) applyBoundaryCollision() {
+func (o *Celestial) applyBoundaryCollision() {
 	// コアの境界衝突処理
 	if o.Core.Position.X-o.Core.Radius < 0 {
 		o.Core.Position.X = o.Core.Radius
@@ -208,14 +208,14 @@ func (o *CelestialSystem) applyBoundaryCollision() {
 }
 
 // SetAcceleration は加速度を直接設定する（360度自由移動用）
-func (o *CelestialSystem) SetAcceleration(x, y float64) {
+func (o *Celestial) SetAcceleration(x, y float64) {
 	o.Core.Acceleration.X = x * o.AccelForce
 	o.Core.Acceleration.Y = y * o.AccelForce
 	o.InputActive = (x != 0 || y != 0)
 }
 
 // AddSatellite は新しい衛星を追加する（成長時）
-func (o *CelestialSystem) AddSatellite() {
+func (o *Celestial) AddSatellite() {
 	// 軌道半径を取得
 	orbitalRadius := utils.SPHERE_RADIUS * utils.ORBITAL_RADIUS_RATIO
 
@@ -240,26 +240,26 @@ func (o *CelestialSystem) AddSatellite() {
 	}
 
 	// 新しい軌道ノードを作成
-	newSatellite := &Satellite{
+	newSatellite := &Orbit{
 		Node:         newNode,
 		Angle:        angle,
 		OrbitalSpeed: utils.ORBITAL_SPEED,
 		Radius:       orbitalRadius,
 	}
 
-	o.Nodes = append(o.Nodes, newNode)
-	o.Satellites = append(o.Satellites, newSatellite)
+	o.Satellites = append(o.Satellites, newNode)
+	o.Orbits = append(o.Orbits, newSatellite)
 }
 
 // handleSphereCollisions は球体間の衝突処理を行う
-func (o *CelestialSystem) handleSphereCollisions(deltaTime float64) {
+func (o *Celestial) handleSphereCollisions(deltaTime float64) {
 	minDistance := utils.SPHERE_RADIUS * 2.0 // 衝突距離（球同士が接触する距離）
 
 	// 全ノードペアについて衝突をチェック
-	for i := 0; i < len(o.Nodes); i++ {
-		for j := i + 1; j < len(o.Nodes); j++ {
-			nodeA := o.Nodes[i]
-			nodeB := o.Nodes[j]
+	for i := 0; i < len(o.Satellites); i++ {
+		for j := i + 1; j < len(o.Satellites); j++ {
+			nodeA := o.Satellites[i]
+			nodeB := o.Satellites[j]
 
 			// 距離を計算
 			dx := nodeB.Position.X - nodeA.Position.X

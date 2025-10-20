@@ -66,7 +66,7 @@ const OrganismGame: React.FC = () => {
   };
 
   return (
-    <div className="organism-game">
+    <div className="celestial-game">
       {/* ゲームコンテンツ */}
       {isConnected ? (
         <div className="game-container">
@@ -123,7 +123,7 @@ const OrganismGame: React.FC = () => {
         </div>
       ) : hasInitiallyConnected ? (
         <div className="waiting-screen">
-          <h2>🔵 Organism Game</h2>
+          <h2>🔵 celestial Game</h2>
           <p>
             接続が切断されました。再接続ボタンを押してゲームに復帰してください
           </p>
@@ -137,7 +137,7 @@ const OrganismGame: React.FC = () => {
         </div>
       ) : (
         <div className="waiting-screen">
-          <h2>🔵 Organism Game</h2>
+          <h2>🔵 celestial Game</h2>
           <p>ゲームに接続中...</p>
         </div>
       )}

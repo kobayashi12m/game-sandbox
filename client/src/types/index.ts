@@ -33,7 +33,7 @@ export interface CelestialSystem {
 export interface Player {
   id: string;
   name: string;
-  organism: CelestialSystem;
+  celestial: CelestialSystem;
   score: number;
 }
 

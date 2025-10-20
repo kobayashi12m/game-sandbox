@@ -20,10 +20,10 @@ type Food struct {
 
 // Player はゲーム内のプレイヤーを表す
 type Player struct {
-	ID                  string           `json:"id"`
-	Name                string           `json:"name"`
-	Organism            *CelestialSystem `json:"organism"`
-	Score               int              `json:"score"`
+	ID                  string     `json:"id"`
+	Name                string     `json:"name"`
+	Celestial           *Celestial `json:"celestial"`
+	Score               int        `json:"score"`
 	Conn                *websocket.Conn
 	IsNPC               bool       `json:"-"` // NPCかどうかのフラグ
 	LastDirectionChange time.Time  `json:"-"` // 最後に方向を変えた時刻
@@ -46,10 +46,10 @@ type GridLine struct {
 
 // PlayerState はクライアント同期用のプレイヤーデータを表す
 type PlayerState struct {
-	ID       string           `json:"id"`
-	Name     string           `json:"name"`
-	Organism *CelestialSystem `json:"organism"`
-	Score    int              `json:"score"`
+	ID        string     `json:"id"`
+	Name      string     `json:"name"`
+	Celestial *Celestial `json:"celestial"`
+	Score     int        `json:"score"`
 }
 
 // ScoreInfo はスコアボード用の軽量プレイヤー情報を表す

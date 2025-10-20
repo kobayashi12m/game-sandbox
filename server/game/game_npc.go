@@ -46,7 +46,7 @@ func (g *Game) updateNPCDirections() {
 	now := time.Now()
 
 	for _, player := range g.Players {
-		if !player.IsNPC || !player.Organism.Alive {
+		if !player.IsNPC || !player.Celestial.Alive {
 			continue
 		}
 
@@ -56,12 +56,12 @@ func (g *Game) updateNPCDirections() {
 		}
 
 		// 食べ物に向かう行動を優先
-		targetFood := g.findNearestFood(player.Organism.Core.Position)
+		targetFood := g.findNearestFood(player.Celestial.Core.Position)
 
 		var newDirection *utils.Direction
 
 		if targetFood != nil && rand.Float64() < 0.7 { // 70%の確率で食べ物に向かう
-			newDirection = g.calculateDirectionToTarget(player.Organism.Core.Position, *targetFood)
+			newDirection = g.calculateDirectionToTarget(player.Celestial.Core.Position, *targetFood)
 		} else if rand.Float64() < 0.3 { // 30%の確率でランダムに方向変更
 			directions := []string{"UP", "DOWN", "LEFT", "RIGHT"}
 			randomDir := directions[rand.Intn(len(directions))]
@@ -72,7 +72,7 @@ func (g *Game) updateNPCDirections() {
 
 		// 新しい方向が決まった場合のみ変更
 		if newDirection != nil {
-			player.Organism.SetAcceleration(newDirection.X, newDirection.Y)
+			player.Celestial.SetAcceleration(newDirection.X, newDirection.Y)
 			player.LastDirectionChange = now
 		}
 	}
