@@ -5,8 +5,8 @@ import (
 	"log"
 	"sort"
 
-	"chess-mmo/server/models"
-	"chess-mmo/server/utils"
+	"game-sandbox/server/models"
+	"game-sandbox/server/utils"
 
 	"github.com/gorilla/websocket"
 )

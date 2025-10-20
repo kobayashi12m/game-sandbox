@@ -4,9 +4,9 @@ import (
 	"log"
 	"net/http"
 
-	"chess-mmo/server/game"
-	"chess-mmo/server/models"
-	"chess-mmo/server/utils"
+	"game-sandbox/server/game"
+	"game-sandbox/server/models"
+	"game-sandbox/server/utils"
 
 	"github.com/gorilla/websocket"
 )

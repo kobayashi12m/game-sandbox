@@ -4,8 +4,8 @@ import (
 	"log"
 	"math/rand/v2"
 
-	"chess-mmo/server/models"
-	"chess-mmo/server/utils"
+	"game-sandbox/server/models"
+	"game-sandbox/server/utils"
 )
 
 // GenerateFood はゲームフィールドに食べ物を生成する

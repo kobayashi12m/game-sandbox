@@ -1,8 +1,8 @@
 package game
 
 import (
-	"chess-mmo/server/models"
-	"chess-mmo/server/utils"
+	"game-sandbox/server/models"
+	"game-sandbox/server/utils"
 	"log"
 	"math"
 	"math/rand"

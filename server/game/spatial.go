@@ -1,8 +1,8 @@
 package game
 
 import (
-	"chess-mmo/server/models"
-	"chess-mmo/server/utils"
+	"game-sandbox/server/models"
+	"game-sandbox/server/utils"
 )
 
 // SpatialGrid はゲームフィールドを格子状に分割して効率的な当たり判定を行う

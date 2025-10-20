@@ -1,4 +1,4 @@
-module chess-mmo/server
+module game-sandbox/server
 
 go 1.24.6
 

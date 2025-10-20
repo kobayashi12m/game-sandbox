@@ -5,8 +5,8 @@ import (
 	"math"
 	"time"
 
-	"chess-mmo/server/models"
-	"chess-mmo/server/utils"
+	"game-sandbox/server/models"
+	"game-sandbox/server/utils"
 )
 
 // Update はゲームの1ティックを処理する

@@ -1,9 +1,9 @@
 package game
 
 import (
+	"game-sandbox/server/models"
+	"game-sandbox/server/utils"
 	"sync"
-	"chess-mmo/server/models"
-	"chess-mmo/server/utils"
 )
 
 // Hub は複数のゲームルームを管理する
@@ -23,22 +23,22 @@ func NewHub() *Hub {
 func (h *Hub) GetOrCreateGame(roomID string) *Game {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	
+
 	if game, exists := h.games[roomID]; exists {
 		return game
 	}
-	
+
 	game := &Game{
 		ID:          roomID,
 		Players:     make(map[string]*models.Player),
 		Running:     false,
-		NPCCount:    utils.NPC_COUNT, // constants.goから取得
+		NPCCount:    utils.NPC_COUNT,  // constants.goから取得
 		spatialGrid: NewSpatialGrid(), // 空間分割グリッドを初期化
 	}
-	
+
 	// NPCを追加
 	game.AddNPC(game.NPCCount)
-	
+
 	h.games[roomID] = game
 	return h.games[roomID]
 }

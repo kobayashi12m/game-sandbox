@@ -1,7 +1,7 @@
 package models
 
 import (
-	"chess-mmo/server/utils"
+	"game-sandbox/server/utils"
 	"math"
 	"math/rand/v2"
 	"time"

@@ -4,8 +4,8 @@ import (
 	"log"
 	"net/http"
 
-	"chess-mmo/server/game"
-	"chess-mmo/server/handlers"
+	"game-sandbox/server/game"
+	"game-sandbox/server/handlers"
 )
 
 func main() {
