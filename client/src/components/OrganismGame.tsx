@@ -3,6 +3,7 @@ import "./OrganismGame.css";
 import TouchControls from "./TouchControls";
 import GameCanvas from "./GameCanvas";
 import Scoreboard from "./Scoreboard";
+import { VectorDisplay } from "./VectorDisplay";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { useGameInput } from "../hooks/useGameInput";
 
@@ -113,6 +114,27 @@ const OrganismGame: React.FC = () => {
                 currentPlayerId={playerId}
                 roomId={roomId}
               />
+            </div>
+
+            {/* ベクトル表示（左下） */}
+            <div className="vector-display-overlay">
+              {gameState &&
+                playerId &&
+                (() => {
+                  const currentPlayer = gameState.players.find(
+                    (p) => p.id === playerId
+                  );
+                  if (currentPlayer?.celestial?.core) {
+                    return (
+                      <VectorDisplay
+                        velocity={currentPlayer.celestial.core.velocity}
+                        acceleration={currentPlayer.celestial.core.acceleration}
+                        maxSpeed={500}
+                      />
+                    );
+                  }
+                  return null;
+                })()}
             </div>
           </div>
 

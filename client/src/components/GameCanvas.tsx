@@ -96,11 +96,11 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
           const normalizedX = dx / distance;
           const normalizedY = dy / distance;
 
-          // 距離に応じた速度倍率（0.1〜1.5）
+          // 距離に応じた速度倍率
           const speedRatio = Math.min(
             0.1 +
-              1.4 * ((distance - minDistance) / (maxDistance - minDistance)),
-            1.5
+              0.9 * ((distance - minDistance) / (maxDistance - minDistance)),
+            1.0
           );
 
           onMouseMove(normalizedX * speedRatio, normalizedY * speedRatio);

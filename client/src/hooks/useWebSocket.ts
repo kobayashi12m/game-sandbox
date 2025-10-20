@@ -4,7 +4,6 @@ import type {
   JoinMessage, 
   DirectionMessage, 
   AccelerationMessage,
-  StopMovementMessage,
   MouseMoveMessage,
   Direction,
   WebSocketMessage,
@@ -167,17 +166,10 @@ export const useWebSocket = ({
     websocket.send(JSON.stringify(mouseMessage));
   }, []);
 
-  // 移動停止メッセージの送信
+  // 移動停止メッセージの送信（加速度を0,0にする）
   const sendStopMovement = useCallback(() => {
-    const websocket = wsRef.current;
-    if (!websocket || websocket.readyState !== WebSocket.OPEN) return;
-
-    const stopMessage: StopMovementMessage = {
-      type: 'stopMovement'
-    };
-    
-    websocket.send(JSON.stringify(stopMessage));
-  }, []);
+    sendAcceleration(0, 0);
+  }, [sendAcceleration]);
 
   return {
     gameState,

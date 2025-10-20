@@ -60,6 +60,12 @@ func (g *Game) GetOptimizedState(clientPlayerID string, clientX, clientY, viewWi
 			// 元のデータを変更しないよう球体構造のコピーを作成
 			celestialCopy := *p.Celestial
 
+			// 自分以外のプレイヤーの速度・加速度情報はクリア
+			if p.ID != clientPlayerID {
+				celestialCopy.Core.Velocity = models.Position{}
+				celestialCopy.Core.Acceleration = models.Position{}
+			}
+
 			players = append(players, models.PlayerState{
 				ID:        p.ID,
 				Name:      p.Name,

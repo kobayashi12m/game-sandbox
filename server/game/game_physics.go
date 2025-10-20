@@ -27,7 +27,7 @@ func (g *Game) Update(deltaTime float64) {
 		deadPlayers := 0
 
 		for _, player := range g.Players {
-			segments := len(player.Celestial.Satellites) + 1 // コア + ノード
+			segments := player.Celestial.GetTotalSatelliteCount() + 1 // コア + ノード
 			totalSegments += segments
 
 			if !player.IsNPC {
@@ -80,44 +80,22 @@ func (g *Game) Update(deltaTime float64) {
 				return
 			}
 
-			// プレイヤー（人間）の当たり判定をスキップ
-			if !player.IsNPC && utils.DISABLE_COLLISION {
-				// 食べ物との衝突判定のみ実行
-				core := player.Celestial.Core.Position
-				nearbyFood := g.spatialGrid.GetNearbyFoodSafe(core)
+			// プレイヤーとの衝突判定をスキップするかどうか
+			skipPlayerCollision := !player.IsNPC && utils.DISABLE_COLLISION
 
-				for _, food := range nearbyFood {
-					// コアと食べ物の距離をチェック
-					dx := core.X - food.Position.X
-					dy := core.Y - food.Position.Y
-					dist := dx*dx + dy*dy
-
-					if dist < (utils.SPHERE_RADIUS+utils.FOOD_RADIUS)*(utils.SPHERE_RADIUS+utils.FOOD_RADIUS) {
-						// 食べ物をポインタで直接削除
-						g.RemoveFood(food)
-						// 球体構造を成長させる
-						player.Celestial.Growing = 3
-						player.Score += 10
-						return
-					}
-				}
-				return
+			// 他プレイヤーとの衝突判定
+			if !skipPlayerCollision {
+				g.checkOrganismCollision(player)
 			}
 
-			// 他の球体構造との衝突（組織レベルでの統合衝突判定）
-			g.checkOrganismCollision(player)
-
-			// 食べ物との衝突判定（空間分割で直接チェック）
+			// 食べ物との衝突判定
 			core := player.Celestial.Core.Position
 			collidedFood := g.spatialGrid.CheckFoodCollisionAt(core)
 
 			if collidedFood != nil {
-				// 食べ物をポインタで直接削除
 				g.RemoveFood(collidedFood)
-				// 球体構造を成長させる
 				player.Celestial.Growing = 3
 				player.Score += 10
-				return
 			}
 		}()
 	}
@@ -141,12 +119,10 @@ func (g *Game) Update(deltaTime float64) {
 
 // checkOrganismCollision は球体レベルでの個別衝突判定を行う
 func (g *Game) checkOrganismCollision(player *models.Player) {
-	// プレイヤーの全球体（Core + Nodes）
+	// プレイヤーの全球体（Core + Satellites）
 	var playerSpheres []*models.Sphere
 	playerSpheres = append(playerSpheres, player.Celestial.Core)
-	for i := range player.Celestial.Satellites {
-		playerSpheres = append(playerSpheres, player.Celestial.Satellites[i])
-	}
+	playerSpheres = append(playerSpheres, player.Celestial.GetAllSpheres()...)
 
 	// 各球体について衝突をチェック
 	for _, sphere := range playerSpheres {
@@ -174,9 +150,9 @@ func (g *Game) findCollidedSphere(sphere *models.Sphere, targetPlayer *models.Pl
 		return targetPlayer.Celestial.Core
 	}
 
-	// Nodes との衝突をチェック
-	for i := range targetPlayer.Celestial.Satellites {
-		node := targetPlayer.Celestial.Satellites[i]
+	// Satellites との衝突をチェック
+	satellites := targetPlayer.Celestial.GetAllSpheres()
+	for _, node := range satellites {
 		dx = sphere.Position.X - node.Position.X
 		dy = sphere.Position.Y - node.Position.Y
 		dist = dx*dx + dy*dy
@@ -241,65 +217,6 @@ func (g *Game) applySphereCollision(sphere1, sphere2 *models.Sphere) {
 	}
 }
 
-// applyOrganismCollisionRepulsion は組織間の物理的反発を処理する（物理法則に基づく）
-func (g *Game) applyOrganismCollisionRepulsion(player1, player2 *models.Player) {
-	// 両組織のコア間の方向を基準にする
-	core1 := player1.Celestial.Core.Position
-	core2 := player2.Celestial.Core.Position
-
-	// 衝突方向ベクトルを計算
-	dx := core1.X - core2.X
-	dy := core1.Y - core2.Y
-	distance := math.Sqrt(dx*dx + dy*dy)
-
-	// 最小衝突距離をチェック
-	minDistance := utils.SPHERE_RADIUS * utils.COLLISION_MIN_DISTANCE
-	if distance > 0 && distance < minDistance {
-		// 正規化された衝突方向
-		nx := dx / distance
-		ny := dy / distance
-
-		// 相対速度を計算
-		relVelX := player1.Celestial.Core.Velocity.X - player2.Celestial.Core.Velocity.X
-		relVelY := player1.Celestial.Core.Velocity.Y - player2.Celestial.Core.Velocity.Y
-
-		// 法線方向の相対速度
-		relVelNormal := relVelX*nx + relVelY*ny
-
-		// 接近している場合のみ衝突処理を適用
-		if relVelNormal > 0 {
-			// 質量（簡単のため同じ質量とする）
-			mass1 := player1.Celestial.Core.Mass
-			mass2 := player2.Celestial.Core.Mass
-
-			// 衝突インパルスを計算（物理法則に基づく）
-			impulse := -(1 + utils.COLLISION_RESTITUTION) * relVelNormal / (1/mass1 + 1/mass2)
-
-			// 各プレイヤーの速度変化を計算
-			deltaV1X := impulse * nx / mass1
-			deltaV1Y := impulse * ny / mass1
-			deltaV2X := -impulse * nx / mass2
-			deltaV2Y := -impulse * ny / mass2
-
-			// 速度を更新（加算ではなく物理的な速度変化）
-			player1.Celestial.Core.Velocity.X += deltaV1X
-			player1.Celestial.Core.Velocity.Y += deltaV1Y
-			player2.Celestial.Core.Velocity.X += deltaV2X
-			player2.Celestial.Core.Velocity.Y += deltaV2Y
-
-			// 位置分離（重なりを解消）
-			overlap := minDistance - distance
-			separationX := nx * overlap * 0.5
-			separationY := ny * overlap * 0.5
-
-			player1.Celestial.Core.Position.X += separationX
-			player1.Celestial.Core.Position.Y += separationY
-			player2.Celestial.Core.Position.X -= separationX
-			player2.Celestial.Core.Position.Y -= separationY
-		}
-	}
-}
-
 // UpdateSpatialGrid は空間分割グリッドを更新する
 func (g *Game) UpdateSpatialGrid() {
 	// グリッドをクリア
@@ -311,7 +228,7 @@ func (g *Game) UpdateSpatialGrid() {
 			// 球体構造の全ノードをグリッドに登録
 			var positions []models.Position
 			positions = append(positions, player.Celestial.Core.Position)
-			for _, node := range player.Celestial.Satellites {
+			for _, node := range player.Celestial.GetAllSpheres() {
 				positions = append(positions, node.Position)
 			}
 			g.spatialGrid.AddPlayerSegments(player, positions)

@@ -10,45 +10,55 @@ import (
 // Sphere は物理演算される球体を表す
 type Sphere struct {
 	Position     Position `json:"position"`
-	Velocity     Position `json:"velocity"`
-	Acceleration Position `json:"-"` // 加速度
+	Velocity     Position `json:"velocity,omitempty"`
+	Acceleration Position `json:"acceleration,omitempty"` // 加速度
 	Radius       float64  `json:"radius"`
 	Mass         float64  `json:"-"` // 質量
 }
 
-// Orbit は軌道を表す
-type Orbit struct {
-	Node         *Sphere `json:"-"`            // 球体（JSON送信不要）
-	Angle        float64 `json:"angle"`        // 現在の角度（ラジアン）
-	OrbitalSpeed float64 `json:"orbitalSpeed"` // 軌道速度（ラジアン/秒）
-	Radius       float64 `json:"radius"`       // 軌道半径
+// Satellite は衛星を表す
+type Satellite struct {
+	Sphere    *Sphere `json:"sphere"`    // 球体
+	OrbitType int     `json:"orbitType"` // 軌道番号（1=第1軌道、2=第2軌道...）
+	Angle     float64 `json:"angle"`     // 軌道上の角度
+}
+
+// OrbitConfig は軌道の設定
+type OrbitConfig struct {
+	Radius float64 // 軌道半径
+	Speed  float64 // 回転速度（ラジアン/秒）
 }
 
 // Celestial は核と衛星からなる天体システムを表す
 type Celestial struct {
-	Core       *Sphere   `json:"core"`       // 中心球
-	Satellites []*Sphere `json:"nodes"`      // 周辺球
-	Orbits     []*Orbit  `json:"satellites"` // 衛星情報
+	Core       *Sphere   `json:"core"`  // 中心球
+	Nodes      []*Sphere `json:"nodes"` // クライアント用（JSON送信時のみ）
 	Color      string    `json:"color"`
 	Alive      bool      `json:"alive"`
 	Growing    int       `json:"-"`
 	Respawning bool      `json:"-"`
 	DeathTime  time.Time `json:"-"`
 
-	// 移動システム用
-	MaxSpeed    float64 `json:"-"` // 最大速度
-	AccelForce  float64 `json:"-"` // 加速力
-	InputActive bool    `json:"-"` // 入力が有効かどうか
+	// 内部管理用（JSON送信されない）
+	Satellites   []*Satellite         `json:"-"` // 衛星
+	MaxSpeed     float64              `json:"-"` // 最大速度
+	AccelForce   float64              `json:"-"` // 加速力
+	OrbitConfigs map[int]*OrbitConfig `json:"-"` // 軌道設定
+}
+
+// UpdateNodes はJSON送信前にNodesフィールドを更新する
+func (c *Celestial) UpdateNodes() {
+	c.Nodes = c.GetAllSpheres()
 }
 
 // Reset は天体システムを初期状態に初期化する
-func (o *Celestial) Reset() {
+func (c *Celestial) Reset() {
 	// フィールド内のランダムな位置にスポーン
 	startX := rand.Float64()*(utils.FIELD_WIDTH-100) + 50
 	startY := rand.Float64()*(utils.FIELD_HEIGHT-100) + 50
 
 	// コア（中心球）を初期化
-	o.Core = &Sphere{
+	c.Core = &Sphere{
 		Position:     Position{X: startX, Y: startY},
 		Velocity:     Position{X: 0, Y: 0},
 		Acceleration: Position{X: 0, Y: 0},
@@ -56,25 +66,30 @@ func (o *Celestial) Reset() {
 		Mass:         1.0,
 	}
 
-	// 初期ノード（衛星構造：コアの周りに4個を軌道上に配置）
-	o.Satellites = []*Sphere{}
-	o.Orbits = []*Orbit{}
+	// 軌道設定を初期化
+	c.OrbitConfigs = map[int]*OrbitConfig{
+		1: {
+			Radius: utils.SPHERE_RADIUS * utils.ORBITAL_RADIUS_RATIO,
+			Speed:  utils.ORBITAL_SPEED,
+		},
+	}
 
-	// コアの周りに4個のノードを軌道上に配置
+	// 初期衛星を配置（第1軌道に4個）
+	c.Satellites = []*Satellite{}
 	nodeCount := 4
-	orbitalRadius := utils.SPHERE_RADIUS * utils.ORBITAL_RADIUS_RATIO
 
 	for i := 0; i < nodeCount; i++ {
 		angle := float64(i) * 2.0 * math.Pi / float64(nodeCount) // 等間隔で配置
+		orbitConfig := c.OrbitConfigs[1]
 
-		nodeX := startX + orbitalRadius*math.Cos(angle)
-		nodeY := startY + orbitalRadius*math.Sin(angle)
+		nodeX := startX + orbitConfig.Radius*math.Cos(angle)
+		nodeY := startY + orbitConfig.Radius*math.Sin(angle)
 
 		// 軌道接線方向の初期速度を計算
-		tangentVelX := -orbitalRadius * utils.ORBITAL_SPEED * math.Sin(angle)
-		tangentVelY := orbitalRadius * utils.ORBITAL_SPEED * math.Cos(angle)
+		tangentVelX := -orbitConfig.Radius * orbitConfig.Speed * math.Sin(angle)
+		tangentVelY := orbitConfig.Radius * orbitConfig.Speed * math.Cos(angle)
 
-		node := &Sphere{
+		sphere := &Sphere{
 			Position:     Position{X: nodeX, Y: nodeY},
 			Velocity:     Position{X: tangentVelX, Y: tangentVelY},
 			Acceleration: Position{X: 0, Y: 0},
@@ -82,156 +97,182 @@ func (o *Celestial) Reset() {
 			Mass:         0.5, // 衛星はコアより軽い
 		}
 
-		// 軌道情報を作成
-		satellite := &Orbit{
-			Node:         node,
-			Angle:        angle,
-			OrbitalSpeed: utils.ORBITAL_SPEED,
-			Radius:       orbitalRadius,
+		satellite := &Satellite{
+			Sphere:    sphere,
+			OrbitType: 1, // 第1軌道
+			Angle:     angle,
 		}
 
-		o.Satellites = append(o.Satellites, node)
-		o.Orbits = append(o.Orbits, satellite)
+		c.Satellites = append(c.Satellites, satellite)
 	}
 
-	o.Growing = 0
-	o.Alive = true
-	o.Respawning = false
+	c.Growing = 0
+	c.Alive = true
+	c.Respawning = false
 
 	// 天体システムの移動パラメータ
-	o.MaxSpeed = utils.CELESTIAL_SPEED
-	o.AccelForce = utils.CELESTIAL_ACCEL_FORCE // 加速力
-	o.InputActive = false
+	c.MaxSpeed = utils.CELESTIAL_SPEED
+	c.AccelForce = utils.CELESTIAL_ACCEL_FORCE // 加速力
+
+	// JSON用のNodesを更新
+	c.UpdateNodes()
 }
 
 // UpdateMotion は天体システムの運動を更新する
-func (o *Celestial) UpdateMotion(deltaTime float64) {
-	if !o.Alive {
+func (c *Celestial) UpdateMotion(deltaTime float64) {
+	if !c.Alive {
 		return
 	}
 
-	// 加速度ベースの移動システム
-	if o.InputActive {
-		// キーが押されている間は加速度を適用
-		o.Core.Velocity.X += o.Core.Acceleration.X * deltaTime
-		o.Core.Velocity.Y += o.Core.Acceleration.Y * deltaTime
-	}
+	// 1. コアの運動更新
+	c.updateCoreMotion(deltaTime)
 
-	// 最大速度制限
-	speed := math.Sqrt(o.Core.Velocity.X*o.Core.Velocity.X + o.Core.Velocity.Y*o.Core.Velocity.Y)
-	if speed > o.MaxSpeed {
-		o.Core.Velocity.X = (o.Core.Velocity.X / speed) * o.MaxSpeed
-		o.Core.Velocity.Y = (o.Core.Velocity.Y / speed) * o.MaxSpeed
-	}
+	// 2. 衛星の軌道更新
+	c.updateSatelliteOrbits(deltaTime)
 
-	// 全衛星の軌道運動シミュレーション
-	o.updateOrbitalMotion(deltaTime)
+	// 3. JSON用のNodesを更新
+	c.UpdateNodes()
 
-	// フィールド境界での衝突処理
-	o.applyBoundaryCollision()
+	// 4. 衝突処理
+	c.handleSphereCollisions(deltaTime)
+	c.applyBoundaryCollision()
 }
 
-// updateOrbitalMotion は軌道運動シミュレーションを実行する
-func (o *Celestial) updateOrbitalMotion(deltaTime float64) {
-	// コアの速度と位置を更新
-	o.Core.Velocity.X += o.Core.Acceleration.X * deltaTime
-	o.Core.Velocity.Y += o.Core.Acceleration.Y * deltaTime
-	o.Core.Position.X += o.Core.Velocity.X * deltaTime
-	o.Core.Position.Y += o.Core.Velocity.Y * deltaTime
+// updateCoreMotion はコアの運動のみを更新する
+func (c *Celestial) updateCoreMotion(deltaTime float64) {
+	// 加速度を速度に適用
+	c.Core.Velocity.X += c.Core.Acceleration.X * deltaTime
+	c.Core.Velocity.Y += c.Core.Acceleration.Y * deltaTime
 
-	// 各衛星の軌道を更新（核の動きとは独立）
-	for i, satellite := range o.Orbits {
-		node := satellite.Node
-
-		// 軌道角度を更新（一定速度で回転）
-		satellite.Angle += satellite.OrbitalSpeed * deltaTime
-
-		// 理想的な軌道位置を計算
-		idealX := o.Core.Position.X + satellite.Radius*math.Cos(satellite.Angle)
-		idealY := o.Core.Position.Y + satellite.Radius*math.Sin(satellite.Angle)
-
-		// 現在位置から理想位置への差
-		dx := idealX - node.Position.X
-		dy := idealY - node.Position.Y
-
-		// スムーズに理想位置に移動（強めの補正）
-		node.Position.X += dx * utils.ORBITAL_CORRECTION_STRENGTH
-		node.Position.Y += dy * utils.ORBITAL_CORRECTION_STRENGTH
-
-		// 軌道速度を計算（接線方向）
-		tangentX := -math.Sin(satellite.Angle) * satellite.Radius * satellite.OrbitalSpeed
-		tangentY := math.Cos(satellite.Angle) * satellite.Radius * satellite.OrbitalSpeed
-
-		// 核の速度を継承（核と一緒に移動する感じを出す）
-		node.Velocity.X = tangentX + o.Core.Velocity.X*utils.ORBITAL_VELOCITY_INHERITANCE
-		node.Velocity.Y = tangentY + o.Core.Velocity.Y*utils.ORBITAL_VELOCITY_INHERITANCE
-
-		o.Satellites[i] = node
+	// 最大速度制限
+	speed := math.Sqrt(c.Core.Velocity.X*c.Core.Velocity.X + c.Core.Velocity.Y*c.Core.Velocity.Y)
+	if speed > c.MaxSpeed {
+		c.Core.Velocity.X = (c.Core.Velocity.X / speed) * c.MaxSpeed
+		c.Core.Velocity.Y = (c.Core.Velocity.Y / speed) * c.MaxSpeed
 	}
 
-	// 球体間の衝突処理
-	o.handleSphereCollisions(deltaTime)
+	// 位置を更新
+	c.Core.Position.X += c.Core.Velocity.X * deltaTime
+	c.Core.Position.Y += c.Core.Velocity.Y * deltaTime
 
 	// 空気抵抗を適用
-	o.Core.Velocity.X *= utils.AIR_RESISTANCE
-	o.Core.Velocity.Y *= utils.AIR_RESISTANCE
+	c.Core.Velocity.X *= utils.AIR_RESISTANCE
+	c.Core.Velocity.Y *= utils.AIR_RESISTANCE
 
-	// 低速時の停止判定
-	if !o.InputActive {
-		speed := math.Sqrt(o.Core.Velocity.X*o.Core.Velocity.X + o.Core.Velocity.Y*o.Core.Velocity.Y)
-		if speed < o.MaxSpeed*utils.STOP_THRESHOLD_RATIO {
-			o.Core.Velocity.X = 0
-			o.Core.Velocity.Y = 0
+	// 低速時の停止判定（入力がない時のみ）
+	hasInput := c.Core.Acceleration.X != 0 || c.Core.Acceleration.Y != 0
+	if !hasInput {
+		speed := math.Sqrt(c.Core.Velocity.X*c.Core.Velocity.X + c.Core.Velocity.Y*c.Core.Velocity.Y)
+		if speed < c.MaxSpeed*utils.STOP_THRESHOLD_RATIO {
+			c.Core.Velocity.X = 0
+			c.Core.Velocity.Y = 0
 		}
 	}
 }
 
-// applyBoundaryCollision はフィールド境界での衝突処理を適用
-func (o *Celestial) applyBoundaryCollision() {
-	// コアの境界衝突処理
-	if o.Core.Position.X-o.Core.Radius < 0 {
-		o.Core.Position.X = o.Core.Radius
-		o.Core.Velocity.X = -o.Core.Velocity.X * 0.5 // 反発係数0.5
-	} else if o.Core.Position.X+o.Core.Radius >= utils.FIELD_WIDTH {
-		o.Core.Position.X = utils.FIELD_WIDTH - o.Core.Radius
-		o.Core.Velocity.X = -o.Core.Velocity.X * 0.5
+// updateSatelliteOrbits は衛星の軌道運動のみを更新する
+func (c *Celestial) updateSatelliteOrbits(deltaTime float64) {
+	for _, satellite := range c.Satellites {
+		// 軌道設定を取得
+		orbitConfig := c.GetOrbitConfig(satellite.OrbitType)
+
+		// 角度を更新
+		satellite.Angle += orbitConfig.Speed * deltaTime
+
+		// 理想的な軌道位置を計算
+		idealX := c.Core.Position.X + orbitConfig.Radius*math.Cos(satellite.Angle)
+		idealY := c.Core.Position.Y + orbitConfig.Radius*math.Sin(satellite.Angle)
+
+		// 現在位置から理想位置への差
+		dx := idealX - satellite.Sphere.Position.X
+		dy := idealY - satellite.Sphere.Position.Y
+
+		// スムーズに理想位置に移動（強めの補正）
+		satellite.Sphere.Position.X += dx * utils.ORBITAL_CORRECTION_STRENGTH
+		satellite.Sphere.Position.Y += dy * utils.ORBITAL_CORRECTION_STRENGTH
+
+		// 軌道速度を計算（接線方向）
+		tangentX := -math.Sin(satellite.Angle) * orbitConfig.Radius * orbitConfig.Speed
+		tangentY := math.Cos(satellite.Angle) * orbitConfig.Radius * orbitConfig.Speed
+
+		// 核の速度を継承（核と一緒に移動する感じを出す）
+		satellite.Sphere.Velocity.X = tangentX + c.Core.Velocity.X*utils.ORBITAL_VELOCITY_INHERITANCE
+		satellite.Sphere.Velocity.Y = tangentY + c.Core.Velocity.Y*utils.ORBITAL_VELOCITY_INHERITANCE
 	}
-	if o.Core.Position.Y-o.Core.Radius < 0 {
-		o.Core.Position.Y = o.Core.Radius
-		o.Core.Velocity.Y = -o.Core.Velocity.Y * 0.5
-	} else if o.Core.Position.Y+o.Core.Radius >= utils.FIELD_HEIGHT {
-		o.Core.Position.Y = utils.FIELD_HEIGHT - o.Core.Radius
-		o.Core.Velocity.Y = -o.Core.Velocity.Y * 0.5
+
+}
+
+// applyBoundaryCollision はフィールド境界での衝突処理を適用
+func (c *Celestial) applyBoundaryCollision() {
+	// コアの境界衝突処理
+	if c.Core.Position.X-c.Core.Radius < 0 {
+		c.Core.Position.X = c.Core.Radius
+		c.Core.Velocity.X = -c.Core.Velocity.X * 0.5 // 反発係数0.5
+	} else if c.Core.Position.X+c.Core.Radius >= utils.FIELD_WIDTH {
+		c.Core.Position.X = utils.FIELD_WIDTH - c.Core.Radius
+		c.Core.Velocity.X = -c.Core.Velocity.X * 0.5
+	}
+	if c.Core.Position.Y-c.Core.Radius < 0 {
+		c.Core.Position.Y = c.Core.Radius
+		c.Core.Velocity.Y = -c.Core.Velocity.Y * 0.5
+	} else if c.Core.Position.Y+c.Core.Radius >= utils.FIELD_HEIGHT {
+		c.Core.Position.Y = utils.FIELD_HEIGHT - c.Core.Radius
+		c.Core.Velocity.Y = -c.Core.Velocity.Y * 0.5
 	}
 
 	// ノードは軌道上で自動的に動くため、境界衝突処理は不要
 }
 
 // SetAcceleration は加速度を直接設定する（360度自由移動用）
-func (o *Celestial) SetAcceleration(x, y float64) {
-	o.Core.Acceleration.X = x * o.AccelForce
-	o.Core.Acceleration.Y = y * o.AccelForce
-	o.InputActive = (x != 0 || y != 0)
+func (c *Celestial) SetAcceleration(x, y float64) {
+	// 入力値を-1〜1の範囲に制限
+	if x > 1.0 {
+		x = 1.0
+	} else if x < -1.0 {
+		x = -1.0
+	}
+	if y > 1.0 {
+		y = 1.0
+	} else if y < -1.0 {
+		y = -1.0
+	}
+
+	// ベクトルの大きさが1を超えないように正規化
+	magnitude := math.Sqrt(x*x + y*y)
+	if magnitude > 1.0 {
+		x /= magnitude
+		y /= magnitude
+	}
+
+	c.Core.Acceleration.X = x * c.AccelForce
+	c.Core.Acceleration.Y = y * c.AccelForce
 }
 
 // AddSatellite は新しい衛星を追加する（成長時）
-func (o *Celestial) AddSatellite() {
-	// 軌道半径を取得
-	orbitalRadius := utils.SPHERE_RADIUS * utils.ORBITAL_RADIUS_RATIO
+func (c *Celestial) AddSatellite() {
+	// 第1軌道に追加（将来的には軌道選択ロジックを追加）
+	orbitType := 1
 
-	// ランダムな角度で新しいノードを追加
-	angle := rand.Float64() * 2.0 * math.Pi
+	// 軌道設定が存在しない場合は作成
+	if _, exists := c.OrbitConfigs[orbitType]; !exists {
+		c.AddOrbitType(orbitType, utils.SPHERE_RADIUS*utils.ORBITAL_RADIUS_RATIO, utils.ORBITAL_SPEED)
+	}
 
-	coreX := o.Core.Position.X
-	coreY := o.Core.Position.Y
-	nodeX := coreX + orbitalRadius*math.Cos(angle)
-	nodeY := coreY + orbitalRadius*math.Sin(angle)
+	orbitConfig := c.GetOrbitConfig(orbitType)
+
+	// 新しい衛星を作成
+	angle := rand.Float64() * 2.0 * math.Pi // ランダムな角度
+
+	coreX := c.Core.Position.X
+	coreY := c.Core.Position.Y
+	nodeX := coreX + orbitConfig.Radius*math.Cos(angle)
+	nodeY := coreY + orbitConfig.Radius*math.Sin(angle)
 
 	// 接線方向の初期速度を計算
-	tangentVelX := -orbitalRadius * utils.ORBITAL_SPEED * math.Sin(angle)
-	tangentVelY := orbitalRadius * utils.ORBITAL_SPEED * math.Cos(angle)
+	tangentVelX := -orbitConfig.Radius * orbitConfig.Speed * math.Sin(angle)
+	tangentVelY := orbitConfig.Radius * orbitConfig.Speed * math.Cos(angle)
 
-	newNode := &Sphere{
+	sphere := &Sphere{
 		Position:     Position{X: nodeX, Y: nodeY},
 		Velocity:     Position{X: tangentVelX, Y: tangentVelY},
 		Acceleration: Position{X: 0, Y: 0},
@@ -239,27 +280,30 @@ func (o *Celestial) AddSatellite() {
 		Mass:         0.5,
 	}
 
-	// 新しい軌道ノードを作成
-	newSatellite := &Orbit{
-		Node:         newNode,
-		Angle:        angle,
-		OrbitalSpeed: utils.ORBITAL_SPEED,
-		Radius:       orbitalRadius,
+	satellite := &Satellite{
+		Sphere:    sphere,
+		OrbitType: orbitType,
+		Angle:     angle,
 	}
 
-	o.Satellites = append(o.Satellites, newNode)
-	o.Orbits = append(o.Orbits, newSatellite)
+	c.Satellites = append(c.Satellites, satellite)
+
+	// JSON用のNodesを更新
+	c.UpdateNodes()
 }
 
 // handleSphereCollisions は球体間の衝突処理を行う
-func (o *Celestial) handleSphereCollisions(deltaTime float64) {
+func (c *Celestial) handleSphereCollisions(deltaTime float64) {
 	minDistance := utils.SPHERE_RADIUS * 2.0 // 衝突距離（球同士が接触する距離）
 
+	// 全衛星を取得
+	allSatellites := c.GetAllSpheres()
+
 	// 全ノードペアについて衝突をチェック
-	for i := 0; i < len(o.Satellites); i++ {
-		for j := i + 1; j < len(o.Satellites); j++ {
-			nodeA := o.Satellites[i]
-			nodeB := o.Satellites[j]
+	for i := 0; i < len(allSatellites); i++ {
+		for j := i + 1; j < len(allSatellites); j++ {
+			nodeA := allSatellites[i]
+			nodeB := allSatellites[j]
 
 			// 距離を計算
 			dx := nodeB.Position.X - nodeA.Position.X

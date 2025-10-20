@@ -8,7 +8,8 @@ export interface Position {
 // 球体の物理特性
 export interface Sphere {
   position: Position;
-  velocity: Position;
+  velocity?: Position;
+  acceleration?: Position;
   radius: number;
   mass: number;
 }

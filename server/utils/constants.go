@@ -8,7 +8,7 @@ const (
 	SPHERE_RADIUS         = 15.0                  // 球体の半径
 	FOOD_RADIUS           = 10.0                  // 食べ物の半径
 	CELESTIAL_SPEED       = 500.0                 // 天体システムの速度（ユニット/秒）
-	CELESTIAL_ACCEL_FORCE = 200.0                 // 天体システムの加速力
+	CELESTIAL_ACCEL_FORCE = 500.0                 // 天体システムの加速力
 	AIR_RESISTANCE        = 0.98                  // 空気抵抗（非アクティブ時の減衰）
 	STOP_THRESHOLD_RATIO  = 0.02                  // 停止閾値（最大速度の2%）
 	GAME_TICK             = 16 * time.Millisecond // ゲーム更新間隔（60FPS）

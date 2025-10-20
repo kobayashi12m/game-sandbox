@@ -216,6 +216,51 @@
   }
 }
 
+/* ベクトル表示のスタイル */
+.vector-display-overlay {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 3;
+}
+
+.vector-display {
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 15px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: monospace;
+  min-width: 200px;
+}
+
+.vector-info h3 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  color: #4ECDC4;
+}
+
+.vector-item {
+  margin-bottom: 10px;
+}
+
+.vector-label {
+  color: #96CEB4;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.vector-values {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-left: 10px;
+}
+
+.vector-values span {
+  color: #DDA0DD;
+}
+
 /* スクロールバーのスタイル */
 .leaderboard-overlay .scoreboard::-webkit-scrollbar {
   width: 4px;
