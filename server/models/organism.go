@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"game-sandbox/server/utils"
 	"math"
 	"math/rand/v2"
@@ -31,8 +32,7 @@ type OrbitConfig struct {
 
 // Celestial は核と衛星からなる天体システムを表す
 type Celestial struct {
-	Core       *Sphere   `json:"core"`  // 中心球
-	Nodes      []*Sphere `json:"nodes"` // クライアント用（JSON送信時のみ）
+	Core       *Sphere   `json:"core"` // 中心球
 	Color      string    `json:"color"`
 	Alive      bool      `json:"alive"`
 	Growing    int       `json:"-"`
@@ -46,9 +46,16 @@ type Celestial struct {
 	OrbitConfigs map[int]*OrbitConfig `json:"-"` // 軌道設定
 }
 
-// UpdateNodes はJSON送信前にNodesフィールドを更新する
-func (c *Celestial) UpdateNodes() {
-	c.Nodes = c.GetAllSpheres()
+// MarshalJSON はCelestialをJSON化する際に、Satellitesからnodesを自動生成する
+func (c *Celestial) MarshalJSON() ([]byte, error) {
+	type Alias Celestial
+	return json.Marshal(&struct {
+		*Alias
+		Nodes []*Sphere `json:"nodes"`
+	}{
+		Alias: (*Alias)(c),
+		Nodes: c.GetAllSpheres(),
+	})
 }
 
 // Reset は天体システムを初期状態に初期化する
@@ -114,8 +121,6 @@ func (c *Celestial) Reset() {
 	c.MaxSpeed = utils.CELESTIAL_SPEED
 	c.AccelForce = utils.CELESTIAL_ACCEL_FORCE // 加速力
 
-	// JSON用のNodesを更新
-	c.UpdateNodes()
 }
 
 // UpdateMotion は天体システムの運動を更新する
@@ -130,10 +135,7 @@ func (c *Celestial) UpdateMotion(deltaTime float64) {
 	// 2. 衛星の軌道更新
 	c.updateSatelliteOrbits(deltaTime)
 
-	// 3. JSON用のNodesを更新
-	c.UpdateNodes()
-
-	// 4. 衝突処理
+	// 3. 衝突処理
 	c.handleSphereCollisions(deltaTime)
 	c.applyBoundaryCollision()
 }
@@ -288,8 +290,6 @@ func (c *Celestial) AddSatellite() {
 
 	c.Satellites = append(c.Satellites, satellite)
 
-	// JSON用のNodesを更新
-	c.UpdateNodes()
 }
 
 // handleSphereCollisions は球体間の衝突処理を行う
