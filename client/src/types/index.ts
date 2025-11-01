@@ -5,12 +5,12 @@ export interface Position {
   y: number;
 }
 
-// 球体の物理特性
+// 球体の物理特性 (キー短縮対応)
 export interface Sphere {
-  position: Position;
-  velocity?: Position;
-  acceleration?: Position;
-  radius: number;
+  p: Position;      // position → p
+  v?: Position;     // velocity → v  
+  a?: Position;     // acceleration → a
+  r: number;        // radius → r
   mass: number;
 }
 
@@ -22,37 +22,37 @@ export interface Satellite {
   radius: number;
 }
 
-// 核と衛星からなる天体システム
+// 核と衛星からなる天体システム (キー短縮対応)
 export interface CelestialSystem {
-  core: Sphere;
-  nodes: Sphere[];
+  c: Sphere;        // core → c
+  n: Sphere[];      // nodes → n  
   satellites: Satellite[];
-  color: string;
-  alive: boolean;
+  col: string;      // color → col
+  a: boolean;       // alive → a
 }
 
 export interface Player {
   id: string;
-  name: string;
-  celestial: CelestialSystem;
-  score: number;
+  nm: string;               // name → nm
+  cel: CelestialSystem;     // celestial → cel
+  sc: number;               // score → sc
 }
 
 export interface Projectile {
   id: string;
-  sphere: Sphere;
-  ownerId: string;
+  sph: Sphere;              // sphere → sph
+  oid: string;              // ownerId → oid
 }
 
 export interface DroppedSatellite {
-  position: Position;
-  radius: number;
+  p: Position;    // position → p
+  r: number;      // radius → r
 }
 
 export interface GameState {
-  players: Player[];
-  droppedSatellites?: DroppedSatellite[];
-  projectiles?: Projectile[];
+  pls: Player[];                     // players → pls
+  ds?: DroppedSatellite[];          // droppedSatellites → ds
+  proj?: Projectile[];              // projectiles → proj
 }
 
 // WebSocket メッセージの型

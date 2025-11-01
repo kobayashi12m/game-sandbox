@@ -71,8 +71,8 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
         pendingMouseEvent = null;
         lastSendTime = now;
         const rect = canvas.getBoundingClientRect();
-        const currentPlayer = gameState.players?.find((p) => p.id === playerId);
-        const playerPosition = currentPlayer?.celestial?.core?.position;
+        const currentPlayer = gameState.pls?.find((p) => p.id === playerId);
+        const playerPosition = currentPlayer?.cel?.c?.p;
 
         if (!playerPosition) return;
 
@@ -161,8 +161,8 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
 
       const handleClick = (event: MouseEvent) => {
         const rect = canvas.getBoundingClientRect();
-        const currentPlayer = gameState.players?.find((p) => p.id === playerId);
-        const playerPosition = currentPlayer?.celestial?.core?.position;
+        const currentPlayer = gameState.pls?.find((p) => p.id === playerId);
+        const playerPosition = currentPlayer?.cel?.c?.p;
 
         if (!playerPosition) return;
 
@@ -190,6 +190,7 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
       if (!ctx) return;
 
       try {
+        
         drawGame(
           ctx,
           gameState,
@@ -231,8 +232,8 @@ const drawGame = (
   showCulling: boolean
 ) => {
   // プレイヤーの位置を取得
-  const currentPlayer = gameState.players?.find((p) => p.id === playerId);
-  const playerPosition = currentPlayer?.celestial?.core?.position;
+  const currentPlayer = gameState.pls?.find((p) => p.id === playerId);
+  const playerPosition = currentPlayer?.cel?.c?.p;
 
   // カメラの中心位置を計算
   const cameraX = playerPosition ? playerPosition.x - canvasSize.width / 2 : 0;
@@ -262,7 +263,7 @@ const drawGame = (
   // 落ちた衛星を描画（カリング付き）
   drawDroppedSatellites(
     ctx,
-    gameState.droppedSatellites,
+    gameState.ds,
     cameraX,
     cameraY,
     canvasSize
@@ -271,7 +272,7 @@ const drawGame = (
   // 射出物を描画（カリング付き）
   drawProjectiles(
     ctx,
-    gameState.projectiles,
+    gameState.proj,
     gameConfig.sphereRadius,
     cameraX,
     cameraY,
@@ -279,7 +280,7 @@ const drawGame = (
   );
 
   // プレイヤーを描画（カリング付き）
-  if (gameState.players && gameState.players.length > 0) {
+  if (gameState.pls && gameState.pls.length > 0) {
     // カリング用の画面境界計算（余裕を持たせる）
     const cullingMargin = 300; // 画面外300pxまで描画
     const minX = cameraX - cullingMargin;
@@ -287,10 +288,10 @@ const drawGame = (
     const minY = cameraY - cullingMargin;
     const maxY = cameraY + canvasSize.height + cullingMargin;
 
-    gameState.players.forEach((player) => {
+    gameState.pls.forEach((player) => {
       // プレイヤーが画面範囲内にいるかチェック
-      if (player.celestial?.core?.position) {
-        const head = player.celestial.core.position;
+      if (player.cel?.c?.p) {
+        const head = player.cel.c.p;
 
         // 頭が画面範囲内にあるかチェック
         if (
@@ -374,16 +375,16 @@ const drawDroppedSatellites = (
   droppedSatellites.forEach((satellite) => {
     // 画面範囲内の落ちた衛星のみ描画
     if (
-      satellite.position.x >= minX &&
-      satellite.position.x <= maxX &&
-      satellite.position.y >= minY &&
-      satellite.position.y <= maxY
+      satellite.p.x >= minX &&
+      satellite.p.x <= maxX &&
+      satellite.p.y >= minY &&
+      satellite.p.y <= maxY
     ) {
       ctx.beginPath();
       ctx.arc(
-        satellite.position.x,
-        satellite.position.y,
-        satellite.radius,
+        satellite.p.x,
+        satellite.p.y,
+        satellite.r,
         0,
         2 * Math.PI
       );
@@ -395,9 +396,9 @@ const drawDroppedSatellites = (
       ctx.shadowColor = "#FFFFFF";
       ctx.beginPath();
       ctx.arc(
-        satellite.position.x,
-        satellite.position.y,
-        satellite.radius * 0.3,
+        satellite.p.x,
+        satellite.p.y,
+        satellite.r * 0.3,
         0,
         2 * Math.PI
       );
@@ -432,7 +433,7 @@ const drawProjectiles = (
   const maxY = cameraY + canvasSize.height + margin;
 
   projectiles.forEach((projectile) => {
-    const pos = projectile.sphere.position;
+    const pos = projectile.sph.p;
 
     // 画面範囲内の射出物のみ描画
     if (pos.x >= minX && pos.x <= maxX && pos.y >= minY && pos.y <= maxY) {
@@ -446,8 +447,8 @@ const drawProjectiles = (
       ctx.fill();
 
       // 軌跡の描画（速度ベクトルの逆方向に短い線）
-      if (projectile.sphere.velocity) {
-        const vel = projectile.sphere.velocity;
+      if (projectile.sph.v) {
+        const vel = projectile.sph.v;
         const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
         if (speed > 0) {
           const trailLength = 20;
@@ -476,48 +477,48 @@ const drawCelestialSystem = (
   player: Player,
   isCurrentPlayer: boolean
 ) => {
-  const celestialSystem = player.celestial;
+  const celestialSystem = player.cel;
 
   // 死んでいる天体システムは半透明に
-  ctx.globalAlpha = celestialSystem.alive ? 1 : 0.3;
-  ctx.fillStyle = celestialSystem.color;
+  ctx.globalAlpha = celestialSystem.a ? 1 : 0.3;
+  ctx.fillStyle = celestialSystem.col;
 
   // 軌道を先に描画 - 核から各衛星への放射状線
-  ctx.strokeStyle = celestialSystem.color;
+  ctx.strokeStyle = celestialSystem.col;
   ctx.lineWidth = 2;
   ctx.globalAlpha = 0.6; // 線を少し透明に
 
   // コアから各ノードへの線を描画
-  if (celestialSystem.nodes && celestialSystem.nodes.length > 0) {
-    celestialSystem.nodes.forEach((node) => {
+  if (celestialSystem.n && celestialSystem.n.length > 0) {
+    celestialSystem.n.forEach((node: any) => {
       ctx.beginPath();
       ctx.moveTo(
-        celestialSystem.core.position.x,
-        celestialSystem.core.position.y
+        celestialSystem.c.p.x,
+        celestialSystem.c.p.y
       );
-      ctx.lineTo(node.position.x, node.position.y);
+      ctx.lineTo(node.p.x, node.p.y);
       ctx.stroke();
     });
   }
 
   // 衛星同士の環状接続線は削除（核と衛星の線のみ表示）
 
-  ctx.globalAlpha = celestialSystem.alive ? 1 : 0.3; // 透明度を戻す
+  ctx.globalAlpha = celestialSystem.a ? 1 : 0.3; // 透明度を戻す
 
   // コア（中心球）を描画
   drawCoreHead(
     ctx,
-    celestialSystem.core.position,
-    celestialSystem.core.radius,
-    celestialSystem.color,
+    celestialSystem.c.p,
+    celestialSystem.c.r,
+    celestialSystem.col,
     isCurrentPlayer
   );
 
   // ノード（周辺球）を描画
-  if (celestialSystem.nodes && celestialSystem.nodes.length > 0) {
-    celestialSystem.nodes.forEach((node) => {
+  if (celestialSystem.n && celestialSystem.n.length > 0) {
+    celestialSystem.n.forEach((node: any) => {
       ctx.beginPath();
-      ctx.arc(node.position.x, node.position.y, node.radius, 0, 2 * Math.PI);
+      ctx.arc(node.p.x, node.p.y, node.r, 0, 2 * Math.PI);
       ctx.fill();
     });
   }
@@ -525,8 +526,8 @@ const drawCelestialSystem = (
   // プレイヤー名を描画
   drawPlayerName(
     ctx,
-    player.name,
-    celestialSystem.core.position,
+    player.nm,
+    celestialSystem.c.p,
     isCurrentPlayer
   );
 
@@ -631,15 +632,15 @@ const drawUI = (
   ctx.fillStyle = "#fff";
   ctx.font = "bold 18px Arial";
   ctx.textAlign = "left";
-  ctx.fillText(`Score: ${currentPlayer.score}`, 20, 35);
+  ctx.fillText(`Score: ${currentPlayer.sc}`, 20, 35);
   ctx.fillText(
-    `Length: ${(currentPlayer.celestial.nodes?.length || 0) + 1}`,
+    `Length: ${(currentPlayer.cel.n?.length || 0) + 1}`,
     20,
     55
   );
 
   // 死んでいる場合はDEAD表示
-  if (!currentPlayer.celestial.alive) {
+  if (!currentPlayer.cel.a) {
     ctx.fillStyle = "#ff4444";
     ctx.font = "bold 20px Arial";
     ctx.fillText("DEAD", 20, 80);
@@ -713,8 +714,8 @@ const drawMinimap = (
   ctx.strokeRect(mapX, mapY, mapSize, mapSize);
 
   // プレイヤーの位置を表示
-  if (currentPlayer.celestial.core) {
-    const head = currentPlayer.celestial.core.position;
+  if (currentPlayer.cel.c) {
+    const head = currentPlayer.cel.c.p;
     const playerX = mapX + (head.x / 5000) * mapSize;
     const playerY = mapY + (head.y / 3000) * mapSize;
 

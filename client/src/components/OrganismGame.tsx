@@ -123,14 +123,14 @@ const OrganismGame: React.FC = () => {
               {gameState &&
                 playerId &&
                 (() => {
-                  const currentPlayer = gameState.players.find(
+                  const currentPlayer = gameState.pls.find(
                     (p) => p.id === playerId
                   );
-                  if (currentPlayer?.celestial?.core) {
+                  if (currentPlayer?.cel?.c) {
                     return (
                       <VectorDisplay
-                        velocity={currentPlayer.celestial.core.velocity}
-                        acceleration={currentPlayer.celestial.core.acceleration}
+                        velocity={currentPlayer.cel.c.v}
+                        acceleration={currentPlayer.cel.c.a}
                         maxSpeed={500}
                       />
                     );

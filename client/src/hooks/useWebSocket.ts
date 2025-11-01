@@ -36,7 +36,7 @@ export const useWebSocket = ({
   playerName, 
   isConnected 
 }: UseWebSocketProps): UseWebSocketReturn => {
-  const [gameState, setGameState] = useState<GameState>({ players: [] });
+  const [gameState, setGameState] = useState<GameState>({ pls: [] });
   const [playerId, setPlayerId] = useState<string>('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [gameConfig, setGameConfig] = useState<GameConfig>(DEFAULT_GAME_CONFIG);
@@ -102,15 +102,15 @@ export const useWebSocket = ({
       try {
         const message: WebSocketMessage = JSON.parse(event.data);
         handleMessage(message);
-      } catch {
-        // JSON parse error - ignore malformed messages
+      } catch (error) {
+        console.error('📡 JSON parse error:', error, event.data);
       }
     };
 
     websocket.onclose = () => {
       setIsConnecting(false);
       setPlayerId('');
-      setGameState({ players: [] });
+      setGameState({ pls: [] });
       setScoreboard([]);
     };
 

@@ -21,8 +21,8 @@ func (p Position) MarshalJSON() ([]byte, error) {
 
 // DroppedSatellite は落ちた衛星を表す
 type DroppedSatellite struct {
-	Position Position `json:"position"`
-	Radius   float64  `json:"radius"`
+	Position Position `json:"p"`  // position → p
+	Radius   float64  `json:"r"`  // radius → r
 }
 
 // Player はゲーム内のプレイヤーを表す
@@ -40,16 +40,16 @@ type Player struct {
 // Projectile は射出された衛星を表す
 type Projectile struct {
 	ID       string   `json:"id"`
-	Sphere   *Sphere  `json:"sphere"`
-	OwnerID  string   `json:"ownerId"`
+	Sphere   *Sphere  `json:"sph"`     // sphere → sph
+	OwnerID  string   `json:"oid"`     // ownerId → oid
 	Lifetime float64  `json:"-"` // 残り寿命（秒）
 }
 
 // GameState はクライアントに送信される現在の状態を表す
 type GameState struct {
-	Players           []PlayerState      `json:"players"`
-	DroppedSatellites []DroppedSatellite `json:"droppedSatellites"`
-	Projectiles       []Projectile       `json:"projectiles"`
+	Players           []PlayerState      `json:"pls"`      // players → pls
+	DroppedSatellites []DroppedSatellite `json:"ds"`       // droppedSatellites → ds
+	Projectiles       []Projectile       `json:"proj"`     // projectiles → proj
 }
 
 // GridLine はSpatialGridの可視化用の線を表す
@@ -63,9 +63,9 @@ type GridLine struct {
 // PlayerState はクライアント同期用のプレイヤーデータを表す
 type PlayerState struct {
 	ID        string     `json:"id"`
-	Name      string     `json:"name"`
-	Celestial *Celestial `json:"celestial"`
-	Score     int        `json:"score"`
+	Name      string     `json:"nm"`          // name → nm
+	Celestial *Celestial `json:"cel"`         // celestial → cel
+	Score     int        `json:"sc"`          // score → sc
 }
 
 // ScoreInfo はスコアボード用の軽量プレイヤー情報を表す

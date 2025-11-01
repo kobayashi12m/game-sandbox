@@ -1,7 +1,7 @@
 package models
 
 import (
-	"encoding/json"
+	"fmt"
 	"game-sandbox/server/utils"
 	"math"
 	"math/rand/v2"
@@ -15,6 +15,27 @@ type Sphere struct {
 	Acceleration Position `json:"acceleration,omitempty"` // 加速度
 	Radius       float64  `json:"radius"`
 	Mass         float64  `json:"-"` // 質量
+}
+
+// MarshalJSON はキー短縮とゼロ値省略でJSONサイズを最大削減する
+func (s Sphere) MarshalJSON() ([]byte, error) {
+	// キー短縮: position→p, velocity→v, acceleration→a, radius→r
+	result := fmt.Sprintf(`{"p":{"x":%d,"y":%d},"r":%d`, 
+		int(s.Position.X), int(s.Position.Y), int(s.Radius))
+	
+	// ゼロでない場合のみ追加
+	vx, vy := int(s.Velocity.X), int(s.Velocity.Y)
+	if vx != 0 || vy != 0 {
+		result += fmt.Sprintf(`,"v":{"x":%d,"y":%d}`, vx, vy)
+	}
+	
+	ax, ay := int(s.Acceleration.X), int(s.Acceleration.Y)
+	if ax != 0 || ay != 0 {
+		result += fmt.Sprintf(`,"a":{"x":%d,"y":%d}`, ax, ay)
+	}
+	
+	result += "}"
+	return []byte(result), nil
 }
 
 
@@ -47,16 +68,34 @@ type Celestial struct {
 	OrbitConfigs map[int]*OrbitConfig `json:"-"` // 軌道設定
 }
 
-// MarshalJSON はCelestialをJSON化する際に、Satellitesからnodesを自動生成する
+// MarshalJSON はCelestialをJSON化する際に、キー短縮とカスタムマーシャリングを適用
 func (c *Celestial) MarshalJSON() ([]byte, error) {
-	type Alias Celestial
-	return json.Marshal(&struct {
-		*Alias
-		Nodes []*Sphere `json:"nodes"`
-	}{
-		Alias: (*Alias)(c),
-		Nodes: c.GetAllSpheres(),
-	})
+	// コアのJSONを手動で生成（Sphereのカスタムマーシャリングを使用）
+	coreJSON, err := c.Core.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	
+	// ノード配列のJSONを手動で生成
+	nodes := c.GetAllSpheres()
+	nodesJSON := "["
+	for i, node := range nodes {
+		if i > 0 {
+			nodesJSON += ","
+		}
+		nodeJSON, err := node.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		nodesJSON += string(nodeJSON)
+	}
+	nodesJSON += "]"
+	
+	// 最終的なJSONを構築（キー短縮: core→c, color→col, alive→a, nodes→n）
+	result := fmt.Sprintf(`{"c":%s,"col":"%s","a":%t,"n":%s}`,
+		string(coreJSON), c.Color, c.Alive, nodesJSON)
+	
+	return []byte(result), nil
 }
 
 // Reset は天体システムを初期状態に初期化する
