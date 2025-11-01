@@ -55,13 +55,13 @@ func (g *Game) updateNPCDirections() {
 			continue
 		}
 
-		// 食べ物に向かう行動を優先
-		targetFood := g.findNearestFood(player.Celestial.Core.Position)
+		// 落ちた衛星に向かう行動を優先
+		targetSatellite := g.findNearestDroppedSatellite(player.Celestial.Core.Position)
 
 		var newDirection *utils.Direction
 
-		if targetFood != nil && rand.Float64() < 0.7 { // 70%の確率で食べ物に向かう
-			newDirection = g.calculateDirectionToTarget(player.Celestial.Core.Position, *targetFood)
+		if targetSatellite != nil && rand.Float64() < 0.7 { // 70%の確率で落ちた衛星に向かう
+			newDirection = g.calculateDirectionToTarget(player.Celestial.Core.Position, *targetSatellite)
 		} else if rand.Float64() < 0.3 { // 30%の確率でランダムに方向変更
 			directions := []string{"UP", "DOWN", "LEFT", "RIGHT"}
 			randomDir := directions[rand.Intn(len(directions))]
@@ -79,23 +79,23 @@ func (g *Game) updateNPCDirections() {
 }
 
 // 最も近い落ちた衛星を探す
-func (g *Game) findNearestFood(head models.Position) *models.Position {
+func (g *Game) findNearestDroppedSatellite(head models.Position) *models.Position {
 	if len(g.DroppedSatellites) == 0 {
 		return nil
 	}
 
-	var nearestFood *models.Position
+	var nearestSatellite *models.Position
 	minDistance := math.MaxFloat64
 
 	for _, satellite := range g.DroppedSatellites {
 		distance := g.calculateDistance(head, satellite.Position)
 		if distance < minDistance {
 			minDistance = distance
-			nearestFood = &satellite.Position
+			nearestSatellite = &satellite.Position
 		}
 	}
 
-	return nearestFood
+	return nearestSatellite
 }
 
 // 2点間の距離を計算

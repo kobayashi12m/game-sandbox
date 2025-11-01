@@ -12,7 +12,7 @@ import (
 func (g *Game) GenerateDroppedSatellites() {
 	targetCount := 10 // 基本数
 	if len(g.Players) > 0 {
-		// プレイヤー数の3倍
+		// プレイヤー数の3倍の落ちた衛星を維持
 		targetCount = max(int(float64(len(g.Players))*3.0), 10)
 	}
 

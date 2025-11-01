@@ -4,7 +4,6 @@ import type {
   JoinMessage, 
   DirectionMessage, 
   AccelerationMessage,
-  MouseMoveMessage,
   Direction,
   WebSocketMessage,
   GameConfig,
@@ -25,8 +24,8 @@ interface UseWebSocketReturn {
   playerId: string;
   sendDirection: (direction: Direction) => void;
   sendAcceleration: (x: number, y: number) => void;
-  sendMouseMove: (x: number, y: number) => void;
   sendStopMovement: () => void;
+  sendEjectSatellite: (targetX: number, targetY: number) => void;
   isConnecting: boolean;
   gameConfig: GameConfig;
   scoreboard: ScoreInfo[];
@@ -37,7 +36,7 @@ export const useWebSocket = ({
   playerName, 
   isConnected 
 }: UseWebSocketProps): UseWebSocketReturn => {
-  const [gameState, setGameState] = useState<GameState>({ players: [], food: [] });
+  const [gameState, setGameState] = useState<GameState>({ players: [] });
   const [playerId, setPlayerId] = useState<string>('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [gameConfig, setGameConfig] = useState<GameConfig>(DEFAULT_GAME_CONFIG);
@@ -111,7 +110,7 @@ export const useWebSocket = ({
     websocket.onclose = () => {
       setIsConnecting(false);
       setPlayerId('');
-      setGameState({ players: [], food: [] });
+      setGameState({ players: [] });
       setScoreboard([]);
     };
 
@@ -152,19 +151,6 @@ export const useWebSocket = ({
     websocket.send(JSON.stringify(accelerationMessage));
   }, []);
 
-  // マウス位置送信（マウス追従移動用）
-  const sendMouseMove = useCallback((x: number, y: number) => {
-    const websocket = wsRef.current;
-    if (!websocket || websocket.readyState !== WebSocket.OPEN) return;
-
-    const mouseMessage: MouseMoveMessage = {
-      type: 'mouseMove',
-      x,
-      y
-    };
-    
-    websocket.send(JSON.stringify(mouseMessage));
-  }, []);
 
   // 移動停止メッセージの送信（加速度を0,0にする）
   const sendStopMovement = useCallback(() => {
@@ -190,7 +176,6 @@ export const useWebSocket = ({
     playerId,
     sendDirection,
     sendAcceleration,
-    sendMouseMove,
     sendStopMovement,
     sendEjectSatellite,
     isConnecting,

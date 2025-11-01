@@ -78,26 +78,6 @@ export interface AccelerationMessage extends WebSocketMessage {
   y: number;
 }
 
-export interface StopMovementMessage extends WebSocketMessage {
-  type: 'stopMovement';
-}
-
-export interface MouseMoveMessage extends WebSocketMessage {
-  type: 'mouseMove';
-  x: number;
-  y: number;
-}
-
-export interface GameJoinedMessage extends WebSocketMessage {
-  type: 'gameJoined';
-  playerId: string;
-}
-
-export interface GameStateMessage extends WebSocketMessage {
-  type: 'gameState';
-  state: GameState;
-  scoreboard?: ScoreInfo[];
-}
 
 export interface ScoreInfo {
   id: string;

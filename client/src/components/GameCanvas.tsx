@@ -31,8 +31,6 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
       return { width: windowWidth, height: windowHeight };
     }, []);
 
-    const frameCountRef = useRef(0);
-    const lastLogTimeRef = useRef(Date.now());
 
     // キーボードショートカット
     useEffect(() => {
@@ -191,10 +189,6 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      // パフォーマンス監視
-      const startTime = performance.now();
-      frameCountRef.current++;
-
       try {
         drawGame(
           ctx,
@@ -206,27 +200,6 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
           showCulling
         );
 
-        // 20秒毎に軽量ログ出力
-        const now = Date.now();
-        if (now - lastLogTimeRef.current > 20000) {
-          const drawTime = performance.now() - startTime;
-          const playerCount = gameState.players?.length || 0;
-          const totalSegments =
-            gameState.players?.reduce(
-              (sum, p) => sum + (p.celestial?.nodes?.length || 0) + 1, // コア + ノード
-              0
-            ) || 0;
-          const droppedSatelliteCount =
-            gameState.droppedSatellites?.length || 0;
-
-          console.log(`🎮 CLIENT PERFORMANCE:
-Frame: ${frameCountRef.current}
-Players: ${playerCount} (Segments: ${totalSegments})
-Dropped Satellites: ${droppedSatelliteCount}
-Draw Time: ${drawTime.toFixed(2)}ms`);
-
-          lastLogTimeRef.current = now;
-        }
       } catch (error) {
         console.error("🚨 DRAW ERROR:", error);
         console.error("GameState:", gameState);
@@ -331,7 +304,6 @@ const drawGame = (
       }
     });
 
-    // デバッグ用（20秒毎のログに追加情報を含める） - 削除してエラーを回避
   }
 
   // カメラ変換を元に戻す
