@@ -84,7 +84,6 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 						FieldWidth:    utils.FIELD_WIDTH,
 						FieldHeight:   utils.FIELD_HEIGHT,
 						SphereRadius:  utils.SPHERE_RADIUS,
-						FoodRadius:    utils.FOOD_RADIUS,
 						CullingWidth:  utils.CULLING_WIDTH,
 						CullingHeight: utils.CULLING_HEIGHT,
 						GridLines:     gridLines,
@@ -114,6 +113,17 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 				y, yOk := msg["y"].(float64)
 				if xOk && yOk {
 					gameInstance.SetPlayerAcceleration(playerID, x, y)
+				}
+
+			case "ejectSatellite":
+				if player == nil || gameInstance == nil {
+					continue
+				}
+
+				targetX, xOk := msg["targetX"].(float64)
+				targetY, yOk := msg["targetY"].(float64)
+				if xOk && yOk {
+					gameInstance.EjectPlayerSatellite(playerID, targetX, targetY)
 				}
 			}
 		}

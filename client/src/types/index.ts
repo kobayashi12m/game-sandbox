@@ -38,9 +38,21 @@ export interface Player {
   score: number;
 }
 
+export interface Projectile {
+  id: string;
+  sphere: Sphere;
+  ownerId: string;
+}
+
+export interface DroppedSatellite {
+  position: Position;
+  radius: number;
+}
+
 export interface GameState {
   players: Player[];
-  food: Position[];
+  droppedSatellites?: DroppedSatellite[];
+  projectiles?: Projectile[];
 }
 
 // WebSocket メッセージの型
@@ -113,7 +125,6 @@ export interface GameConfig {
   fieldWidth: number;
   fieldHeight: number;
   sphereRadius: number;
-  foodRadius: number;
   cullingWidth: number;
   cullingHeight: number;
   gridLines?: GridLine[];
@@ -132,7 +143,6 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   fieldWidth: 600,
   fieldHeight: 600,
   sphereRadius: 7.5,
-  foodRadius: 5,
   cullingWidth: 1300,
   cullingHeight: 800,
 };

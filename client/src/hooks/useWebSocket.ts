@@ -171,6 +171,20 @@ export const useWebSocket = ({
     sendAcceleration(0, 0);
   }, [sendAcceleration]);
 
+  // 衛星射出メッセージの送信
+  const sendEjectSatellite = useCallback((targetX: number, targetY: number) => {
+    const websocket = wsRef.current;
+    if (!websocket || websocket.readyState !== WebSocket.OPEN) return;
+
+    const ejectMessage = {
+      type: 'ejectSatellite',
+      targetX,
+      targetY
+    };
+    
+    websocket.send(JSON.stringify(ejectMessage));
+  }, []);
+
   return {
     gameState,
     playerId,
@@ -178,6 +192,7 @@ export const useWebSocket = ({
     sendAcceleration,
     sendMouseMove,
     sendStopMovement,
+    sendEjectSatellite,
     isConnecting,
     gameConfig,
     scoreboard

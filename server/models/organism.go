@@ -81,9 +81,9 @@ func (c *Celestial) Reset() {
 		},
 	}
 
-	// 初期衛星を配置（第1軌道に4個）
+	// 初期衛星を配置（第1軌道に2個）
 	c.Satellites = []*Satellite{}
-	nodeCount := 4
+	nodeCount := 2 // 第1軌道は最大2個
 
 	for i := 0; i < nodeCount; i++ {
 		angle := float64(i) * 2.0 * math.Pi / float64(nodeCount) // 等間隔で配置
@@ -174,6 +174,9 @@ func (c *Celestial) updateCoreMotion(deltaTime float64) {
 
 // updateSatelliteOrbits は衛星の軌道運動のみを更新する
 func (c *Celestial) updateSatelliteOrbits(deltaTime float64) {
+	// 各軌道ごとに理想的な角度配置に向けて補正
+	c.correctSatelliteAngles(deltaTime)
+	
 	for _, satellite := range c.Satellites {
 		// 軌道設定を取得
 		orbitConfig := c.GetOrbitConfig(satellite.OrbitType)
@@ -252,18 +255,31 @@ func (c *Celestial) SetAcceleration(x, y float64) {
 
 // AddSatellite は新しい衛星を追加する（成長時）
 func (c *Celestial) AddSatellite() {
-	// 第1軌道に追加（将来的には軌道選択ロジックを追加）
-	orbitType := 1
+	// 利用可能な最も内側の軌道を取得
+	orbitType := c.GetAvailableOrbitForNewSatellite()
 
 	// 軌道設定が存在しない場合は作成
 	if _, exists := c.OrbitConfigs[orbitType]; !exists {
-		c.AddOrbitType(orbitType, utils.SPHERE_RADIUS*utils.ORBITAL_RADIUS_RATIO, utils.ORBITAL_SPEED)
+		// 各軌道の半径と速度を計算（外側ほど半径が大きく、速度は遅くなる）
+		radius := utils.SPHERE_RADIUS * utils.ORBITAL_RADIUS_RATIO * float64(orbitType)
+		speed := utils.ORBITAL_SPEED / math.Sqrt(float64(orbitType))
+		c.AddOrbitType(orbitType, radius, speed)
 	}
 
 	orbitConfig := c.GetOrbitConfig(orbitType)
 
 	// 新しい衛星を作成
-	angle := rand.Float64() * 2.0 * math.Pi // ランダムな角度
+	// 既存の軌道の流れに合わせて自然に配置
+	existingSatellites := c.GetSatellitesInOrbit(orbitType)
+	
+	var angle float64
+	if len(existingSatellites) == 0 {
+		// 最初の衛星の場合はランダムな角度
+		angle = rand.Float64() * 2.0 * math.Pi
+	} else {
+		// 既存の衛星の間で最大の空きスペースを見つける
+		angle = c.findBestInsertionAngle(orbitType)
+	}
 
 	coreX := c.Core.Position.X
 	coreY := c.Core.Position.Y
@@ -289,7 +305,166 @@ func (c *Celestial) AddSatellite() {
 	}
 
 	c.Satellites = append(c.Satellites, satellite)
+}
 
+// EjectSatelliteWithReturn は指定された方向に最も近い最外殻の衛星を射出し、射出された衛星を返す
+func (c *Celestial) EjectSatelliteWithReturn(targetX, targetY float64) *Sphere {
+	if len(c.Satellites) == 0 {
+		return nil
+	}
+	
+	// 最外殻の軌道番号を取得
+	outermostOrbit := c.GetHighestOrbitType()
+	if outermostOrbit == 0 {
+		return nil // 軌道がない場合
+	}
+	
+	outermostSatellites := c.GetSatellitesInOrbit(outermostOrbit)
+	if len(outermostSatellites) == 0 {
+		return nil
+	}
+	
+	// クリック位置に最も近い衛星を見つける
+	var closestSatellite *Satellite
+	var closestIndex int
+	minDistance := math.MaxFloat64
+	
+	for i, sat := range c.Satellites {
+		if sat.OrbitType == outermostOrbit {
+			dx := sat.Sphere.Position.X - targetX
+			dy := sat.Sphere.Position.Y - targetY
+			dist := dx*dx + dy*dy
+			
+			if dist < minDistance {
+				minDistance = dist
+				closestSatellite = sat
+				closestIndex = i
+			}
+		}
+	}
+	
+	if closestSatellite == nil {
+		return nil
+	}
+	
+	// 射出方向を計算（コアからクリック位置への方向）
+	dx := targetX - c.Core.Position.X
+	dy := targetY - c.Core.Position.Y
+	dist := math.Sqrt(dx*dx + dy*dy)
+	
+	if dist < 0.001 {
+		return nil
+	}
+	
+	// 方向を正規化
+	dirX := dx / dist
+	dirY := dy / dist
+	
+	// 射出速度を設定
+	ejectSpeed := 800.0
+	closestSatellite.Sphere.Velocity.X = dirX * ejectSpeed
+	closestSatellite.Sphere.Velocity.Y = dirY * ejectSpeed
+	
+	// 射出する衛星のコピーを作成
+	ejectedSphere := &Sphere{
+		Position:     closestSatellite.Sphere.Position,
+		Velocity:     closestSatellite.Sphere.Velocity,
+		Acceleration: Position{X: 0, Y: 0},
+		Radius:       closestSatellite.Sphere.Radius,
+		Mass:         closestSatellite.Sphere.Mass,
+	}
+	
+	// 衛星リストから削除
+	c.Satellites = append(c.Satellites[:closestIndex], c.Satellites[closestIndex+1:]...)
+	
+	// 射出後、残りの衛星は自動的に正多角形に補正される（correctSatelliteAnglesで処理）
+	
+	return ejectedSphere
+}
+
+// correctSatelliteAngles は各軌道の衛星を理想的な正多角形の角度に向けて微調整する
+func (c *Celestial) correctSatelliteAngles(deltaTime float64) {
+	// 軌道ごとに処理
+	orbitGroups := make(map[int][]*Satellite)
+	for _, sat := range c.Satellites {
+		orbitGroups[sat.OrbitType] = append(orbitGroups[sat.OrbitType], sat)
+	}
+	
+	for _, satellites := range orbitGroups {
+		c.correctOrbitAngles(satellites, deltaTime)
+	}
+}
+
+// correctOrbitAngles は指定された軌道の衛星を理想的な角度に向けて補正する
+func (c *Celestial) correctOrbitAngles(satellites []*Satellite, deltaTime float64) {
+	count := len(satellites)
+	if count <= 1 {
+		return
+	}
+	
+	// 衛星を角度順にソート
+	for i := 0; i < len(satellites)-1; i++ {
+		for j := i + 1; j < len(satellites); j++ {
+			angle1 := c.normalizeAngle(satellites[i].Angle)
+			angle2 := c.normalizeAngle(satellites[j].Angle)
+			if angle1 > angle2 {
+				satellites[i], satellites[j] = satellites[j], satellites[i]
+			}
+		}
+	}
+	
+	// 理想的な角度間隔
+	idealStep := 2.0 * math.Pi / float64(count)
+	
+	// 各衛星を理想的な位置に向けて微調整
+	for i, sat := range satellites {
+		// 理想的な角度（最初の衛星の位置を基準に等間隔）
+		baseAngle := c.normalizeAngle(satellites[0].Angle)
+		idealAngle := baseAngle + float64(i)*idealStep
+		idealAngle = c.normalizeAngle(idealAngle)
+		
+		// 現在の角度との差
+		currentAngle := c.normalizeAngle(sat.Angle)
+		angleDiff := c.shortestAngleDifference(currentAngle, idealAngle)
+		
+		// 補正速度を適用（距離に応じて調整）
+		correctionSpeed := utils.ANGLE_CORRECTION_SPEED * deltaTime
+		
+		// 距離が小さい場合は補正しない（振動を防ぐ）
+		if math.Abs(angleDiff) < 0.01 {
+			continue
+		}
+		
+		// 距離に比例した補正（近づくほど緩やか）
+		correction := angleDiff * correctionSpeed
+		sat.Angle += correction
+	}
+}
+
+// normalizeAngle は角度を0-2πの範囲に正規化する
+func (c *Celestial) normalizeAngle(angle float64) float64 {
+	for angle < 0 {
+		angle += 2.0 * math.Pi
+	}
+	for angle >= 2.0*math.Pi {
+		angle -= 2.0 * math.Pi
+	}
+	return angle
+}
+
+// shortestAngleDifference は二つの角度間の最短距離を計算する
+func (c *Celestial) shortestAngleDifference(from, to float64) float64 {
+	diff := to - from
+	
+	// -π から π の範囲に正規化
+	for diff > math.Pi {
+		diff -= 2.0 * math.Pi
+	}
+	for diff < -math.Pi {
+		diff += 2.0 * math.Pi
+	}
+	
+	return diff
 }
 
 // handleSphereCollisions は球体間の衝突処理を行う

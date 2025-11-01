@@ -16,7 +16,6 @@ type SpatialGrid struct {
 // GridCell は各グリッドセルに含まれるオブジェクト
 type GridCell struct {
 	playerSegments map[*models.Player][]*models.Position // プレイヤー別のセグメントポインタ
-	food           []*models.Food                        // このセルに含まれる食べ物のポインタ
 }
 
 // NewSpatialGrid は新しい空間分割グリッドを作成する
@@ -33,7 +32,6 @@ func NewSpatialGrid() *SpatialGrid {
 		for j := range cells[i] {
 			cells[i][j] = &GridCell{
 				playerSegments: make(map[*models.Player][]*models.Position),
-				food:           make([]*models.Food, 0, 4),
 			}
 		}
 	}
@@ -50,9 +48,8 @@ func NewSpatialGrid() *SpatialGrid {
 func (sg *SpatialGrid) Clear() {
 	for i := range sg.cells {
 		for j := range sg.cells[i] {
-			// 完全に新しいマップとスライスを作成してメモリリークを防ぐ
+			// 完全に新しいマップを作成してメモリリークを防ぐ
 			sg.cells[i][j].playerSegments = make(map[*models.Player][]*models.Position)
-			sg.cells[i][j].food = make([]*models.Food, 0, 4)
 		}
 	}
 }
@@ -92,15 +89,6 @@ func (sg *SpatialGrid) AddPlayerSegments(player *models.Player, segments []model
 	}
 }
 
-// AddFood は食べ物をグリッドに追加する
-func (sg *SpatialGrid) AddFood(food *models.Food) {
-	cellX, cellY := sg.GetCellCoords(food.Position.X, food.Position.Y)
-
-	// 安全性チェック
-	if cellY >= 0 && cellY < sg.height && cellX >= 0 && cellX < sg.width {
-		sg.cells[cellY][cellX].food = append(sg.cells[cellY][cellX].food, food)
-	}
-}
 
 // iterateNearbyCells は指定位置周辺のセルに対してコールバック関数を実行する
 func (sg *SpatialGrid) iterateNearbyCells(centerX, centerY, radius int, callback func(*GridCell)) {
@@ -145,43 +133,19 @@ func (sg *SpatialGrid) CheckCollisionAt(position models.Position, excludePlayer 
 	return result
 }
 
-// CheckFoodCollisionAt は指定した位置で衝突している食べ物を返す
-func (sg *SpatialGrid) CheckFoodCollisionAt(position models.Position) *models.Food {
-	centerX, centerY := sg.GetCellCoords(position.X, position.Y)
 
-	var result *models.Food
-	sg.iterateNearbyCells(centerX, centerY, 1, func(cell *GridCell) {
-		if result != nil {
-			return
-		}
-		for _, food := range cell.food {
-			dx := position.X - food.Position.X
-			dy := position.Y - food.Position.Y
-			dist := dx*dx + dy*dy
-			if dist < (utils.SPHERE_RADIUS+utils.FOOD_RADIUS)*(utils.SPHERE_RADIUS+utils.FOOD_RADIUS) {
-				result = food
-				return
-			}
-		}
-	})
-
-	return result
-}
-
-// AreaResult はエリア内のプレイヤーと食べ物をまとめて返す構造体
+// AreaResult はエリア内のプレイヤーをまとめて返す構造体
 type AreaResult struct {
 	Players []*models.Player
-	Food    []*models.Food
 }
 
-// GetObjectsInArea は指定した矩形エリア内のプレイヤーと食べ物を同時に取得する
+// GetObjectsInArea は指定した矩形エリア内のプレイヤーを取得する
 func (sg *SpatialGrid) GetObjectsInArea(minX, maxX, minY, maxY float64) AreaResult {
 	// エリアが含まれるセル範囲を計算
 	startCellX, startCellY := sg.GetCellCoords(minX, minY)
 	endCellX, endCellY := sg.GetCellCoords(maxX, maxY)
 
 	playerSet := make(map[*models.Player]bool)
-	foodList := make([]*models.Food, 0, 50)
 
 	// 指定したエリアのセルを一度だけスキャン
 	for cellY := startCellY; cellY <= endCellY; cellY++ {
@@ -194,9 +158,6 @@ func (sg *SpatialGrid) GetObjectsInArea(minX, maxX, minY, maxY float64) AreaResu
 				for player := range cell.playerSegments {
 					playerSet[player] = true
 				}
-
-				// 食べ物をチェック
-				foodList = append(foodList, cell.food...)
 			}
 		}
 	}
@@ -209,46 +170,10 @@ func (sg *SpatialGrid) GetObjectsInArea(minX, maxX, minY, maxY float64) AreaResu
 
 	return AreaResult{
 		Players: visiblePlayers,
-		Food:    foodList,
 	}
 }
 
-// GetNearbyFoodSafe は指定した位置の周囲の食べ物を安全に取得する
-func (sg *SpatialGrid) GetNearbyFoodSafe(position models.Position) []*models.Food {
-	centerX, centerY := sg.GetCellCoords(position.X, position.Y)
 
-	nearbyFood := make([]*models.Food, 0, 10)
-	sg.iterateNearbyCells(centerX, centerY, 1, func(cell *GridCell) {
-		nearbyFood = append(nearbyFood, cell.food...)
-	})
-
-	return nearbyFood
-}
-
-// IsPositionOccupiedOptimized は空間分割を使った効率的な占有チェック
-func (sg *SpatialGrid) IsPositionOccupiedOptimized(pos models.Position) bool {
-	centerX, centerY := sg.GetCellCoords(pos.X, pos.Y)
-
-	occupied := false
-	sg.iterateNearbyCells(centerX, centerY, 1, func(cell *GridCell) {
-		if occupied {
-			return
-		}
-		for _, segments := range cell.playerSegments {
-			for _, segment := range segments {
-				dx := segment.X - pos.X
-				dy := segment.Y - pos.Y
-				dist := dx*dx + dy*dy
-				if dist < (utils.SPHERE_RADIUS+utils.FOOD_RADIUS)*(utils.SPHERE_RADIUS+utils.FOOD_RADIUS) {
-					occupied = true
-					return
-				}
-			}
-		}
-	})
-
-	return occupied
-}
 
 // GetGridLines はSpatialGridの分割線を取得する
 func (sg *SpatialGrid) GetGridLines() []models.GridLine {

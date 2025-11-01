@@ -46,8 +46,8 @@ func (g *Game) Update(deltaTime float64) {
 			}
 		}
 
-		log.Printf("🎮 SERVER STATE: Frame %d | Players: %d (Human: %d, Dead: %d) | Food: %d | Segments: %d (Max: %d, Min: %d)",
-			g.frameCount, len(g.Players), humanPlayers, deadPlayers, len(g.Food), totalSegments, maxOrganismLength, minOrganismLength)
+		log.Printf("🎮 SERVER STATE: Frame %d | Players: %d (Human: %d, Dead: %d) | Dropped Satellites: %d | Segments: %d (Max: %d, Min: %d)",
+			g.frameCount, len(g.Players), humanPlayers, deadPlayers, len(g.DroppedSatellites), totalSegments, maxOrganismLength, minOrganismLength)
 	}
 
 	// 全ての天体システムの運動を更新
@@ -88,12 +88,12 @@ func (g *Game) Update(deltaTime float64) {
 				g.checkOrganismCollision(player)
 			}
 
-			// 食べ物との衝突判定
+			// 落ちた衛星との衝突判定
 			core := player.Celestial.Core.Position
-			collidedFood := g.spatialGrid.CheckFoodCollisionAt(core)
+			collidedSatellite := g.checkDroppedSatelliteCollision(core)
 
-			if collidedFood != nil {
-				g.RemoveFood(collidedFood)
+			if collidedSatellite != nil {
+				g.removeDroppedSatellite(collidedSatellite)
 				player.Celestial.Growing = 3
 				player.Score += 10
 			}
@@ -113,8 +113,25 @@ func (g *Game) Update(deltaTime float64) {
 		}
 	}
 
-	// 食べ物の補充
-	g.GenerateFood()
+	// 成長処理
+	for _, player := range g.Players {
+		if player.Celestial.Growing > 0 {
+			player.Celestial.Growing--
+			if player.Celestial.Growing == 0 {
+				// 衛星を追加
+				player.Celestial.AddSatellite()
+			}
+		}
+	}
+
+	// 射出物の更新
+	g.updateProjectiles(deltaTime)
+
+	// 射出物とプレイヤーの衝突判定
+	g.checkProjectileCollisions()
+
+	// 落ちた衛星の補充
+	g.GenerateDroppedSatellites()
 }
 
 // checkOrganismCollision は球体レベルでの個別衝突判定を行う
@@ -217,6 +234,183 @@ func (g *Game) applySphereCollision(sphere1, sphere2 *models.Sphere) {
 	}
 }
 
+// updateProjectiles は射出物の更新とライフサイクル管理を行う
+func (g *Game) updateProjectiles(deltaTime float64) {
+	var activeProjectiles []*models.Projectile
+	
+	for _, proj := range g.Projectiles {
+		// 寿命を減らす
+		proj.Lifetime -= deltaTime
+		
+		// 寿命が残っている場合のみ保持
+		if proj.Lifetime > 0 {
+			// 位置を更新
+			proj.Sphere.Position.X += proj.Sphere.Velocity.X * deltaTime
+			proj.Sphere.Position.Y += proj.Sphere.Velocity.Y * deltaTime
+			
+			// フィールド境界チェック
+			if proj.Sphere.Position.X < 0 || proj.Sphere.Position.X > utils.FIELD_WIDTH ||
+				proj.Sphere.Position.Y < 0 || proj.Sphere.Position.Y > utils.FIELD_HEIGHT {
+				continue // 境界外の射出物は削除
+			}
+			
+			activeProjectiles = append(activeProjectiles, proj)
+		}
+	}
+	
+	g.Projectiles = activeProjectiles
+}
+
+// checkProjectileCollisions は射出物とプレイヤーの衝突判定を行う
+func (g *Game) checkProjectileCollisions() {
+	var activeProjectiles []*models.Projectile
+	
+	for _, proj := range g.Projectiles {
+		hit := false
+		
+		// 全プレイヤーとの衝突をチェック
+		for _, player := range g.Players {
+			// 自分の射出物はスキップ
+			if player.ID == proj.OwnerID {
+				continue
+			}
+			
+			if !player.Celestial.Alive {
+				continue
+			}
+			
+			// コアとの衝突をチェック
+			if g.checkSphereCollision(proj.Sphere, player.Celestial.Core) {
+				// コアに当たった場合、プレイヤーを破壊（射出物も消滅）
+				log.Printf("Projectile hit core: %s destroyed, projectile destroyed", player.Name)
+				g.destroyPlayer(player)
+				hit = true
+				break
+			}
+			
+			// 衛星との衝突をチェック
+			hitSatelliteIndex := -1
+			for i, sat := range player.Celestial.Satellites {
+				if g.checkSphereCollision(proj.Sphere, sat.Sphere) {
+					hitSatelliteIndex = i
+					break
+				}
+			}
+			
+			if hitSatelliteIndex >= 0 {
+				// 衛星に当たった場合、その衛星を完全消滅（射出物も消滅、落ちた衛星は作らない）
+				log.Printf("Projectile hit satellite: %s satellite destroyed, projectile destroyed (both vanish)", player.Name)
+				g.destroySatelliteCompletely(player, hitSatelliteIndex)
+				hit = true
+				break
+			}
+		}
+		
+		// 当たらなかった射出物は残す
+		if !hit {
+			activeProjectiles = append(activeProjectiles, proj)
+		}
+	}
+	
+	g.Projectiles = activeProjectiles
+}
+
+// checkSphereCollision は二つの球体が衝突しているかチェックする
+func (g *Game) checkSphereCollision(sphere1, sphere2 *models.Sphere) bool {
+	dx := sphere1.Position.X - sphere2.Position.X
+	dy := sphere1.Position.Y - sphere2.Position.Y
+	dist := math.Sqrt(dx*dx + dy*dy)
+	minDist := sphere1.Radius + sphere2.Radius
+	return dist < minDist
+}
+
+// destroyPlayer はプレイヤーを破壊し、衛星を落とす
+func (g *Game) destroyPlayer(player *models.Player) {
+	// 全ての衛星を落とす
+	for _, sat := range player.Celestial.Satellites {
+		droppedSat := &models.DroppedSatellite{
+			Position: sat.Sphere.Position,
+			Radius:   sat.Sphere.Radius,
+		}
+		g.DroppedSatellites = append(g.DroppedSatellites, droppedSat)
+	}
+	
+	// ログの計算を修正
+	satelliteCount := len(player.Celestial.Satellites)
+	
+	// プレイヤーを死亡状態にする
+	player.Celestial.Alive = false
+	player.Celestial.Satellites = []*models.Satellite{}
+	
+	log.Printf("💥 Player %s core destroyed, %d satellites dropped at their locations", player.Name, satelliteCount)
+}
+
+// destroySatellite は指定された衛星を破壊する
+func (g *Game) destroySatellite(player *models.Player, satelliteIndex int) {
+	if satelliteIndex < 0 || satelliteIndex >= len(player.Celestial.Satellites) {
+		return
+	}
+	
+	// 衛星を落とす
+	sat := player.Celestial.Satellites[satelliteIndex]
+	droppedSat := &models.DroppedSatellite{
+		Position: sat.Sphere.Position,
+		Radius:   sat.Sphere.Radius,
+	}
+	g.DroppedSatellites = append(g.DroppedSatellites, droppedSat)
+	
+	// 衛星を削除
+	player.Celestial.Satellites = append(
+		player.Celestial.Satellites[:satelliteIndex],
+		player.Celestial.Satellites[satelliteIndex+1:]...,
+	)
+	
+	log.Printf("💫 Satellite destroyed for player %s, dropped satellite at position", player.Name)
+}
+
+// destroySatelliteCompletely は射出物衝突時に衛星を完全消滅させる（落ちた衛星は作らない）
+func (g *Game) destroySatelliteCompletely(player *models.Player, satelliteIndex int) {
+	if satelliteIndex < 0 || satelliteIndex >= len(player.Celestial.Satellites) {
+		return
+	}
+	
+	// 衛星を削除（落ちた衛星は作らない）
+	player.Celestial.Satellites = append(
+		player.Celestial.Satellites[:satelliteIndex],
+		player.Celestial.Satellites[satelliteIndex+1:]...,
+	)
+	
+	log.Printf("💥 Satellite completely destroyed for player %s (no dropped satellite)", player.Name)
+}
+
+// checkDroppedSatelliteCollision はコアと落ちた衛星の衝突をチェックする
+func (g *Game) checkDroppedSatelliteCollision(corePos models.Position) *models.DroppedSatellite {
+	for _, droppedSat := range g.DroppedSatellites {
+		dx := corePos.X - droppedSat.Position.X
+		dy := corePos.Y - droppedSat.Position.Y
+		dist := math.Sqrt(dx*dx + dy*dy)
+		collisionDist := utils.SPHERE_RADIUS + droppedSat.Radius
+		
+		if dist < collisionDist {
+			return droppedSat
+		}
+	}
+	return nil
+}
+
+// removeDroppedSatellite は落ちた衛星を削除する
+func (g *Game) removeDroppedSatellite(target *models.DroppedSatellite) {
+	for i, droppedSat := range g.DroppedSatellites {
+		if droppedSat == target {
+			g.DroppedSatellites = append(
+				g.DroppedSatellites[:i],
+				g.DroppedSatellites[i+1:]...,
+			)
+			return
+		}
+	}
+}
+
 // UpdateSpatialGrid は空間分割グリッドを更新する
 func (g *Game) UpdateSpatialGrid() {
 	// グリッドをクリア
@@ -235,8 +429,5 @@ func (g *Game) UpdateSpatialGrid() {
 		}
 	}
 
-	// 食べ物をグリッドに追加
-	for _, food := range g.Food {
-		g.spatialGrid.AddFood(food)
-	}
+	// 落ちた衛星はグリッドに追加しない（衝突判定が簡単なため）
 }

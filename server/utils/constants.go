@@ -6,7 +6,6 @@ const (
 	FIELD_WIDTH           = 5000.0                // フィールドの幅
 	FIELD_HEIGHT          = 3000.0                // フィールドの高さ
 	SPHERE_RADIUS         = 15.0                  // 球体の半径
-	FOOD_RADIUS           = 10.0                  // 食べ物の半径
 	CELESTIAL_SPEED       = 500.0                 // 天体システムの速度（ユニット/秒）
 	CELESTIAL_ACCEL_FORCE = 500.0                 // 天体システムの加速力
 	AIR_RESISTANCE        = 0.98                  // 空気抵抗（非アクティブ時の減衰）
@@ -22,10 +21,11 @@ const (
 	DISABLE_COLLISION = false // trueで当たり判定を無効化
 
 	// 軌道物理定数
-	ORBITAL_RADIUS_RATIO         = 6.0 // 軌道半径の倍率（コア半径の何倍か）
+	ORBITAL_RADIUS_RATIO         = 3.0 // 軌道半径の基本倍率（コア半径の何倍か）
 	ORBITAL_SPEED                = 2.0 // 軌道速度（ラジアン/秒）
-	ORBITAL_CORRECTION_STRENGTH  = 0.3 // 軌道補正の強さ（0-1、大きいほど硬い軌道）
+	ORBITAL_CORRECTION_STRENGTH  = 0.5 // 軌道補正の強さ（0-1、大きいほど硬い軌道）
 	ORBITAL_VELOCITY_INHERITANCE = 0.8 // 核の速度継承率（0-1）
+	ANGLE_CORRECTION_SPEED       = 0.5 // 角度補正速度（ラジアン/秒）
 
 	// 衝突物理定数
 	COLLISION_RESTITUTION  = 0.3 // 反発係数（0-1、0は完全非弾性）

@@ -13,9 +13,10 @@ type Position struct {
 	Y float64 `json:"y"`
 }
 
-// Food はゲーム内の食べ物を表す
-type Food struct {
+// DroppedSatellite は落ちた衛星を表す
+type DroppedSatellite struct {
 	Position Position `json:"position"`
+	Radius   float64  `json:"radius"`
 }
 
 // Player はゲーム内のプレイヤーを表す
@@ -30,10 +31,19 @@ type Player struct {
 	ConnMu              sync.Mutex `json:"-"` // WebSocket書き込み用mutex
 }
 
+// Projectile は射出された衛星を表す
+type Projectile struct {
+	ID       string   `json:"id"`
+	Sphere   *Sphere  `json:"sphere"`
+	OwnerID  string   `json:"ownerId"`
+	Lifetime float64  `json:"-"` // 残り寿命（秒）
+}
+
 // GameState はクライアントに送信される現在の状態を表す
 type GameState struct {
-	Players []PlayerState `json:"players"`
-	Food    []Position    `json:"food"`
+	Players           []PlayerState      `json:"players"`
+	DroppedSatellites []DroppedSatellite `json:"droppedSatellites"`
+	Projectiles       []Projectile       `json:"projectiles"`
 }
 
 // GridLine はSpatialGridの可視化用の線を表す
@@ -71,7 +81,6 @@ type GameConfig struct {
 	FieldWidth    float64    `json:"fieldWidth"`
 	FieldHeight   float64    `json:"fieldHeight"`
 	SphereRadius  float64    `json:"sphereRadius"`
-	FoodRadius    float64    `json:"foodRadius"`
 	CullingWidth  float64    `json:"cullingWidth"`
 	CullingHeight float64    `json:"cullingHeight"`
 	GridLines     []GridLine `json:"gridLines,omitempty"` // SpatialGrid可視化用

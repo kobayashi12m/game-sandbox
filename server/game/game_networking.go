@@ -28,15 +28,23 @@ func (g *Game) GetState() models.GameState {
 			Score:     p.Score,
 		})
 	}
-	// Food を Position に変換
-	foodPositions := make([]models.Position, len(g.Food))
-	for i, food := range g.Food {
-		foodPositions[i] = food.Position
+
+	// 射出物をコピー
+	projectiles := make([]models.Projectile, len(g.Projectiles))
+	for i, proj := range g.Projectiles {
+		projectiles[i] = *proj
+	}
+
+	// 落ちた衛星をコピー
+	droppedSatellites := make([]models.DroppedSatellite, len(g.DroppedSatellites))
+	for i, sat := range g.DroppedSatellites {
+		droppedSatellites[i] = *sat
 	}
 
 	return models.GameState{
-		Players: players,
-		Food:    foodPositions,
+		Players:           players,
+		DroppedSatellites: droppedSatellites,
+		Projectiles:       projectiles,
 	}
 }
 
@@ -75,14 +83,28 @@ func (g *Game) GetOptimizedState(clientPlayerID string, clientX, clientY, viewWi
 		}
 	}
 
-	food := make([]models.Position, 0, len(areaResult.Food))
-	for _, f := range areaResult.Food {
-		food = append(food, f.Position)
+	// 画面範囲内の射出物を取得
+	projectiles := make([]models.Projectile, 0)
+	for _, proj := range g.Projectiles {
+		if proj.Sphere.Position.X >= minX && proj.Sphere.Position.X <= maxX &&
+			proj.Sphere.Position.Y >= minY && proj.Sphere.Position.Y <= maxY {
+			projectiles = append(projectiles, *proj)
+		}
+	}
+
+	// 画面範囲内の落ちた衛星を取得
+	droppedSatellites := make([]models.DroppedSatellite, 0)
+	for _, sat := range g.DroppedSatellites {
+		if sat.Position.X >= minX && sat.Position.X <= maxX &&
+			sat.Position.Y >= minY && sat.Position.Y <= maxY {
+			droppedSatellites = append(droppedSatellites, *sat)
+		}
 	}
 
 	return models.GameState{
-		Players: players,
-		Food:    food,
+		Players:           players,
+		DroppedSatellites: droppedSatellites,
+		Projectiles:       projectiles,
 	}
 }
 

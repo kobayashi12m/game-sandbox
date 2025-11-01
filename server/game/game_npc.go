@@ -78,20 +78,20 @@ func (g *Game) updateNPCDirections() {
 	}
 }
 
-// 最も近い食べ物を探す
+// 最も近い落ちた衛星を探す
 func (g *Game) findNearestFood(head models.Position) *models.Position {
-	if len(g.Food) == 0 {
+	if len(g.DroppedSatellites) == 0 {
 		return nil
 	}
 
 	var nearestFood *models.Position
 	minDistance := math.MaxFloat64
 
-	for _, food := range g.Food {
-		distance := g.calculateDistance(head, food.Position)
+	for _, satellite := range g.DroppedSatellites {
+		distance := g.calculateDistance(head, satellite.Position)
 		if distance < minDistance {
 			minDistance = distance
-			nearestFood = &food.Position
+			nearestFood = &satellite.Position
 		}
 	}
 

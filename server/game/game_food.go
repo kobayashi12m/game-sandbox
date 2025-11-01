@@ -8,15 +8,15 @@ import (
 	"game-sandbox/server/utils"
 )
 
-// GenerateFood はゲームフィールドに食べ物を生成する
-func (g *Game) GenerateFood() {
-	targetFoodCount := 5 // 最小数を増加
+// GenerateDroppedSatellites は落ちた衛星をフィールドに生成する
+func (g *Game) GenerateDroppedSatellites() {
+	targetCount := 10 // 基本数
 	if len(g.Players) > 0 {
-		// プレイヤー数の2倍に増加
-		targetFoodCount = max(int(float64(len(g.Players))*2.0), 5)
+		// プレイヤー数の3倍
+		targetCount = max(int(float64(len(g.Players))*3.0), 10)
 	}
 
-	for len(g.Food) < targetFoodCount {
+	for len(g.DroppedSatellites) < targetCount {
 		var pos models.Position
 		attempts := 0
 		for {
@@ -24,27 +24,33 @@ func (g *Game) GenerateFood() {
 				X: rand.Float64() * utils.FIELD_WIDTH,
 				Y: rand.Float64() * utils.FIELD_HEIGHT,
 			}
-			if !g.spatialGrid.IsPositionOccupiedOptimized(pos) || attempts > 100 {
+			// 簡単な重複チェック（プレイヤーコアから一定距離離れているか）
+			occupied := false
+			for _, player := range g.Players {
+				if player.Celestial.Core != nil {
+					dx := pos.X - player.Celestial.Core.Position.X
+					dy := pos.Y - player.Celestial.Core.Position.Y
+					dist := dx*dx + dy*dy
+					if dist < (utils.SPHERE_RADIUS*4)*(utils.SPHERE_RADIUS*4) {
+						occupied = true
+						break
+					}
+				}
+			}
+			if !occupied || attempts > 100 {
 				break
 			}
 			attempts++
 		}
 		if attempts <= 100 {
-			g.Food = append(g.Food, &models.Food{Position: pos})
+			g.DroppedSatellites = append(g.DroppedSatellites, &models.DroppedSatellite{
+				Position: pos,
+				Radius:   utils.SPHERE_RADIUS * 0.8, // 少し小さく
+			})
 		} else {
-			log.Printf("Failed to place food after 100 attempts (current food: %d, target: %d)",
-				len(g.Food), targetFoodCount)
-			break // 無限ループを防ぐ
-		}
-	}
-}
-
-// RemoveFood は食べ物をポインタで効率的に削除する
-func (g *Game) RemoveFood(targetFood *models.Food) {
-	for i, food := range g.Food {
-		if food == targetFood {
-			g.Food = append(g.Food[:i], g.Food[i+1:]...)
-			return
+			log.Printf("Failed to place dropped satellite after 100 attempts (current: %d, target: %d)",
+				len(g.DroppedSatellites), targetCount)
+			break
 		}
 	}
 }

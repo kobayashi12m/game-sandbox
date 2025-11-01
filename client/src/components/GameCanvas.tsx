@@ -5,6 +5,8 @@ import type {
   Position,
   Player,
   GridLine,
+  Projectile,
+  DroppedSatellite,
 } from "../types";
 
 interface GameCanvasProps {
@@ -12,10 +14,11 @@ interface GameCanvasProps {
   playerId: string;
   gameConfig: GameConfig;
   onMouseMove: (x: number, y: number) => void;
+  onMouseClick?: (x: number, y: number) => void;
 }
 
 const GameCanvas: React.FC<GameCanvasProps> = memo(
-  ({ gameState, playerId, gameConfig, onMouseMove }) => {
+  ({ gameState, playerId, gameConfig, onMouseMove, onMouseClick }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [showGrid, setShowGrid] = useState(true);
     const [showCulling, setShowCulling] = useState(true);
@@ -153,6 +156,34 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
       };
     }, [gameState, playerId, canvasSize, onMouseMove]);
 
+    // マウスクリックの処理
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas || !onMouseClick) return;
+
+      const handleClick = (event: MouseEvent) => {
+        const rect = canvas.getBoundingClientRect();
+        const currentPlayer = gameState.players?.find((p) => p.id === playerId);
+        const playerPosition = currentPlayer?.celestial?.core?.position;
+
+        if (!playerPosition) return;
+
+        // カメラオフセットを考慮したワールド座標に変換
+        const cameraX = playerPosition.x - canvasSize.width / 2;
+        const cameraY = playerPosition.y - canvasSize.height / 2;
+
+        const worldX = event.clientX - rect.left + cameraX;
+        const worldY = event.clientY - rect.top + cameraY;
+
+        onMouseClick(worldX, worldY);
+      };
+
+      canvas.addEventListener("click", handleClick);
+      return () => {
+        canvas.removeEventListener("click", handleClick);
+      };
+    }, [gameState, playerId, canvasSize, onMouseClick]);
+
     useEffect(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -185,12 +216,13 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
               (sum, p) => sum + (p.celestial?.nodes?.length || 0) + 1, // コア + ノード
               0
             ) || 0;
-          const foodCount = gameState.food?.length || 0;
+          const droppedSatelliteCount =
+            gameState.droppedSatellites?.length || 0;
 
           console.log(`🎮 CLIENT PERFORMANCE:
 Frame: ${frameCountRef.current}
 Players: ${playerCount} (Segments: ${totalSegments})
-Food: ${foodCount}
+Dropped Satellites: ${droppedSatelliteCount}
 Draw Time: ${drawTime.toFixed(2)}ms`);
 
           lastLogTimeRef.current = now;
@@ -254,11 +286,20 @@ const drawGame = (
     drawServerCullingBounds(ctx, playerPosition, gameConfig);
   }
 
-  // 食べ物を描画（カリング付き）
-  drawFood(
+  // 落ちた衛星を描画（カリング付き）
+  drawDroppedSatellites(
     ctx,
-    gameState.food,
-    gameConfig.foodRadius,
+    gameState.droppedSatellites,
+    cameraX,
+    cameraY,
+    canvasSize
+  );
+
+  // 射出物を描画（カリング付き）
+  drawProjectiles(
+    ctx,
+    gameState.projectiles,
+    gameConfig.sphereRadius,
     cameraX,
     cameraY,
     canvasSize
@@ -337,16 +378,15 @@ const drawServerCullingBounds = (
   ctx.setLineDash([]);
 };
 
-// 食べ物の描画（カリング付き）
-const drawFood = (
+// 落ちた衛星の描画（カリング付き）
+const drawDroppedSatellites = (
   ctx: CanvasRenderingContext2D,
-  food: Position[],
-  radius: number,
+  droppedSatellites: DroppedSatellite[] | undefined,
   cameraX: number,
   cameraY: number,
   canvasSize: { width: number; height: number }
 ) => {
-  if (!food || food.length === 0) return;
+  if (!droppedSatellites || droppedSatellites.length === 0) return;
 
   // カリング境界
   const margin = 100;
@@ -355,20 +395,107 @@ const drawFood = (
   const minY = cameraY - margin;
   const maxY = cameraY + canvasSize.height + margin;
 
-  ctx.fillStyle = "#ff6b6b";
-  ctx.shadowBlur = 10;
-  ctx.shadowColor = "#ff6b6b";
+  ctx.fillStyle = "#4ECDC4"; // 青緑色
+  ctx.shadowBlur = 8;
+  ctx.shadowColor = "#4ECDC4";
 
-  food.forEach((item) => {
-    // 画面範囲内の食べ物のみ描画
-    if (item.x >= minX && item.x <= maxX && item.y >= minY && item.y <= maxY) {
+  droppedSatellites.forEach((satellite) => {
+    // 画面範囲内の落ちた衛星のみ描画
+    if (
+      satellite.position.x >= minX &&
+      satellite.position.x <= maxX &&
+      satellite.position.y >= minY &&
+      satellite.position.y <= maxY
+    ) {
       ctx.beginPath();
-      ctx.arc(item.x, item.y, radius, 0, 2 * Math.PI);
+      ctx.arc(
+        satellite.position.x,
+        satellite.position.y,
+        satellite.radius,
+        0,
+        2 * Math.PI
+      );
       ctx.fill();
+
+      // 内側に小さな光る点を追加
+      ctx.fillStyle = "#FFFFFF";
+      ctx.shadowBlur = 4;
+      ctx.shadowColor = "#FFFFFF";
+      ctx.beginPath();
+      ctx.arc(
+        satellite.position.x,
+        satellite.position.y,
+        satellite.radius * 0.3,
+        0,
+        2 * Math.PI
+      );
+      ctx.fill();
+
+      // 色を戻す
+      ctx.fillStyle = "#4ECDC4";
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = "#4ECDC4";
     }
   });
 
   ctx.shadowBlur = 0;
+};
+
+// 射出物の描画（カリング付き）
+const drawProjectiles = (
+  ctx: CanvasRenderingContext2D,
+  projectiles: Projectile[] | undefined,
+  radius: number,
+  cameraX: number,
+  cameraY: number,
+  canvasSize: { width: number; height: number }
+) => {
+  if (!projectiles || projectiles.length === 0) return;
+
+  // カリング境界
+  const margin = 100;
+  const minX = cameraX - margin;
+  const maxX = cameraX + canvasSize.width + margin;
+  const minY = cameraY - margin;
+  const maxY = cameraY + canvasSize.height + margin;
+
+  projectiles.forEach((projectile) => {
+    const pos = projectile.sphere.position;
+
+    // 画面範囲内の射出物のみ描画
+    if (pos.x >= minX && pos.x <= maxX && pos.y >= minY && pos.y <= maxY) {
+      // 射出物の描画（高速で飛ぶ衛星）
+      ctx.fillStyle = "#FFD700"; // ゴールド色
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = "#FFD700";
+
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, radius, 0, 2 * Math.PI);
+      ctx.fill();
+
+      // 軌跡の描画（速度ベクトルの逆方向に短い線）
+      if (projectile.sphere.velocity) {
+        const vel = projectile.sphere.velocity;
+        const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+        if (speed > 0) {
+          const trailLength = 20;
+          const dirX = -vel.x / speed;
+          const dirY = -vel.y / speed;
+
+          ctx.strokeStyle = "#FFD700";
+          ctx.lineWidth = 3;
+          ctx.globalAlpha = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(pos.x, pos.y);
+          ctx.lineTo(pos.x + dirX * trailLength, pos.y + dirY * trailLength);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      ctx.shadowBlur = 0;
+    }
+  });
 };
 
 // 球体構造の描画
@@ -389,29 +516,19 @@ const drawCelestialSystem = (
   ctx.globalAlpha = 0.6; // 線を少し透明に
 
   // コアから各ノードへの線を描画
-  celestialSystem.nodes.forEach((node) => {
-    ctx.beginPath();
-    ctx.moveTo(
-      celestialSystem.core.position.x,
-      celestialSystem.core.position.y
-    );
-    ctx.lineTo(node.position.x, node.position.y);
-    ctx.stroke();
-  });
-
-  // ノード間の環状接続を描画
-  ctx.lineWidth = 1.5;
-  ctx.globalAlpha = 0.4; // より薄く
-  for (let i = 0; i < celestialSystem.nodes.length; i++) {
-    const nextIndex = (i + 1) % celestialSystem.nodes.length;
-    const currentNode = celestialSystem.nodes[i];
-    const nextNode = celestialSystem.nodes[nextIndex];
-
-    ctx.beginPath();
-    ctx.moveTo(currentNode.position.x, currentNode.position.y);
-    ctx.lineTo(nextNode.position.x, nextNode.position.y);
-    ctx.stroke();
+  if (celestialSystem.nodes && celestialSystem.nodes.length > 0) {
+    celestialSystem.nodes.forEach((node) => {
+      ctx.beginPath();
+      ctx.moveTo(
+        celestialSystem.core.position.x,
+        celestialSystem.core.position.y
+      );
+      ctx.lineTo(node.position.x, node.position.y);
+      ctx.stroke();
+    });
   }
+
+  // 衛星同士の環状接続線は削除（核と衛星の線のみ表示）
 
   ctx.globalAlpha = celestialSystem.alive ? 1 : 0.3; // 透明度を戻す
 
@@ -425,11 +542,13 @@ const drawCelestialSystem = (
   );
 
   // ノード（周辺球）を描画
-  celestialSystem.nodes.forEach((node) => {
-    ctx.beginPath();
-    ctx.arc(node.position.x, node.position.y, node.radius, 0, 2 * Math.PI);
-    ctx.fill();
-  });
+  if (celestialSystem.nodes && celestialSystem.nodes.length > 0) {
+    celestialSystem.nodes.forEach((node) => {
+      ctx.beginPath();
+      ctx.arc(node.position.x, node.position.y, node.radius, 0, 2 * Math.PI);
+      ctx.fill();
+    });
+  }
 
   // プレイヤー名を描画
   drawPlayerName(
@@ -541,7 +660,11 @@ const drawUI = (
   ctx.font = "bold 18px Arial";
   ctx.textAlign = "left";
   ctx.fillText(`Score: ${currentPlayer.score}`, 20, 35);
-  ctx.fillText(`Length: ${currentPlayer.celestial.nodes.length + 1}`, 20, 55);
+  ctx.fillText(
+    `Length: ${(currentPlayer.celestial.nodes?.length || 0) + 1}`,
+    20,
+    55
+  );
 
   // 死んでいる場合はDEAD表示
   if (!currentPlayer.celestial.alive) {

@@ -26,6 +26,7 @@ const OrganismGame: React.FC = () => {
     sendDirection,
     sendAcceleration,
     sendStopMovement,
+    sendEjectSatellite,
     isConnecting,
     gameConfig,
     scoreboard,
@@ -77,6 +78,7 @@ const OrganismGame: React.FC = () => {
             playerId={playerId}
             gameConfig={gameConfig}
             onMouseMove={sendAcceleration}
+            onMouseClick={sendEjectSatellite}
           />
 
           {/* オーバーレイUI */}

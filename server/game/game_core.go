@@ -13,11 +13,12 @@ import (
 
 // Game はゲームセッションを表す
 type Game struct {
-	ID           string
-	Players      map[string]*models.Player
-	Food         []*models.Food // 食べ物をポインタで管理
-	Running      bool
-	NPCCount     int              // NPC数の設定
+	ID                string
+	Players           map[string]*models.Player
+	DroppedSatellites []*models.DroppedSatellite // 落ちた衛星
+	Projectiles       []*models.Projectile // 射出された衛星
+	Running           bool
+	NPCCount          int              // NPC数の設定
 	spatialGrid  *SpatialGrid     // 空間分割グリッド
 	frameCount   int64            // フレームカウンター
 	humanPlayers []*models.Player // WebSocket接続する人間プレイヤーのキャッシュ
@@ -115,7 +116,6 @@ func (g *Game) ShouldStart() bool {
 	// 人間プレイヤーが1人以上いて、ゲームが開始されていない場合
 	if humanPlayers >= 1 && !g.Running {
 		g.Running = true
-		g.GenerateFood()
 		go g.RunGameLoop()
 		log.Printf("Game started with %d human players and %d total players", humanPlayers, len(g.Players))
 		return true
@@ -190,4 +190,31 @@ func (g *Game) RunGameLoop() {
 // GetSpatialGridLines はSpatialGridの分割線を取得する
 func (g *Game) GetSpatialGridLines() []models.GridLine {
 	return g.spatialGrid.GetGridLines()
+}
+
+// EjectPlayerSatellite はプレイヤーの衛星を射出する
+func (g *Game) EjectPlayerSatellite(playerID string, targetX, targetY float64) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	player, exists := g.Players[playerID]
+	if !exists || player.Celestial == nil || !player.Celestial.Alive {
+		return
+	}
+
+	// 衛星を射出して、射出された衛星を取得
+	ejectedSphere := player.Celestial.EjectSatelliteWithReturn(targetX, targetY)
+	if ejectedSphere != nil {
+		// 射出物として追加
+		projectile := &models.Projectile{
+			ID:       utils.GenerateID(),
+			Sphere:   ejectedSphere,
+			OwnerID:  playerID,
+			Lifetime: 5.0, // 5秒間存在
+		}
+		g.Projectiles = append(g.Projectiles, projectile)
+		log.Printf("Satellite ejected for player %s, remaining satellites: %d", playerID, len(player.Celestial.Satellites))
+	} else {
+		log.Printf("Failed to eject satellite for player %s, satellites count: %d", playerID, len(player.Celestial.Satellites))
+	}
 }
