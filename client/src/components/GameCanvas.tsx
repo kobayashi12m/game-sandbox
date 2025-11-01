@@ -2,12 +2,10 @@ import React, { useRef, useEffect, useState, useMemo, memo } from "react";
 import type {
   GameState,
   GameConfig,
-  Position,
-  Player,
   GridLine,
-  Projectile,
-  DroppedSatellite,
 } from "../types";
+import { getPlayer, getDroppedSatellite, getProjectile } from "../types";
+import type { ConvertedPlayer, ConvertedDroppedSatellite, ConvertedProjectile } from "../types";
 
 interface GameCanvasProps {
   gameState: GameState;
@@ -71,8 +69,9 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
         pendingMouseEvent = null;
         lastSendTime = now;
         const rect = canvas.getBoundingClientRect();
-        const currentPlayer = gameState.pls?.find((p) => p.id === playerId);
-        const playerPosition = currentPlayer?.cel?.c?.p;
+        const currentPlayer = gameState.pls?.find((p) => p[0] === playerId);
+        const playerData = currentPlayer ? getPlayer(currentPlayer) : null;
+        const playerPosition = playerData?.cel?.c?.p;
 
         if (!playerPosition) return;
 
@@ -161,8 +160,9 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
 
       const handleClick = (event: MouseEvent) => {
         const rect = canvas.getBoundingClientRect();
-        const currentPlayer = gameState.pls?.find((p) => p.id === playerId);
-        const playerPosition = currentPlayer?.cel?.c?.p;
+        const currentPlayer = gameState.pls?.find((p) => p[0] === playerId);
+        const playerData = currentPlayer ? getPlayer(currentPlayer) : null;
+        const playerPosition = playerData?.cel?.c?.p;
 
         if (!playerPosition) return;
 
@@ -190,6 +190,7 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
       if (!ctx) return;
 
       try {
+        if (!gameState || !gameState.pls) return;
         
         drawGame(
           ctx,
@@ -232,8 +233,9 @@ const drawGame = (
   showCulling: boolean
 ) => {
   // プレイヤーの位置を取得
-  const currentPlayer = gameState.pls?.find((p) => p.id === playerId);
-  const playerPosition = currentPlayer?.cel?.c?.p;
+  const currentPlayer = gameState.pls?.find((p) => p[0] === playerId);
+  const playerData = currentPlayer ? getPlayer(currentPlayer) : null;
+  const playerPosition = playerData?.cel?.c?.p;
 
   // カメラの中心位置を計算
   const cameraX = playerPosition ? playerPosition.x - canvasSize.width / 2 : 0;
@@ -263,7 +265,7 @@ const drawGame = (
   // 落ちた衛星を描画（カリング付き）
   drawDroppedSatellites(
     ctx,
-    gameState.ds,
+    gameState.ds?.map(getDroppedSatellite) || [],
     cameraX,
     cameraY,
     canvasSize
@@ -272,7 +274,7 @@ const drawGame = (
   // 射出物を描画（カリング付き）
   drawProjectiles(
     ctx,
-    gameState.proj,
+    gameState.proj?.map(getProjectile) || [],
     gameConfig.sphereRadius,
     cameraX,
     cameraY,
@@ -289,9 +291,11 @@ const drawGame = (
     const maxY = cameraY + canvasSize.height + cullingMargin;
 
     gameState.pls.forEach((player) => {
+      const playerData = getPlayer(player);
+      
       // プレイヤーが画面範囲内にいるかチェック
-      if (player.cel?.c?.p) {
-        const head = player.cel.c.p;
+      if (playerData.cel?.c?.p) {
+        const head = playerData.cel.c.p;
 
         // 頭が画面範囲内にあるかチェック
         if (
@@ -300,7 +304,7 @@ const drawGame = (
           head.y >= minY &&
           head.y <= maxY
         ) {
-          drawCelestialSystem(ctx, player, player.id === playerId);
+          drawCelestialSystem(ctx, playerData, playerData.id === playerId);
         }
       }
     });
@@ -311,7 +315,7 @@ const drawGame = (
   ctx.restore();
 
   // UI要素を描画（画面固定）
-  drawUI(ctx, currentPlayer, canvasSize, showGrid, showCulling);
+  drawUI(ctx, playerData, canvasSize, showGrid, showCulling);
 };
 
 // フィールドの境界を描画
@@ -329,7 +333,7 @@ const drawFieldBoundary = (
 // サーバーカリング範囲を描画（デバッグ用）
 const drawServerCullingBounds = (
   ctx: CanvasRenderingContext2D,
-  playerPosition: Position | undefined,
+  playerPosition: { x: number; y: number } | undefined,
   gameConfig: GameConfig
 ) => {
   if (!playerPosition) return;
@@ -354,7 +358,7 @@ const drawServerCullingBounds = (
 // 落ちた衛星の描画（カリング付き）
 const drawDroppedSatellites = (
   ctx: CanvasRenderingContext2D,
-  droppedSatellites: DroppedSatellite[] | undefined,
+  droppedSatellites: ConvertedDroppedSatellite[] | undefined,
   cameraX: number,
   cameraY: number,
   canvasSize: { width: number; height: number }
@@ -417,7 +421,7 @@ const drawDroppedSatellites = (
 // 射出物の描画（カリング付き）
 const drawProjectiles = (
   ctx: CanvasRenderingContext2D,
-  projectiles: Projectile[] | undefined,
+  projectiles: ConvertedProjectile[] | undefined,
   radius: number,
   cameraX: number,
   cameraY: number,
@@ -474,7 +478,7 @@ const drawProjectiles = (
 // 球体構造の描画
 const drawCelestialSystem = (
   ctx: CanvasRenderingContext2D,
-  player: Player,
+  player: ConvertedPlayer,
   isCurrentPlayer: boolean
 ) => {
   const celestialSystem = player.cel;
@@ -490,7 +494,7 @@ const drawCelestialSystem = (
 
   // コアから各ノードへの線を描画
   if (celestialSystem.n && celestialSystem.n.length > 0) {
-    celestialSystem.n.forEach((node: any) => {
+    celestialSystem.n.forEach((node) => {
       ctx.beginPath();
       ctx.moveTo(
         celestialSystem.c.p.x,
@@ -516,7 +520,7 @@ const drawCelestialSystem = (
 
   // ノード（周辺球）を描画
   if (celestialSystem.n && celestialSystem.n.length > 0) {
-    celestialSystem.n.forEach((node: any) => {
+    celestialSystem.n.forEach((node) => {
       ctx.beginPath();
       ctx.arc(node.p.x, node.p.y, node.r, 0, 2 * Math.PI);
       ctx.fill();
@@ -537,7 +541,7 @@ const drawCelestialSystem = (
 // 球体構造の頭部（コア）の描画
 const drawCoreHead = (
   ctx: CanvasRenderingContext2D,
-  position: Position,
+  position: { x: number; y: number },
   radius: number,
   color: string,
   isCurrentPlayer: boolean
@@ -588,11 +592,11 @@ const drawCoreHead = (
   ctx.fillStyle = color;
 };
 
-// プレイヤー名の描画
+// プレイヤー名の描画  
 const drawPlayerName = (
   ctx: CanvasRenderingContext2D,
   name: string,
-  headPosition: Position,
+  headPosition: { x: number; y: number },
   isCurrentPlayer: boolean
 ) => {
   ctx.globalAlpha = 1;
@@ -618,7 +622,7 @@ const drawPlayerName = (
 // UI要素の描画（画面固定）
 const drawUI = (
   ctx: CanvasRenderingContext2D,
-  currentPlayer: Player | undefined,
+  currentPlayer: ConvertedPlayer | null,
   canvasSize: { width: number; height: number },
   showGrid: boolean,
   showCulling: boolean
@@ -698,7 +702,7 @@ const drawSpatialGrid = (
 // ミニマップの描画
 const drawMinimap = (
   ctx: CanvasRenderingContext2D,
-  currentPlayer: Player,
+  currentPlayer: ConvertedPlayer,
   canvasSize: { width: number; height: number }
 ) => {
   const mapSize = 120;

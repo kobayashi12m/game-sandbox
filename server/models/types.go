@@ -14,15 +14,27 @@ type Position struct {
 	Y float64 `json:"y"`
 }
 
-// MarshalJSON は座標を整数に丸めてJSONシリアライズする
+// MarshalJSON は座標を配列形式でJSONシリアライズする [x, y]
 func (p Position) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf(`{"x":%d,"y":%d}`, int(p.X), int(p.Y))), nil
+	return []byte(fmt.Sprintf(`[%d,%d]`, int(p.X), int(p.Y))), nil
 }
 
 // DroppedSatellite は落ちた衛星を表す
 type DroppedSatellite struct {
 	Position Position `json:"p"`  // position → p
 	Radius   float64  `json:"r"`  // radius → r
+}
+
+// MarshalJSON はDroppedSatelliteを配列形式でJSON化 [position, radius]
+func (d DroppedSatellite) MarshalJSON() ([]byte, error) {
+	posJSON, err := d.Position.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	
+	// 配列形式: [position, radius]
+	result := fmt.Sprintf(`[%s,%g]`, string(posJSON), d.Radius)
+	return []byte(result), nil
 }
 
 // Player はゲーム内のプレイヤーを表す
@@ -43,6 +55,20 @@ type Projectile struct {
 	Sphere   *Sphere  `json:"sph"`     // sphere → sph
 	OwnerID  string   `json:"oid"`     // ownerId → oid
 	Lifetime float64  `json:"-"` // 残り寿命（秒）
+}
+
+// MarshalJSON はProjectileを配列形式でJSON化 [id, sphere, ownerId]
+func (p Projectile) MarshalJSON() ([]byte, error) {
+	sphereJSON, err := p.Sphere.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	
+	// 配列形式: [id, sphere, ownerId]
+	result := fmt.Sprintf(`["%s",%s,"%s"]`,
+		p.ID, string(sphereJSON), p.OwnerID)
+	
+	return []byte(result), nil
 }
 
 // GameState はクライアントに送信される現在の状態を表す
@@ -66,6 +92,20 @@ type PlayerState struct {
 	Name      string     `json:"nm"`          // name → nm
 	Celestial *Celestial `json:"cel"`         // celestial → cel
 	Score     int        `json:"sc"`          // score → sc
+}
+
+// MarshalJSON はPlayerStateを配列形式でJSON化 [id, name, celestial, score]
+func (p PlayerState) MarshalJSON() ([]byte, error) {
+	celestialJSON, err := p.Celestial.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	
+	// 配列形式: [id, name, celestial, score]
+	result := fmt.Sprintf(`["%s","%s",%s,%d]`,
+		p.ID, p.Name, string(celestialJSON), p.Score)
+	
+	return []byte(result), nil
 }
 
 // ScoreInfo はスコアボード用の軽量プレイヤー情報を表す

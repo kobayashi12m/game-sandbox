@@ -14,13 +14,15 @@ export const VectorDisplay: React.FC<VectorDisplayProps> = ({
 }) => {
   if (!velocity || !acceleration) return null;
 
+  // 配列形式の Position [x, y] にアクセス
+  const vx = velocity[0] || 0;
+  const vy = velocity[1] || 0;
+  const ax = acceleration[0] || 0;
+  const ay = acceleration[1] || 0;
+
   // ベクトルの大きさを計算
-  const velocityMagnitude = Math.sqrt(
-    velocity.x * velocity.x + velocity.y * velocity.y
-  );
-  const accelerationMagnitude = Math.sqrt(
-    acceleration.x * acceleration.x + acceleration.y * acceleration.y
-  );
+  const velocityMagnitude = Math.sqrt(vx * vx + vy * vy);
+  const accelerationMagnitude = Math.sqrt(ax * ax + ay * ay);
 
   return (
     <div className="vector-display">
@@ -29,8 +31,8 @@ export const VectorDisplay: React.FC<VectorDisplayProps> = ({
         <div className="vector-item">
           <span className="vector-label">速度:</span>
           <div className="vector-values">
-            <span>X: {velocity.x.toFixed(1)}</span>
-            <span>Y: {velocity.y.toFixed(1)}</span>
+            <span>X: {vx.toFixed(1)}</span>
+            <span>Y: {vy.toFixed(1)}</span>
             <span>
               大きさ: {velocityMagnitude.toFixed(1)} / {maxSpeed}
             </span>
@@ -39,8 +41,8 @@ export const VectorDisplay: React.FC<VectorDisplayProps> = ({
         <div className="vector-item">
           <span className="vector-label">加速度:</span>
           <div className="vector-values">
-            <span>X: {acceleration.x.toFixed(1)}</span>
-            <span>Y: {acceleration.y.toFixed(1)}</span>
+            <span>X: {ax.toFixed(1)}</span>
+            <span>Y: {ay.toFixed(1)}</span>
             <span>大きさ: {accelerationMagnitude.toFixed(1)}</span>
           </div>
         </div>

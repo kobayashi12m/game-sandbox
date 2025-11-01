@@ -1,18 +1,10 @@
 // ゲーム関連の型定義
 
-export interface Position {
-  x: number;
-  y: number;
-}
+// Positionは配列形式: [x, y]
+export type Position = [number, number];
 
-// 球体の物理特性 (キー短縮対応)
-export interface Sphere {
-  p: Position;      // position → p
-  v?: Position;     // velocity → v  
-  a?: Position;     // acceleration → a
-  r: number;        // radius → r
-  mass: number;
-}
+// Sphereは配列形式: [[x,y], radius, [vx,vy]?, [ax,ay]?]
+export type Sphere = [Position, number, Position?, Position?];
 
 // 軌道上を回転する衛星
 export interface Satellite {
@@ -22,32 +14,17 @@ export interface Satellite {
   radius: number;
 }
 
-// 核と衛星からなる天体システム (キー短縮対応)
-export interface CelestialSystem {
-  c: Sphere;        // core → c
-  n: Sphere[];      // nodes → n  
-  satellites: Satellite[];
-  col: string;      // color → col
-  a: boolean;       // alive → a
-}
+// CelestialSystemは配列形式: [core, color, alive, nodes]
+export type CelestialSystem = [Sphere, string, boolean, Sphere[]];
 
-export interface Player {
-  id: string;
-  nm: string;               // name → nm
-  cel: CelestialSystem;     // celestial → cel
-  sc: number;               // score → sc
-}
+// Playerは配列形式: [id, name, celestial, score]
+export type Player = [string, string, CelestialSystem, number];
 
-export interface Projectile {
-  id: string;
-  sph: Sphere;              // sphere → sph
-  oid: string;              // ownerId → oid
-}
+// Projectileは配列形式: [id, sphere, ownerId]
+export type Projectile = [string, Sphere, string];
 
-export interface DroppedSatellite {
-  p: Position;    // position → p
-  r: number;      // radius → r
-}
+// DroppedSatelliteは配列形式: [position, radius]
+export type DroppedSatellite = [Position, number];
 
 export interface GameState {
   pls: Player[];                     // players → pls
@@ -117,6 +94,97 @@ export interface GameConfigMessage extends WebSocketMessage {
 
 // 方向の型
 export type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
+
+// 配列形式データ用の型定義
+export interface ConvertedPosition {
+  x: number;
+  y: number;
+}
+
+export interface ConvertedSphere {
+  p: ConvertedPosition;
+  r: number;
+  v?: ConvertedPosition;
+  a?: ConvertedPosition;
+}
+
+export interface ConvertedCelestialSystem {
+  c: ConvertedSphere;
+  col: string;
+  a: boolean;
+  n: ConvertedSphere[];
+}
+
+export interface ConvertedPlayer {
+  id: string;
+  nm: string;
+  cel: ConvertedCelestialSystem;
+  sc: number;
+}
+
+export interface ConvertedProjectile {
+  id: string;
+  sph: ConvertedSphere;
+  oid: string;
+}
+
+export interface ConvertedDroppedSatellite {
+  p: ConvertedPosition;
+  r: number;
+}
+
+// 配列形式データ用のヘルパー関数
+export const getPosition = (pos: Position): ConvertedPosition => {
+  if (!pos || !Array.isArray(pos) || pos.length < 2) {
+    return { x: 0, y: 0 };
+  }
+  return { x: pos[0], y: pos[1] };
+};
+
+export const getSphere = (sphere: Sphere): ConvertedSphere => {
+  if (!sphere || !Array.isArray(sphere) || sphere.length < 2) {
+    return { p: { x: 0, y: 0 }, r: 0 };
+  }
+  return {
+    p: getPosition(sphere[0]),
+    r: sphere[1],
+    v: sphere[2] ? getPosition(sphere[2]) : undefined,
+    a: sphere[3] ? getPosition(sphere[3]) : undefined
+  };
+};
+
+export const getCelestialSystem = (cel: CelestialSystem): ConvertedCelestialSystem => {
+  if (!cel || !Array.isArray(cel) || cel.length < 4) {
+    return { c: { p: { x: 0, y: 0 }, r: 0 }, col: '#000', a: false, n: [] };
+  }
+  return {
+    c: getSphere(cel[0]),
+    col: cel[1],
+    a: cel[2],
+    n: Array.isArray(cel[3]) ? cel[3].map(getSphere) : []
+  };
+};
+
+export const getPlayer = (player: Player): ConvertedPlayer => {
+  if (!player || !Array.isArray(player) || player.length < 4) {
+    return { id: '', nm: '', cel: { c: { p: { x: 0, y: 0 }, r: 0 }, col: '#000', a: false, n: [] }, sc: 0 };
+  }
+  return {
+    id: player[0],
+    nm: player[1],
+    cel: getCelestialSystem(player[2]),
+    sc: player[3]
+  };
+};
+export const getDroppedSatellite = (ds: DroppedSatellite): ConvertedDroppedSatellite => ({
+  p: getPosition(ds[0]),
+  r: ds[1]
+});
+export const getProjectile = (proj: Projectile): ConvertedProjectile => ({
+  id: proj[0],
+  sph: getSphere(proj[1]),
+  oid: proj[2]
+});
 
 // デフォルトのゲーム設定（サーバーから受信するまでの暫定値）
 export const DEFAULT_GAME_CONFIG: GameConfig = {

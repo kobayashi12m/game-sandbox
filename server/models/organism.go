@@ -17,24 +17,31 @@ type Sphere struct {
 	Mass         float64  `json:"-"` // 質量
 }
 
-// MarshalJSON はキー短縮とゼロ値省略でJSONサイズを最大削減する
+// MarshalJSON は配列形式でJSONサイズを最大削減する [[x,y], radius, [vx,vy], [ax,ay]]
 func (s Sphere) MarshalJSON() ([]byte, error) {
-	// キー短縮: position→p, velocity→v, acceleration→a, radius→r
-	result := fmt.Sprintf(`{"p":{"x":%d,"y":%d},"r":%d`, 
+	// 基本形式: [position, radius]
+	result := fmt.Sprintf(`[[%d,%d],%d`, 
 		int(s.Position.X), int(s.Position.Y), int(s.Radius))
 	
-	// ゼロでない場合のみ追加
+	// velocityがゼロでない場合のみ追加
 	vx, vy := int(s.Velocity.X), int(s.Velocity.Y)
 	if vx != 0 || vy != 0 {
-		result += fmt.Sprintf(`,"v":{"x":%d,"y":%d}`, vx, vy)
+		result += fmt.Sprintf(`,[%d,%d]`, vx, vy)
+	} else {
+		// velocityがゼロでもaccelerationがある場合はnullを追加
+		ax, ay := int(s.Acceleration.X), int(s.Acceleration.Y)
+		if ax != 0 || ay != 0 {
+			result += `,null`
+		}
 	}
 	
+	// accelerationがゼロでない場合のみ追加
 	ax, ay := int(s.Acceleration.X), int(s.Acceleration.Y)
 	if ax != 0 || ay != 0 {
-		result += fmt.Sprintf(`,"a":{"x":%d,"y":%d}`, ax, ay)
+		result += fmt.Sprintf(`,[%d,%d]`, ax, ay)
 	}
 	
-	result += "}"
+	result += "]"
 	return []byte(result), nil
 }
 
@@ -68,7 +75,7 @@ type Celestial struct {
 	OrbitConfigs map[int]*OrbitConfig `json:"-"` // 軌道設定
 }
 
-// MarshalJSON はCelestialをJSON化する際に、キー短縮とカスタムマーシャリングを適用
+// MarshalJSON はCelestialを配列形式でJSON化 [core, color, alive, nodes]
 func (c *Celestial) MarshalJSON() ([]byte, error) {
 	// コアのJSONを手動で生成（Sphereのカスタムマーシャリングを使用）
 	coreJSON, err := c.Core.MarshalJSON()
@@ -91,8 +98,8 @@ func (c *Celestial) MarshalJSON() ([]byte, error) {
 	}
 	nodesJSON += "]"
 	
-	// 最終的なJSONを構築（キー短縮: core→c, color→col, alive→a, nodes→n）
-	result := fmt.Sprintf(`{"c":%s,"col":"%s","a":%t,"n":%s}`,
+	// 配列形式: [core, color, alive, nodes]
+	result := fmt.Sprintf(`[%s,"%s",%t,%s]`,
 		string(coreJSON), c.Color, c.Alive, nodesJSON)
 	
 	return []byte(result), nil

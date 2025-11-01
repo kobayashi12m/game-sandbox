@@ -6,6 +6,7 @@ import Scoreboard from "./Scoreboard";
 import { VectorDisplay } from "./VectorDisplay";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { useGameInput } from "../hooks/useGameInput";
+import { getPlayer } from "../types";
 
 const OrganismGame: React.FC = () => {
   const [playerName] = useState<string>("Player");
@@ -124,16 +125,22 @@ const OrganismGame: React.FC = () => {
                 playerId &&
                 (() => {
                   const currentPlayer = gameState.pls.find(
-                    (p) => p.id === playerId
+                    (p) => p[0] === playerId
                   );
-                  if (currentPlayer?.cel?.c) {
-                    return (
-                      <VectorDisplay
-                        velocity={currentPlayer.cel.c.v}
-                        acceleration={currentPlayer.cel.c.a}
-                        maxSpeed={500}
-                      />
-                    );
+                  if (currentPlayer) {
+                    const playerData = getPlayer(currentPlayer);
+                    if (playerData?.cel?.c) {
+                      const velocity = playerData.cel.c.v;
+                      const acceleration = playerData.cel.c.a;
+                      
+                      return (
+                        <VectorDisplay
+                          velocity={velocity ? [velocity.x, velocity.y] : undefined}
+                          acceleration={acceleration ? [acceleration.x, acceleration.y] : undefined}
+                          maxSpeed={500}
+                        />
+                      );
+                    }
                   }
                   return null;
                 })()}
