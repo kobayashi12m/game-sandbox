@@ -17,6 +17,7 @@ type Sphere struct {
 	Mass         float64  `json:"-"` // 質量
 }
 
+
 // Satellite は衛星を表す
 type Satellite struct {
 	Sphere    *Sphere `json:"sphere"`    // 球体

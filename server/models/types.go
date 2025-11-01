@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -11,6 +12,11 @@ import (
 type Position struct {
 	X float64 `json:"x"`
 	Y float64 `json:"y"`
+}
+
+// MarshalJSON は座標を整数に丸めてJSONシリアライズする
+func (p Position) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf(`{"x":%d,"y":%d}`, int(p.X), int(p.Y))), nil
 }
 
 // DroppedSatellite は落ちた衛星を表す

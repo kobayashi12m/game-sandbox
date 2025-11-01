@@ -1,6 +1,8 @@
 package game
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"log"
 	"sort"
@@ -209,7 +211,7 @@ func (g *Game) BroadcastOptimized() {
 		optimizedState := g.GetOptimizedState(player.ID, head.X, head.Y, viewWidth, viewHeight)
 
 		message := map[string]interface{}{
-			"type":  "gameState",
+			"type":  "gameState", 
 			"state": optimizedState,
 		}
 
@@ -225,10 +227,32 @@ func (g *Game) BroadcastOptimized() {
 			defer player.ConnMu.Unlock()
 			if err := player.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
 				log.Printf("\033[31m❌ WS_ERROR: Error broadcasting optimized state to player %s: %v\033[0m", player.ID, err)
-			}
-			// デバッグ：データサイズをログ出力（10秒に1回）
-			if g.frameCount%600 == 0 {
-				log.Printf("\033[34m📊 WS_DATA: size for player %s: %d bytes\033[0m", player.Name, len(data))
+			} else {
+				// 10秒に1回だけサイズを表示（60FPS: フレーム600回 = 10秒）
+				if g.frameCount%600 == 0 {
+					// 圧縮前のサイズ（JSON生データ）
+					uncompressedSize := len(data)
+					
+					// 実際にWebSocketで送信される圧縮後サイズは取得困難なので
+					// 圧縮率の簡易測定を行う
+					
+					var buf bytes.Buffer
+					gzWriter := gzip.NewWriter(&buf)
+					gzWriter.Write(data)
+					gzWriter.Close()
+					compressedSize := buf.Len()
+					compressionRatio := float64(compressedSize) / float64(uncompressedSize) * 100
+					
+					log.Printf("📊 DATA_SIZE: Original=%d bytes, Compressed=%d bytes (%.1f%%) to %s", 
+						uncompressedSize, compressedSize, compressionRatio, player.Name)
+					
+					// JSONデータの中身を表示（最初の500文字だけ）
+					dataStr := string(data)
+					if len(dataStr) > 500 {
+						dataStr = dataStr[:500] + "..."
+					}
+					log.Printf("📋 JSON_SAMPLE: %s", dataStr)
+				}
 			}
 		}()
 	}

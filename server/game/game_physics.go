@@ -48,6 +48,7 @@ func (g *Game) Update(deltaTime float64) {
 
 		log.Printf("🎮 SERVER STATE: Frame %d | Players: %d (Human: %d, Dead: %d) | Dropped Satellites: %d | Segments: %d (Max: %d, Min: %d)",
 			g.frameCount, len(g.Players), humanPlayers, deadPlayers, len(g.DroppedSatellites), totalSegments, maxOrganismLength, minOrganismLength)
+		log.Printf("📡 TEST: Network monitoring test")
 	}
 
 	// 全ての天体システムの運動を更新

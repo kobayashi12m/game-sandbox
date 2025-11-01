@@ -22,7 +22,9 @@ type Game struct {
 	spatialGrid  *SpatialGrid     // 空間分割グリッド
 	frameCount   int64            // フレームカウンター
 	humanPlayers []*models.Player // WebSocket接続する人間プレイヤーのキャッシュ
-	mu           sync.RWMutex
+	// 通信統計（シンプル版）
+	totalBytesSent int64           // 送信バイト数の累計
+	mu             sync.RWMutex
 }
 
 // AddPlayer はゲームに新しいプレイヤーを追加する

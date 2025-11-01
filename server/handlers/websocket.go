@@ -17,8 +17,9 @@ var (
 			// 全てのオリジンを許可（開発用）
 			return true
 		},
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
+		ReadBufferSize:   1024,
+		WriteBufferSize:  1024,
+		EnableCompression: true, // gzip圧縮を有効化
 	}
 )
 
