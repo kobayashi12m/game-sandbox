@@ -99,8 +99,10 @@ func (c *Celestial) MarshalJSON() ([]byte, error) {
 	nodesJSON += "]"
 	
 	// 配列形式: [core, color, alive, nodes]
-	result := fmt.Sprintf(`[%s,"%s",%t,%s]`,
-		string(coreJSON), c.Color, c.Alive, nodesJSON)
+	// カラー文字列を適切にエスケープ
+	escapedColor := fmt.Sprintf("%q", c.Color)
+	result := fmt.Sprintf(`[%s,%s,%t,%s]`,
+		string(coreJSON), escapedColor, c.Alive, nodesJSON)
 	
 	return []byte(result), nil
 }

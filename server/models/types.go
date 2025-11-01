@@ -65,8 +65,11 @@ func (p Projectile) MarshalJSON() ([]byte, error) {
 	}
 	
 	// 配列形式: [id, sphere, ownerId]
-	result := fmt.Sprintf(`["%s",%s,"%s"]`,
-		p.ID, string(sphereJSON), p.OwnerID)
+	// ID と OwnerID を適切にエスケープ
+	escapedID := fmt.Sprintf("%q", p.ID)
+	escapedOwnerID := fmt.Sprintf("%q", p.OwnerID)
+	result := fmt.Sprintf(`[%s,%s,%s]`,
+		escapedID, string(sphereJSON), escapedOwnerID)
 	
 	return []byte(result), nil
 }
@@ -102,8 +105,11 @@ func (p PlayerState) MarshalJSON() ([]byte, error) {
 	}
 	
 	// 配列形式: [id, name, celestial, score]
-	result := fmt.Sprintf(`["%s","%s",%s,%d]`,
-		p.ID, p.Name, string(celestialJSON), p.Score)
+	// ID と Name を適切にエスケープ
+	escapedID := fmt.Sprintf("%q", p.ID)
+	escapedName := fmt.Sprintf("%q", p.Name)
+	result := fmt.Sprintf(`[%s,%s,%s,%d]`,
+		escapedID, escapedName, string(celestialJSON), p.Score)
 	
 	return []byte(result), nil
 }
