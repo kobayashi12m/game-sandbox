@@ -27,15 +27,7 @@ func (g *Game) AddNPC(count int) {
 
 		// 既存のAddPlayer関数を使ってNPCを追加（WebSocket接続はnil）
 		g.AddPlayer(npcID, npcName, nil)
-
-		// NPCフラグを設定
-		if player, exists := g.Players[npcID]; exists {
-			player.IsNPC = true
-			player.LastDirectionChange = time.Now()
-			log.Printf("NPC %s added successfully", npcName)
-		} else {
-			log.Printf("Failed to add NPC %s", npcName)
-		}
+		log.Printf("NPC %s added successfully", npcName)
 	}
 
 	log.Printf("Total players after adding NPCs: %d", len(g.Players))

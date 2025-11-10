@@ -30,6 +30,9 @@ const (
 	// 衝突物理定数
 	COLLISION_RESTITUTION  = 0.3 // 反発係数（0-1、0は完全非弾性）
 	COLLISION_MIN_DISTANCE = 2.0 // 最小衝突距離（半径の倍数）
+
+	// 衛星物理定数
+	SATELLITE_EJECT_SPEED = 800.0 // 衛星の射出速度（ユニット/秒）
 )
 
 // Direction represents movement direction (normalized vector)

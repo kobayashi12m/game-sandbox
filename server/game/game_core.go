@@ -48,6 +48,12 @@ func (g *Game) AddPlayer(id, name string, conn *websocket.Conn) {
 		Conn:      conn,
 	}
 
+	// WebSocket接続がない場合はNPCとして初期化
+	if conn == nil {
+		player.IsNPC = true
+		player.LastDirectionChange = time.Now()
+	}
+
 	g.Players[id] = player
 
 	// 人間プレイヤーの場合はキャッシュに追加
