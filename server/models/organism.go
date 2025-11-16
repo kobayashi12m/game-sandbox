@@ -313,7 +313,7 @@ func (c *Celestial) AddSatellite() {
 		// 各軌道の半径と速度を計算（外側ほど半径が大きく、速度は遅くなる）
 		radius := utils.SPHERE_RADIUS * utils.ORBITAL_RADIUS_RATIO * float64(orbitIndex+1)
 		speed := utils.ORBITAL_SPEED / math.Sqrt(float64(orbitIndex+1))
-		c.AddOrbitType(orbitIndex, radius, speed)
+		c.AddorbitIndex(orbitIndex, radius, speed)
 	}
 
 	orbitConfig := c.GetOrbitConfig(orbitIndex)
@@ -368,7 +368,7 @@ func (c *Celestial) EjectSatelliteWithReturn(targetX, targetY float64) *Sphere {
 	}
 
 	// 最外殻の軌道番号を取得
-	outermostOrbit := c.GetHighestOrbitType()
+	outermostOrbit := c.GetHighestorbitIndex()
 	if outermostOrbit < 0 {
 		return nil // 軌道がない場合
 	}

@@ -38,8 +38,8 @@ func (c *Celestial) RemoveSatellite(orbitIndex, satIndex int) bool {
 }
 
 // GetOrbitConfig は指定された軌道の設定を返す
-func (c *Celestial) GetOrbitConfig(orbitType int) *OrbitConfig {
-	config, exists := c.OrbitConfigs[orbitType]
+func (c *Celestial) GetOrbitConfig(orbitIndex int) *OrbitConfig {
+	config, exists := c.OrbitConfigs[orbitIndex]
 	if !exists {
 		// デフォルト設定を返す
 		return &OrbitConfig{
@@ -50,9 +50,9 @@ func (c *Celestial) GetOrbitConfig(orbitType int) *OrbitConfig {
 	return config
 }
 
-// AddOrbitType は新しい軌道タイプを追加する
-func (c *Celestial) AddOrbitType(orbitType int, radius, speed float64) {
-	c.OrbitConfigs[orbitType] = &OrbitConfig{
+// AddorbitIndex は新しい軌道タイプを追加する
+func (c *Celestial) AddorbitIndex(orbitIndex int, radius, speed float64) {
+	c.OrbitConfigs[orbitIndex] = &OrbitConfig{
 		Radius: radius,
 		Speed:  speed,
 	}
@@ -60,23 +60,22 @@ func (c *Celestial) AddOrbitType(orbitType int, radius, speed float64) {
 
 // GetMaxSatellitesForOrbit は指定された軌道に配置可能な最大衛星数を返す
 // 原子の電子殻モデルに基づく: 0層目=2, 1層目=8, 2層目=18, 3層目=32... (2n²)
-func GetMaxSatellitesForOrbit(orbitType int) int {
-	n := orbitType + 1
+func GetMaxSatellitesForOrbit(orbitIndex int) int {
+	n := orbitIndex + 1
 	return 2 * n * n
 }
 
 // GetSatellitesInOrbit は指定された軌道にある衛星のリストを返す
-// orbitTypeは0から始まる（第0軌道=0、第1軌道=1...）
-func (c *Celestial) GetSatellitesInOrbit(orbitType int) []*Satellite {
-	orbitIndex := orbitType // 軌道番号が配列インデックスに直接対応
+// orbitIndexは0から始まる（第0軌道=0、第1軌道=1...）
+func (c *Celestial) GetSatellitesInOrbit(orbitIndex int) []*Satellite {
 	if orbitIndex < 0 || orbitIndex >= len(c.Satellites) {
 		return []*Satellite{}
 	}
 	return c.Satellites[orbitIndex]
 }
 
-// GetHighestOrbitType は現在使用中の最高軌道番号を返す
-func (c *Celestial) GetHighestOrbitType() int {
+// GetHighestorbitIndex は現在使用中の最高軌道番号を返す
+func (c *Celestial) GetHighestorbitIndex() int {
 	// 最外側から内側に向かって、衛星が存在する軌道を探す
 	for i := len(c.Satellites) - 1; i >= 0; i-- {
 		if len(c.Satellites[i]) > 0 {
@@ -87,29 +86,29 @@ func (c *Celestial) GetHighestOrbitType() int {
 }
 
 // IsOrbitFull は指定された軌道が満杯かどうかを返す
-func (c *Celestial) IsOrbitFull(orbitType int) bool {
-	currentCount := len(c.GetSatellitesInOrbit(orbitType))
-	maxCount := GetMaxSatellitesForOrbit(orbitType)
+func (c *Celestial) IsOrbitFull(orbitIndex int) bool {
+	currentCount := len(c.GetSatellitesInOrbit(orbitIndex))
+	maxCount := GetMaxSatellitesForOrbit(orbitIndex)
 	return currentCount >= maxCount
 }
 
 // GetAvailableOrbitForNewSatellite は新しい衛星を追加可能な最も内側の軌道番号を返す
 func (c *Celestial) GetAvailableOrbitForNewSatellite() int {
-	orbitType := 0
+	orbitIndex := 0
 	maxOrbits := 9 // 最大10層まで（安全装置） - 0から9まで
-	for orbitType <= maxOrbits {
-		if !c.IsOrbitFull(orbitType) {
-			return orbitType
+	for orbitIndex <= maxOrbits {
+		if !c.IsOrbitFull(orbitIndex) {
+			return orbitIndex
 		}
-		orbitType++
+		orbitIndex++
 	}
 	// 万が一すべて満杯の場合は最後の軌道を返す
 	return maxOrbits
 }
 
 // RebalanceSatellitesInOrbit は指定された軌道の衛星を等間隔に再配置する
-func (c *Celestial) RebalanceSatellitesInOrbit(orbitType int) {
-	satellites := c.GetSatellitesInOrbit(orbitType)
+func (c *Celestial) RebalanceSatellitesInOrbit(orbitIndex int) {
+	satellites := c.GetSatellitesInOrbit(orbitIndex)
 	count := len(satellites)
 	if count == 0 {
 		return
@@ -121,8 +120,8 @@ func (c *Celestial) RebalanceSatellitesInOrbit(orbitType int) {
 }
 
 // findBestInsertionAngle は既存の衛星の間で最大の空きスペースの中心角度を返す
-func (c *Celestial) findBestInsertionAngle(orbitType int) float64 {
-	satellites := c.GetSatellitesInOrbit(orbitType)
+func (c *Celestial) findBestInsertionAngle(orbitIndex int) float64 {
+	satellites := c.GetSatellitesInOrbit(orbitIndex)
 	if len(satellites) == 0 {
 		return 0
 	}
