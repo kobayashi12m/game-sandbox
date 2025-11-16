@@ -8,23 +8,32 @@ import (
 // GetAllSpheres はすべての衛星の球体を配列で返す
 func (c *Celestial) GetAllSpheres() []*Sphere {
 	var spheres []*Sphere
-	for _, satellite := range c.Satellites {
-		spheres = append(spheres, satellite.Sphere)
+	for _, orbit := range c.Satellites {
+		for _, satellite := range orbit {
+			spheres = append(spheres, satellite.Sphere)
+		}
 	}
 	return spheres
 }
 
 // GetTotalSatelliteCount はすべての衛星の総数を返す
 func (c *Celestial) GetTotalSatelliteCount() int {
-	return len(c.Satellites)
+	count := 0
+	for _, orbit := range c.Satellites {
+		count += len(orbit)
+	}
+	return count
 }
 
-// RemoveSatellite は指定されたインデックスの衛星を削除する
-func (c *Celestial) RemoveSatellite(targetIndex int) bool {
-	if targetIndex < 0 || targetIndex >= len(c.Satellites) {
+// RemoveSatellite は指定された軌道とインデックスの衛星を削除する
+func (c *Celestial) RemoveSatellite(orbitIndex, satIndex int) bool {
+	if orbitIndex < 0 || orbitIndex >= len(c.Satellites) {
 		return false
 	}
-	c.Satellites = append(c.Satellites[:targetIndex], c.Satellites[targetIndex+1:]...)
+	if satIndex < 0 || satIndex >= len(c.Satellites[orbitIndex]) {
+		return false
+	}
+	c.Satellites[orbitIndex] = append(c.Satellites[orbitIndex][:satIndex], c.Satellites[orbitIndex][satIndex+1:]...)
 	return true
 }
 
@@ -50,31 +59,31 @@ func (c *Celestial) AddOrbitType(orbitType int, radius, speed float64) {
 }
 
 // GetMaxSatellitesForOrbit は指定された軌道に配置可能な最大衛星数を返す
-// 原子の電子殻モデルに基づく: 1層目=2, 2層目=8, 3層目=18, 4層目=32... (2n²)
+// 原子の電子殻モデルに基づく: 0層目=2, 1層目=8, 2層目=18, 3層目=32... (2n²)
 func GetMaxSatellitesForOrbit(orbitType int) int {
-	return 2 * orbitType * orbitType
+	n := orbitType + 1
+	return 2 * n * n
 }
 
 // GetSatellitesInOrbit は指定された軌道にある衛星のリストを返す
+// orbitTypeは0から始まる（第0軌道=0、第1軌道=1...）
 func (c *Celestial) GetSatellitesInOrbit(orbitType int) []*Satellite {
-	var satellites []*Satellite
-	for _, sat := range c.Satellites {
-		if sat.OrbitType == orbitType {
-			satellites = append(satellites, sat)
-		}
+	orbitIndex := orbitType // 軌道番号が配列インデックスに直接対応
+	if orbitIndex < 0 || orbitIndex >= len(c.Satellites) {
+		return []*Satellite{}
 	}
-	return satellites
+	return c.Satellites[orbitIndex]
 }
 
 // GetHighestOrbitType は現在使用中の最高軌道番号を返す
 func (c *Celestial) GetHighestOrbitType() int {
-	maxOrbit := 0
-	for _, sat := range c.Satellites {
-		if sat.OrbitType > maxOrbit {
-			maxOrbit = sat.OrbitType
+	// 最外側から内側に向かって、衛星が存在する軌道を探す
+	for i := len(c.Satellites) - 1; i >= 0; i-- {
+		if len(c.Satellites[i]) > 0 {
+			return i
 		}
 	}
-	return maxOrbit
+	return -1 // 衛星が存在しない場合
 }
 
 // IsOrbitFull は指定された軌道が満杯かどうかを返す
@@ -86,8 +95,8 @@ func (c *Celestial) IsOrbitFull(orbitType int) bool {
 
 // GetAvailableOrbitForNewSatellite は新しい衛星を追加可能な最も内側の軌道番号を返す
 func (c *Celestial) GetAvailableOrbitForNewSatellite() int {
-	orbitType := 1
-	maxOrbits := 10 // 最大10層まで（安全装置）
+	orbitType := 0
+	maxOrbits := 9 // 最大10層まで（安全装置） - 0から9まで
 	for orbitType <= maxOrbits {
 		if !c.IsOrbitFull(orbitType) {
 			return orbitType
@@ -105,7 +114,7 @@ func (c *Celestial) RebalanceSatellitesInOrbit(orbitType int) {
 	if count == 0 {
 		return
 	}
-	
+
 	for i, sat := range satellites {
 		sat.Angle = float64(i) * 2.0 * math.Pi / float64(count)
 	}
@@ -117,7 +126,7 @@ func (c *Celestial) findBestInsertionAngle(orbitType int) float64 {
 	if len(satellites) == 0 {
 		return 0
 	}
-	
+
 	// 衛星の角度をソート
 	angles := make([]float64, len(satellites))
 	for i, sat := range satellites {
@@ -130,7 +139,7 @@ func (c *Celestial) findBestInsertionAngle(orbitType int) float64 {
 			angles[i] -= 2.0 * math.Pi
 		}
 	}
-	
+
 	// ソート
 	for i := 0; i < len(angles)-1; i++ {
 		for j := i + 1; j < len(angles); j++ {
@@ -139,11 +148,11 @@ func (c *Celestial) findBestInsertionAngle(orbitType int) float64 {
 			}
 		}
 	}
-	
+
 	// 最大の空きスペースを見つける
 	maxGap := 0.0
 	bestAngle := 0.0
-	
+
 	for i := 0; i < len(angles); i++ {
 		nextIndex := (i + 1) % len(angles)
 		var gap float64
@@ -153,7 +162,7 @@ func (c *Celestial) findBestInsertionAngle(orbitType int) float64 {
 		} else {
 			gap = angles[nextIndex] - angles[i]
 		}
-		
+
 		if gap > maxGap {
 			maxGap = gap
 			if i == len(angles)-1 {
@@ -167,6 +176,6 @@ func (c *Celestial) findBestInsertionAngle(orbitType int) float64 {
 			}
 		}
 	}
-	
+
 	return bestAngle
 }

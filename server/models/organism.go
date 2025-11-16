@@ -47,9 +47,8 @@ func (s Sphere) MarshalJSON() ([]byte, error) {
 
 // Satellite は衛星を表す
 type Satellite struct {
-	Sphere    *Sphere `json:"sphere"`    // 球体
-	OrbitType int     `json:"orbitType"` // 軌道番号（1=第1軌道、2=第2軌道...）
-	Angle     float64 `json:"angle"`     // 軌道上の角度
+	Sphere *Sphere `json:"sphere"` // 球体
+	Angle  float64 `json:"angle"`  // 軌道上の角度
 }
 
 // OrbitConfig は軌道の設定
@@ -68,7 +67,7 @@ type Celestial struct {
 	DeathTime  time.Time `json:"-"`
 
 	// 内部管理用（JSON送信されない）
-	Satellites   []*Satellite         `json:"-"` // 衛星
+	Satellites   [][]*Satellite       `json:"-"` // 衛星（インデックス0が最内側軌道）
 	MaxSpeed     float64              `json:"-"` // 最大速度
 	AccelForce   float64              `json:"-"` // 加速力
 	OrbitConfigs map[int]*OrbitConfig `json:"-"` // 軌道設定
@@ -123,19 +122,20 @@ func (c *Celestial) Reset() {
 
 	// 軌道設定を初期化
 	c.OrbitConfigs = map[int]*OrbitConfig{
-		1: {
+		0: {
 			Radius: utils.SPHERE_RADIUS * utils.ORBITAL_RADIUS_RATIO,
 			Speed:  utils.ORBITAL_SPEED,
 		},
 	}
 
-	// 初期衛星を配置（第1軌道に2個）
-	c.Satellites = []*Satellite{}
-	nodeCount := 2 // 第1軌道は最大2個
+	// 初期衛星を配置（第0軌道に2個）
+	c.Satellites = [][]*Satellite{}
+	firstOrbit := []*Satellite{}
+	nodeCount := 2 // 第0軌道は最大2個
 
 	for i := 0; i < nodeCount; i++ {
 		angle := float64(i) * 2.0 * math.Pi / float64(nodeCount) // 等間隔で配置
-		orbitConfig := c.OrbitConfigs[1]
+		orbitConfig := c.OrbitConfigs[0]
 
 		nodeX := startX + orbitConfig.Radius*math.Cos(angle)
 		nodeY := startY + orbitConfig.Radius*math.Sin(angle)
@@ -153,13 +153,13 @@ func (c *Celestial) Reset() {
 		}
 
 		satellite := &Satellite{
-			Sphere:    sphere,
-			OrbitType: 1, // 第1軌道
-			Angle:     angle,
+			Sphere: sphere,
+			Angle:  angle,
 		}
 
-		c.Satellites = append(c.Satellites, satellite)
+		firstOrbit = append(firstOrbit, satellite)
 	}
+	c.Satellites = append(c.Satellites, firstOrbit)
 
 	c.Growing = 0
 	c.Alive = true
@@ -225,32 +225,34 @@ func (c *Celestial) updateSatelliteOrbits(deltaTime float64) {
 	// 各軌道ごとに理想的な角度配置に向けて補正
 	c.correctSatelliteAngles(deltaTime)
 
-	for _, satellite := range c.Satellites {
-		// 軌道設定を取得
-		orbitConfig := c.GetOrbitConfig(satellite.OrbitType)
+	for orbitIndex, orbit := range c.Satellites {
+		for _, satellite := range orbit {
+			// 軌道設定を取得
+			orbitConfig := c.GetOrbitConfig(orbitIndex)
 
-		// 角度を更新
-		satellite.Angle += orbitConfig.Speed * deltaTime
+			// 角度を更新
+			satellite.Angle += orbitConfig.Speed * deltaTime
 
-		// 理想的な軌道位置を計算
-		idealX := c.Core.Position.X + orbitConfig.Radius*math.Cos(satellite.Angle)
-		idealY := c.Core.Position.Y + orbitConfig.Radius*math.Sin(satellite.Angle)
+			// 理想的な軌道位置を計算
+			idealX := c.Core.Position.X + orbitConfig.Radius*math.Cos(satellite.Angle)
+			idealY := c.Core.Position.Y + orbitConfig.Radius*math.Sin(satellite.Angle)
 
-		// 現在位置から理想位置への差
-		dx := idealX - satellite.Sphere.Position.X
-		dy := idealY - satellite.Sphere.Position.Y
+			// 現在位置から理想位置への差
+			dx := idealX - satellite.Sphere.Position.X
+			dy := idealY - satellite.Sphere.Position.Y
 
-		// スムーズに理想位置に移動（強めの補正）
-		satellite.Sphere.Position.X += dx * utils.ORBITAL_CORRECTION_STRENGTH
-		satellite.Sphere.Position.Y += dy * utils.ORBITAL_CORRECTION_STRENGTH
+			// スムーズに理想位置に移動（強めの補正）
+			satellite.Sphere.Position.X += dx * utils.ORBITAL_CORRECTION_STRENGTH
+			satellite.Sphere.Position.Y += dy * utils.ORBITAL_CORRECTION_STRENGTH
 
-		// 軌道速度を計算（接線方向）
-		tangentX := -math.Sin(satellite.Angle) * orbitConfig.Radius * orbitConfig.Speed
-		tangentY := math.Cos(satellite.Angle) * orbitConfig.Radius * orbitConfig.Speed
+			// 軌道速度を計算（接線方向）
+			tangentX := -math.Sin(satellite.Angle) * orbitConfig.Radius * orbitConfig.Speed
+			tangentY := math.Cos(satellite.Angle) * orbitConfig.Radius * orbitConfig.Speed
 
-		// 核の速度を継承（核と一緒に移動する感じを出す）
-		satellite.Sphere.Velocity.X = tangentX + c.Core.Velocity.X*utils.ORBITAL_VELOCITY_INHERITANCE
-		satellite.Sphere.Velocity.Y = tangentY + c.Core.Velocity.Y*utils.ORBITAL_VELOCITY_INHERITANCE
+			// 核の速度を継承（核と一緒に移動する感じを出す）
+			satellite.Sphere.Velocity.X = tangentX + c.Core.Velocity.X*utils.ORBITAL_VELOCITY_INHERITANCE
+			satellite.Sphere.Velocity.Y = tangentY + c.Core.Velocity.Y*utils.ORBITAL_VELOCITY_INHERITANCE
+		}
 	}
 
 }
@@ -304,21 +306,21 @@ func (c *Celestial) SetAcceleration(x, y float64) {
 // AddSatellite は新しい衛星を追加する（成長時）
 func (c *Celestial) AddSatellite() {
 	// 利用可能な最も内側の軌道を取得
-	orbitType := c.GetAvailableOrbitForNewSatellite()
+	orbitIndex := c.GetAvailableOrbitForNewSatellite()
 
 	// 軌道設定が存在しない場合は作成
-	if _, exists := c.OrbitConfigs[orbitType]; !exists {
+	if _, exists := c.OrbitConfigs[orbitIndex]; !exists {
 		// 各軌道の半径と速度を計算（外側ほど半径が大きく、速度は遅くなる）
-		radius := utils.SPHERE_RADIUS * utils.ORBITAL_RADIUS_RATIO * float64(orbitType)
-		speed := utils.ORBITAL_SPEED / math.Sqrt(float64(orbitType))
-		c.AddOrbitType(orbitType, radius, speed)
+		radius := utils.SPHERE_RADIUS * utils.ORBITAL_RADIUS_RATIO * float64(orbitIndex+1)
+		speed := utils.ORBITAL_SPEED / math.Sqrt(float64(orbitIndex+1))
+		c.AddOrbitType(orbitIndex, radius, speed)
 	}
 
-	orbitConfig := c.GetOrbitConfig(orbitType)
+	orbitConfig := c.GetOrbitConfig(orbitIndex)
 
 	// 新しい衛星を作成
 	// 既存の軌道の流れに合わせて自然に配置
-	existingSatellites := c.GetSatellitesInOrbit(orbitType)
+	existingSatellites := c.GetSatellitesInOrbit(orbitIndex)
 
 	var angle float64
 	if len(existingSatellites) == 0 {
@@ -326,7 +328,7 @@ func (c *Celestial) AddSatellite() {
 		angle = rand.Float64() * 2.0 * math.Pi
 	} else {
 		// 既存の衛星の間で最大の空きスペースを見つける
-		angle = c.findBestInsertionAngle(orbitType)
+		angle = c.findBestInsertionAngle(orbitIndex)
 	}
 
 	coreX := c.Core.Position.X
@@ -347,12 +349,16 @@ func (c *Celestial) AddSatellite() {
 	}
 
 	satellite := &Satellite{
-		Sphere:    sphere,
-		OrbitType: orbitType,
-		Angle:     angle,
+		Sphere: sphere,
+		Angle:  angle,
 	}
 
-	c.Satellites = append(c.Satellites, satellite)
+	// 必要に応じて軌道を拡張
+	for len(c.Satellites) <= orbitIndex {
+		c.Satellites = append(c.Satellites, []*Satellite{})
+	}
+
+	c.Satellites[orbitIndex] = append(c.Satellites[orbitIndex], satellite)
 }
 
 // EjectSatelliteWithReturn は指定された方向に最も近い最外殻の衛星を射出し、射出された衛星を返す
@@ -363,7 +369,7 @@ func (c *Celestial) EjectSatelliteWithReturn(targetX, targetY float64) *Sphere {
 
 	// 最外殻の軌道番号を取得
 	outermostOrbit := c.GetHighestOrbitType()
-	if outermostOrbit == 0 {
+	if outermostOrbit < 0 {
 		return nil // 軌道がない場合
 	}
 
@@ -374,20 +380,26 @@ func (c *Celestial) EjectSatelliteWithReturn(targetX, targetY float64) *Sphere {
 
 	// クリック位置に最も近い衛星を見つける
 	var closestSatellite *Satellite
-	var closestIndex int
+	var closestOrbitIndex int
+	var closestSatIndex int
 	minDistance := math.MaxFloat64
 
-	for i, sat := range c.Satellites {
-		if sat.OrbitType == outermostOrbit {
-			dx := sat.Sphere.Position.X - targetX
-			dy := sat.Sphere.Position.Y - targetY
-			dist := dx*dx + dy*dy
+	// 最外殻軌道の衛星のみをチェック
+	outerOrbitIndex := outermostOrbit
+	if outerOrbitIndex < 0 || outerOrbitIndex >= len(c.Satellites) {
+		return nil
+	}
 
-			if dist < minDistance {
-				minDistance = dist
-				closestSatellite = sat
-				closestIndex = i
-			}
+	for i, sat := range c.Satellites[outerOrbitIndex] {
+		dx := sat.Sphere.Position.X - targetX
+		dy := sat.Sphere.Position.Y - targetY
+		dist := dx*dx + dy*dy
+
+		if dist < minDistance {
+			minDistance = dist
+			closestSatellite = sat
+			closestOrbitIndex = outerOrbitIndex
+			closestSatIndex = i
 		}
 	}
 
@@ -423,21 +435,18 @@ func (c *Celestial) EjectSatelliteWithReturn(targetX, targetY float64) *Sphere {
 	}
 
 	// 衛星リストから削除
-	c.Satellites = append(c.Satellites[:closestIndex], c.Satellites[closestIndex+1:]...)
+	c.RemoveSatellite(closestOrbitIndex, closestSatIndex)
 
 	return ejectedSphere
 }
 
 // correctSatelliteAngles は各軌道の衛星を理想的な正多角形の角度に向けて微調整する
 func (c *Celestial) correctSatelliteAngles(deltaTime float64) {
-	// 軌道ごとに処理
-	orbitGroups := make(map[int][]*Satellite)
-	for _, sat := range c.Satellites {
-		orbitGroups[sat.OrbitType] = append(orbitGroups[sat.OrbitType], sat)
-	}
-
-	for _, satellites := range orbitGroups {
-		c.correctOrbitAngles(satellites, deltaTime)
+	// 各軌道ごとに処理
+	for _, orbit := range c.Satellites {
+		if len(orbit) > 0 {
+			c.correctOrbitAngles(orbit, deltaTime)
+		}
 	}
 }
 
