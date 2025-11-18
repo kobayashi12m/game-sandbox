@@ -320,7 +320,10 @@ func (c *Celestial) AddSatellite() {
 
 	// 新しい衛星を作成
 	// 既存の軌道の流れに合わせて自然に配置
-	existingSatellites := c.GetSatellitesInOrbit(orbitIndex)
+	var existingSatellites []*Satellite
+	if orbitIndex >= 0 && orbitIndex < len(c.Satellites) {
+		existingSatellites = c.Satellites[orbitIndex]
+	}
 
 	var angle float64
 	if len(existingSatellites) == 0 {
@@ -363,34 +366,18 @@ func (c *Celestial) AddSatellite() {
 
 // EjectSatelliteWithReturn は指定された方向に最も近い最外殻の衛星を射出し、射出された衛星を返す
 func (c *Celestial) EjectSatelliteWithReturn(targetX, targetY float64) *Sphere {
-	if len(c.Satellites) == 0 {
-		return nil
-	}
-
-	// 最外殻の軌道番号を取得
-	outermostOrbit := c.GetHighestorbitIndex()
-	if outermostOrbit < 0 {
-		return nil // 軌道がない場合
-	}
-
-	outermostSatellites := c.GetSatellitesInOrbit(outermostOrbit)
-	if len(outermostSatellites) == 0 {
+	// 最外殻の軌道と衛星を取得
+	outermostOrbit, outermostSatellites := c.GetOutermostOrbitWithSatellites()
+	if outermostOrbit < 0 || len(outermostSatellites) == 0 {
 		return nil
 	}
 
 	// クリック位置に最も近い衛星を見つける
 	var closestSatellite *Satellite
-	var closestOrbitIndex int
 	var closestSatIndex int
 	minDistance := math.MaxFloat64
 
-	// 最外殻軌道の衛星のみをチェック
-	outerOrbitIndex := outermostOrbit
-	if outerOrbitIndex < 0 || outerOrbitIndex >= len(c.Satellites) {
-		return nil
-	}
-
-	for i, sat := range c.Satellites[outerOrbitIndex] {
+	for i, sat := range outermostSatellites {
 		dx := sat.Sphere.Position.X - targetX
 		dy := sat.Sphere.Position.Y - targetY
 		dist := dx*dx + dy*dy
@@ -398,7 +385,6 @@ func (c *Celestial) EjectSatelliteWithReturn(targetX, targetY float64) *Sphere {
 		if dist < minDistance {
 			minDistance = dist
 			closestSatellite = sat
-			closestOrbitIndex = outerOrbitIndex
 			closestSatIndex = i
 		}
 	}
@@ -435,7 +421,7 @@ func (c *Celestial) EjectSatelliteWithReturn(targetX, targetY float64) *Sphere {
 	}
 
 	// 衛星リストから削除
-	c.RemoveSatellite(closestOrbitIndex, closestSatIndex)
+	c.RemoveSatellite(outermostOrbit, closestSatIndex)
 
 	return ejectedSphere
 }

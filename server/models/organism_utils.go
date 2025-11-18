@@ -65,29 +65,23 @@ func GetMaxSatellitesForOrbit(orbitIndex int) int {
 	return 2 * n * n
 }
 
-// GetSatellitesInOrbit は指定された軌道にある衛星のリストを返す
-// orbitIndexは0から始まる（第0軌道=0、第1軌道=1...）
-func (c *Celestial) GetSatellitesInOrbit(orbitIndex int) []*Satellite {
-	if orbitIndex < 0 || orbitIndex >= len(c.Satellites) {
-		return []*Satellite{}
-	}
-	return c.Satellites[orbitIndex]
-}
-
-// GetHighestorbitIndex は現在使用中の最高軌道番号を返す
-func (c *Celestial) GetHighestorbitIndex() int {
-	// 最外側から内側に向かって、衛星が存在する軌道を探す
+// GetOutermostOrbitWithSatellites は最外殻の軌道番号とその衛星を返す
+// 衛星がない場合は -1 と空配列を返す
+func (c *Celestial) GetOutermostOrbitWithSatellites() (int, []*Satellite) {
 	for i := len(c.Satellites) - 1; i >= 0; i-- {
 		if len(c.Satellites[i]) > 0 {
-			return i
+			return i, c.Satellites[i]
 		}
 	}
-	return -1 // 衛星が存在しない場合
+	return -1, []*Satellite{}
 }
 
 // IsOrbitFull は指定された軌道が満杯かどうかを返す
 func (c *Celestial) IsOrbitFull(orbitIndex int) bool {
-	currentCount := len(c.GetSatellitesInOrbit(orbitIndex))
+	if orbitIndex < 0 || orbitIndex >= len(c.Satellites) {
+		return false
+	}
+	currentCount := len(c.Satellites[orbitIndex])
 	maxCount := GetMaxSatellitesForOrbit(orbitIndex)
 	return currentCount >= maxCount
 }
@@ -108,7 +102,10 @@ func (c *Celestial) GetAvailableOrbitForNewSatellite() int {
 
 // RebalanceSatellitesInOrbit は指定された軌道の衛星を等間隔に再配置する
 func (c *Celestial) RebalanceSatellitesInOrbit(orbitIndex int) {
-	satellites := c.GetSatellitesInOrbit(orbitIndex)
+	if orbitIndex < 0 || orbitIndex >= len(c.Satellites) {
+		return
+	}
+	satellites := c.Satellites[orbitIndex]
 	count := len(satellites)
 	if count == 0 {
 		return
@@ -121,7 +118,10 @@ func (c *Celestial) RebalanceSatellitesInOrbit(orbitIndex int) {
 
 // findBestInsertionAngle は既存の衛星の間で最大の空きスペースの中心角度を返す
 func (c *Celestial) findBestInsertionAngle(orbitIndex int) float64 {
-	satellites := c.GetSatellitesInOrbit(orbitIndex)
+	if orbitIndex < 0 || orbitIndex >= len(c.Satellites) {
+		return 0
+	}
+	satellites := c.Satellites[orbitIndex]
 	if len(satellites) == 0 {
 		return 0
 	}
