@@ -15,7 +15,7 @@ type SpatialGrid struct {
 
 // GridCell は各グリッドセルに含まれるオブジェクト
 type GridCell struct {
-	playerSegments map[*models.Player][]*models.Position // プレイヤー別のセグメントポインタ
+	playerSpheres map[*models.Player][]*models.Sphere // プレイヤー別の球体ポインタ
 }
 
 // NewSpatialGrid は新しい空間分割グリッドを作成する
@@ -31,7 +31,7 @@ func NewSpatialGrid() *SpatialGrid {
 		cells[i] = make([]*GridCell, width)
 		for j := range cells[i] {
 			cells[i][j] = &GridCell{
-				playerSegments: make(map[*models.Player][]*models.Position),
+				playerSpheres: make(map[*models.Player][]*models.Sphere),
 			}
 		}
 	}
@@ -49,7 +49,7 @@ func (sg *SpatialGrid) Clear() {
 	for i := range sg.cells {
 		for j := range sg.cells[i] {
 			// 完全に新しいマップを作成してメモリリークを防ぐ
-			sg.cells[i][j].playerSegments = make(map[*models.Player][]*models.Position)
+			sg.cells[i][j].playerSpheres = make(map[*models.Player][]*models.Sphere)
 		}
 	}
 }
@@ -75,20 +75,18 @@ func (sg *SpatialGrid) GetCellCoords(x, y float64) (int, int) {
 	return cellX, cellY
 }
 
-// AddPlayerSegments はプレイヤーの全セグメントをグリッドに追加する
-func (sg *SpatialGrid) AddPlayerSegments(player *models.Player, segments []models.Position) {
-	for i := range segments {
-		segment := &segments[i] // ポインタを取得
-		cellX, cellY := sg.GetCellCoords(segment.X, segment.Y)
+// AddPlayerSpheres はプレイヤーの全球体をグリッドに追加する
+func (sg *SpatialGrid) AddPlayerSpheres(player *models.Player, spheres []*models.Sphere) {
+	for _, sphere := range spheres {
+		cellX, cellY := sg.GetCellCoords(sphere.Position.X, sphere.Position.Y)
 
 		// 安全性チェック
 		if cellY >= 0 && cellY < sg.height && cellX >= 0 && cellX < sg.width {
 			cell := sg.cells[cellY][cellX]
-			cell.playerSegments[player] = append(cell.playerSegments[player], segment)
+			cell.playerSpheres[player] = append(cell.playerSpheres[player], sphere)
 		}
 	}
 }
-
 
 // iterateNearbyCells は指定位置周辺のセルに対してコールバック関数を実行する
 func (sg *SpatialGrid) iterateNearbyCells(centerX, centerY, radius int, callback func(*GridCell)) {
@@ -105,34 +103,36 @@ func (sg *SpatialGrid) iterateNearbyCells(centerX, centerY, radius int, callback
 	}
 }
 
-// CheckCollisionAt は指定した位置で衝突しているプレイヤーを返す
-func (sg *SpatialGrid) CheckCollisionAt(position models.Position, excludePlayer *models.Player) *models.Player {
+// CheckCollisionAt は指定した位置で衝突しているプレイヤーと球体を返す
+func (sg *SpatialGrid) CheckCollisionAt(position models.Position, radius float64, excludePlayer *models.Player) (*models.Player, *models.Sphere) {
 	centerX, centerY := sg.GetCellCoords(position.X, position.Y)
 
-	var result *models.Player
+	var resultPlayer *models.Player
+	var resultSphere *models.Sphere
 	sg.iterateNearbyCells(centerX, centerY, 1, func(cell *GridCell) {
-		if result != nil {
+		if resultPlayer != nil {
 			return
 		}
-		for player, segments := range cell.playerSegments {
+		for player, spheres := range cell.playerSpheres {
 			if player == excludePlayer || !player.Celestial.Alive {
 				continue
 			}
-			for _, segment := range segments {
-				dx := position.X - segment.X
-				dy := position.Y - segment.Y
+			for _, sphere := range spheres {
+				dx := position.X - sphere.Position.X
+				dy := position.Y - sphere.Position.Y
 				dist := dx*dx + dy*dy
-				if dist < (utils.SPHERE_RADIUS*2)*(utils.SPHERE_RADIUS*2) {
-					result = player
+				collisionDist := (radius + sphere.Radius) * (radius + sphere.Radius)
+				if dist < collisionDist {
+					resultPlayer = player
+					resultSphere = sphere
 					return
 				}
 			}
 		}
 	})
 
-	return result
+	return resultPlayer, resultSphere
 }
-
 
 // AreaResult はエリア内のプレイヤーをまとめて返す構造体
 type AreaResult struct {
@@ -154,8 +154,8 @@ func (sg *SpatialGrid) GetObjectsInArea(minX, maxX, minY, maxY float64) AreaResu
 			if cellX >= 0 && cellX < sg.width && cellY >= 0 && cellY < sg.height {
 				cell := sg.cells[cellY][cellX]
 
-				// プレイヤーのセグメントをチェック（死んだプレイヤーも含む）
-				for player := range cell.playerSegments {
+				// プレイヤーの球体をチェック（死んだプレイヤーも含む）
+				for player := range cell.playerSpheres {
 					playerSet[player] = true
 				}
 			}
@@ -172,8 +172,6 @@ func (sg *SpatialGrid) GetObjectsInArea(minX, maxX, minY, maxY float64) AreaResu
 		Players: visiblePlayers,
 	}
 }
-
-
 
 // GetGridLines はSpatialGridの分割線を取得する
 func (sg *SpatialGrid) GetGridLines() []models.GridLine {

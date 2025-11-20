@@ -86,7 +86,7 @@ func (g *Game) Update(deltaTime float64) {
 
 			// 他プレイヤーとの衝突判定
 			if !skipPlayerCollision {
-				g.checkOrganismCollision(player)
+				g.checkCelestialCollision(player)
 			}
 
 			// 落ちた衛星との衝突判定
@@ -135,8 +135,8 @@ func (g *Game) Update(deltaTime float64) {
 	g.GenerateDroppedSatellites()
 }
 
-// checkOrganismCollision は球体レベルでの個別衝突判定を行う
-func (g *Game) checkOrganismCollision(player *models.Player) {
+// checkCelestialCollision は球体レベルでの個別衝突判定を行う
+func (g *Game) checkCelestialCollision(player *models.Player) {
 	// プレイヤーの全球体（Core + Satellites）
 	var playerSpheres []*models.Sphere
 	playerSpheres = append(playerSpheres, player.Celestial.Core)
@@ -144,44 +144,12 @@ func (g *Game) checkOrganismCollision(player *models.Player) {
 
 	// 各球体について衝突をチェック
 	for _, sphere := range playerSpheres {
-		collidedPlayer := g.spatialGrid.CheckCollisionAt(sphere.Position, player)
-		if collidedPlayer != nil {
-			// 衝突した相手プレイヤーの球体を特定
-			targetSphere := g.findCollidedSphere(sphere, collidedPlayer)
-			if targetSphere != nil {
-				// 個別の球体間で衝突処理
-				g.applySphereCollision(sphere, targetSphere)
-			}
+		collidedPlayer, collidedSphere := g.spatialGrid.CheckCollisionAt(sphere.Position, sphere.Radius, player)
+		if collidedPlayer != nil && collidedSphere != nil {
+			// 個別の球体間で衝突処理
+			g.applySphereCollision(sphere, collidedSphere)
 		}
 	}
-}
-
-// findCollidedSphere は衝突している相手の球体を特定する
-func (g *Game) findCollidedSphere(sphere *models.Sphere, targetPlayer *models.Player) *models.Sphere {
-	// Core との衝突をチェック
-	dx := sphere.Position.X - targetPlayer.Celestial.Core.Position.X
-	dy := sphere.Position.Y - targetPlayer.Celestial.Core.Position.Y
-	dist := dx*dx + dy*dy
-	collisionDist := (sphere.Radius + targetPlayer.Celestial.Core.Radius) * (sphere.Radius + targetPlayer.Celestial.Core.Radius)
-
-	if dist < collisionDist {
-		return targetPlayer.Celestial.Core
-	}
-
-	// Satellites との衝突をチェック
-	satellites := targetPlayer.Celestial.GetAllSpheres()
-	for _, node := range satellites {
-		dx = sphere.Position.X - node.Position.X
-		dy = sphere.Position.Y - node.Position.Y
-		dist = dx*dx + dy*dy
-		collisionDist = (sphere.Radius + node.Radius) * (sphere.Radius + node.Radius)
-
-		if dist < collisionDist {
-			return node
-		}
-	}
-
-	return nil
 }
 
 // applySphereCollision は個別の球体間の衝突を処理する
@@ -426,14 +394,10 @@ func (g *Game) UpdateSpatialGrid() {
 	for _, player := range g.Players {
 		if player.Celestial.Core != nil {
 			// 球体構造の全ノードをグリッドに登録
-			var positions []models.Position
-			positions = append(positions, player.Celestial.Core.Position)
-			for _, node := range player.Celestial.GetAllSpheres() {
-				positions = append(positions, node.Position)
-			}
-			g.spatialGrid.AddPlayerSegments(player, positions)
+			var spheres []*models.Sphere
+			spheres = append(spheres, player.Celestial.Core)
+			spheres = append(spheres, player.Celestial.GetAllSpheres()...)
+			g.spatialGrid.AddPlayerSpheres(player, spheres)
 		}
 	}
-
-	// 落ちた衛星はグリッドに追加しない（衝突判定が簡単なため）
 }
