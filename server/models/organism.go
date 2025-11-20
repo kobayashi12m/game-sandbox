@@ -184,7 +184,6 @@ func (c *Celestial) UpdateMotion(deltaTime float64) {
 	c.updateSatelliteOrbits(deltaTime)
 
 	// 3. 衝突処理
-	c.handleSphereCollisions(deltaTime)
 	c.applyBoundaryCollision()
 }
 
@@ -199,6 +198,7 @@ func (c *Celestial) updateCoreMotion(deltaTime float64) {
 	if speed > c.MaxSpeed {
 		c.Core.Velocity.X = (c.Core.Velocity.X / speed) * c.MaxSpeed
 		c.Core.Velocity.Y = (c.Core.Velocity.Y / speed) * c.MaxSpeed
+		speed = c.MaxSpeed // 速度を更新
 	}
 
 	// 位置を更新
@@ -211,12 +211,9 @@ func (c *Celestial) updateCoreMotion(deltaTime float64) {
 
 	// 低速時の停止判定（入力がない時のみ）
 	hasInput := c.Core.Acceleration.X != 0 || c.Core.Acceleration.Y != 0
-	if !hasInput {
-		speed := math.Sqrt(c.Core.Velocity.X*c.Core.Velocity.X + c.Core.Velocity.Y*c.Core.Velocity.Y)
-		if speed < c.MaxSpeed*utils.STOP_THRESHOLD_RATIO {
-			c.Core.Velocity.X = 0
-			c.Core.Velocity.Y = 0
-		}
+	if !hasInput && speed < c.MaxSpeed*utils.STOP_THRESHOLD_RATIO {
+		c.Core.Velocity.X = 0
+		c.Core.Velocity.Y = 0
 	}
 }
 
@@ -274,8 +271,6 @@ func (c *Celestial) applyBoundaryCollision() {
 		c.Core.Position.Y = utils.FIELD_HEIGHT - c.Core.Radius
 		c.Core.Velocity.Y = -c.Core.Velocity.Y * 0.5
 	}
-
-	// ノードは軌道上で自動的に動くため、境界衝突処理は不要
 }
 
 // SetAcceleration は加速度を直接設定する（360度自由移動用）
@@ -506,61 +501,4 @@ func (c *Celestial) shortestAngleDifference(from, to float64) float64 {
 	}
 
 	return diff
-}
-
-// handleSphereCollisions は球体間の衝突処理を行う
-func (c *Celestial) handleSphereCollisions(deltaTime float64) {
-	minDistance := utils.SPHERE_RADIUS * 2.0 // 衝突距離（球同士が接触する距離）
-
-	// 全衛星を取得
-	allSatellites := c.GetAllSpheres()
-
-	// 全ノードペアについて衝突をチェック
-	for i := 0; i < len(allSatellites); i++ {
-		for j := i + 1; j < len(allSatellites); j++ {
-			nodeA := allSatellites[i]
-			nodeB := allSatellites[j]
-
-			// 距離を計算
-			dx := nodeB.Position.X - nodeA.Position.X
-			dy := nodeB.Position.Y - nodeA.Position.Y
-			distance := math.Sqrt(dx*dx + dy*dy)
-
-			// 衝突している場合
-			if distance < minDistance && distance > 0.01 {
-				// 正規化された衝突方向
-				nx := dx / distance
-				ny := dy / distance
-
-				// 相対速度を計算
-				dvx := nodeB.Velocity.X - nodeA.Velocity.X
-				dvy := nodeB.Velocity.Y - nodeA.Velocity.Y
-
-				// 衝突方向の相対速度
-				relativeSpeed := dvx*nx + dvy*ny
-
-				// 離れている場合は衝突処理不要
-				if relativeSpeed >= 0 {
-					continue
-				}
-
-				// 反発係数を適用した衝突応答
-				impulse := 2 * relativeSpeed / (nodeA.Mass + nodeB.Mass)
-
-				// 速度を更新（運動量保存）
-				nodeA.Velocity.X += impulse * nodeB.Mass * nx * utils.COLLISION_RESTITUTION
-				nodeA.Velocity.Y += impulse * nodeB.Mass * ny * utils.COLLISION_RESTITUTION
-				nodeB.Velocity.X -= impulse * nodeA.Mass * nx * utils.COLLISION_RESTITUTION
-				nodeB.Velocity.Y -= impulse * nodeA.Mass * ny * utils.COLLISION_RESTITUTION
-
-				// 位置の重なりを解消
-				overlap := minDistance - distance
-				separationRatio := nodeA.Mass / (nodeA.Mass + nodeB.Mass)
-				nodeA.Position.X -= nx * overlap * (1 - separationRatio)
-				nodeA.Position.Y -= ny * overlap * (1 - separationRatio)
-				nodeB.Position.X += nx * overlap * separationRatio
-				nodeB.Position.Y += ny * overlap * separationRatio
-			}
-		}
-	}
 }
