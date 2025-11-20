@@ -147,13 +147,13 @@ func (g *Game) checkCelestialCollision(player *models.Player) {
 		collidedPlayer, collidedSphere := g.spatialGrid.CheckCollisionAt(sphere.Position, sphere.Radius, player)
 		if collidedPlayer != nil && collidedSphere != nil {
 			// 個別の球体間で衝突処理
-			g.applySphereCollision(sphere, collidedSphere)
+			g.applySphereCollision(sphere, collidedSphere, player, collidedPlayer)
 		}
 	}
 }
 
 // applySphereCollision は個別の球体間の衝突を処理する
-func (g *Game) applySphereCollision(sphere1, sphere2 *models.Sphere) {
+func (g *Game) applySphereCollision(sphere1, sphere2 *models.Sphere, player1, player2 *models.Player) {
 	// 衝突方向ベクトルを計算
 	dx := sphere1.Position.X - sphere2.Position.X
 	dy := sphere1.Position.Y - sphere2.Position.Y
@@ -162,43 +162,30 @@ func (g *Game) applySphereCollision(sphere1, sphere2 *models.Sphere) {
 	// 最小衝突距離をチェック
 	minDistance := sphere1.Radius + sphere2.Radius
 	if distance > 0 && distance < minDistance {
-		// 正規化された衝突方向
-		nx := dx / distance
-		ny := dy / distance
+		// 球体の種類を判定
+		isCore1 := player1.Celestial.IsCore(sphere1)
+		isCore2 := player2.Celestial.IsCore(sphere2)
 
-		// 相対速度を計算
-		relVelX := sphere1.Velocity.X - sphere2.Velocity.X
-		relVelY := sphere1.Velocity.Y - sphere2.Velocity.Y
-
-		// 法線方向の相対速度
-		relVelNormal := relVelX*nx + relVelY*ny
-
-		// 接近している場合のみ衝突処理を適用
-		if relVelNormal > 0 {
-			// 衝突インパルスを計算
-			impulse := -(1 + utils.COLLISION_RESTITUTION) * relVelNormal / (1/sphere1.Mass + 1/sphere2.Mass)
-
-			// 各球体の速度変化を計算
-			deltaV1X := impulse * nx / sphere1.Mass
-			deltaV1Y := impulse * ny / sphere1.Mass
-			deltaV2X := -impulse * nx / sphere2.Mass
-			deltaV2Y := -impulse * ny / sphere2.Mass
-
-			// 速度を更新
-			sphere1.Velocity.X += deltaV1X
-			sphere1.Velocity.Y += deltaV1Y
-			sphere2.Velocity.X += deltaV2X
-			sphere2.Velocity.Y += deltaV2Y
-
-			// 位置分離（重なりを解消）
-			overlap := minDistance - distance
-			separationX := nx * overlap * 0.5
-			separationY := ny * overlap * 0.5
-
-			sphere1.Position.X += separationX
-			sphere1.Position.Y += separationY
-			sphere2.Position.X -= separationX
-			sphere2.Position.Y -= separationY
+		// 衝突ルール
+		if isCore1 && isCore2 {
+			// コア同士：何も起きない
+			return
+		} else if !isCore1 && !isCore2 {
+			// 衛星同士：両方消滅
+			log.Printf("💥 Satellite collision: both satellites destroyed")
+			g.destroySatelliteAtPosition(player1, sphere1)
+			g.destroySatelliteAtPosition(player2, sphere2)
+		} else {
+			// コアと衛星：両方消滅
+			if isCore1 {
+				log.Printf("💥 Core-Satellite collision: %s core destroyed, satellite destroyed", player1.Name)
+				g.destroyPlayer(player1)
+				g.destroySatelliteAtPosition(player2, sphere2)
+			} else {
+				log.Printf("💥 Core-Satellite collision: %s core destroyed, satellite destroyed", player2.Name)
+				g.destroyPlayer(player2)
+				g.destroySatelliteAtPosition(player1, sphere1)
+			}
 		}
 	}
 }
@@ -342,7 +329,7 @@ func (g *Game) destroySatellite(player *models.Player, orbitIndex, satIndex int)
 	log.Printf("💫 Satellite destroyed for player %s, dropped satellite at position", player.Name)
 }
 
-// destroySatelliteCompletely は射出物衝突時に衛星を完全消滅させる（落ちた衛星は作らない）
+// destroySatelliteCompletely は射出物衝突時に衛星を完全消滅させる
 func (g *Game) destroySatelliteCompletely(player *models.Player, orbitIndex, satIndex int) {
 	if orbitIndex < 0 || orbitIndex >= len(player.Celestial.Satellites) {
 		return
@@ -351,10 +338,23 @@ func (g *Game) destroySatelliteCompletely(player *models.Player, orbitIndex, sat
 		return
 	}
 
-	// 衛星を削除（落ちた衛星は作らない）
+	// 衛星を削除
 	player.Celestial.RemoveSatellite(orbitIndex, satIndex)
 
 	log.Printf("💥 Satellite completely destroyed for player %s (no dropped satellite)", player.Name)
+}
+
+// destroySatelliteAtPosition は指定した位置の衛星を完全消滅させる
+func (g *Game) destroySatelliteAtPosition(player *models.Player, sphere *models.Sphere) {
+	for oi, orbit := range player.Celestial.Satellites {
+		for si, sat := range orbit {
+			if sat.Sphere == sphere {
+				// 衛星を完全消滅
+				player.Celestial.RemoveSatellite(oi, si)
+				return
+			}
+		}
+	}
 }
 
 // checkDroppedSatelliteCollision はコアと落ちた衛星の衝突をチェックする

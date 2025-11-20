@@ -25,6 +25,11 @@ func (c *Celestial) GetTotalSatelliteCount() int {
 	return count
 }
 
+// IsCore は指定した球体がこのCelestialのコアかどうかを判定する
+func (c *Celestial) IsCore(sphere *Sphere) bool {
+	return sphere == c.Core
+}
+
 // RemoveSatellite は指定された軌道とインデックスの衛星を削除する
 func (c *Celestial) RemoveSatellite(orbitIndex, satIndex int) bool {
 	if orbitIndex < 0 || orbitIndex >= len(c.Satellites) {
