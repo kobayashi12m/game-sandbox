@@ -61,7 +61,7 @@ func (g *Game) GetOptimizedState(clientPlayerID string, clientX, clientY, viewWi
 	minY := clientY - viewHeight/2
 	maxY := clientY + viewHeight/2
 
-	// Spatial Gridで画面範囲内のプレイヤーと食べ物を同時に取得
+	// Spatial Gridで画面範囲内のプレイヤーと落ちた衛星を同時に取得
 	areaResult := g.spatialGrid.GetObjectsInArea(minX, maxX, minY, maxY)
 
 	players := make([]models.PlayerState, 0, len(areaResult.Players))
@@ -202,16 +202,16 @@ func (g *Game) BroadcastOptimized() {
 
 	// スナップショットを使って各プレイヤーに送信（デッドロック回避）
 	for _, player := range playerList {
-		head := player.Celestial.Core.Position
+		core := player.Celestial.Core.Position
 		// constants.goからカリング範囲を取得
 		viewWidth := utils.CULLING_WIDTH
 		viewHeight := utils.CULLING_HEIGHT
 
 		// このクライアント専用の最適化されたゲーム状態を取得
-		optimizedState := g.GetOptimizedState(player.ID, head.X, head.Y, viewWidth, viewHeight)
+		optimizedState := g.GetOptimizedState(player.ID, core.X, core.Y, viewWidth, viewHeight)
 
 		message := map[string]interface{}{
-			"type":  "gameState", 
+			"type":  "gameState",
 			"state": optimizedState,
 		}
 
@@ -232,20 +232,20 @@ func (g *Game) BroadcastOptimized() {
 				if g.frameCount%600 == 0 {
 					// 圧縮前のサイズ（JSON生データ）
 					uncompressedSize := len(data)
-					
+
 					// 実際にWebSocketで送信される圧縮後サイズは取得困難なので
 					// 圧縮率の簡易測定を行う
-					
+
 					var buf bytes.Buffer
 					gzWriter := gzip.NewWriter(&buf)
 					gzWriter.Write(data)
 					gzWriter.Close()
 					compressedSize := buf.Len()
 					compressionRatio := float64(compressedSize) / float64(uncompressedSize) * 100
-					
-					log.Printf("📊 DATA_SIZE: Original=%d bytes, Compressed=%d bytes (%.1f%%) to %s", 
+
+					log.Printf("📊 DATA_SIZE: Original=%d bytes, Compressed=%d bytes (%.1f%%) to %s",
 						uncompressedSize, compressedSize, compressionRatio, player.Name)
-					
+
 					// JSONデータの中身を表示（最初の500文字だけ）
 					dataStr := string(data)
 					if len(dataStr) > 500 {
