@@ -16,14 +16,14 @@ type Game struct {
 	ID                string
 	Players           map[string]*models.Player
 	DroppedSatellites []*models.DroppedSatellite // 落ちた衛星
-	Projectiles       []*models.Projectile // 射出された衛星
+	Projectiles       []*models.Projectile       // 射出された衛星
 	Running           bool
 	NPCCount          int              // NPC数の設定
-	spatialGrid  *SpatialGrid     // 空間分割グリッド
-	frameCount   int64            // フレームカウンター
-	humanPlayers []*models.Player // WebSocket接続する人間プレイヤーのキャッシュ
+	spatialGrid       *SpatialGrid     // 空間分割グリッド
+	frameCount        int64            // フレームカウンター
+	humanPlayers      []*models.Player // WebSocket接続する人間プレイヤーのキャッシュ
 	// 通信統計（シンプル版）
-	totalBytesSent int64           // 送信バイト数の累計
+	totalBytesSent int64 // 送信バイト数の累計
 	mu             sync.RWMutex
 }
 
@@ -217,7 +217,7 @@ func (g *Game) EjectPlayerSatellite(playerID string, targetX, targetY float64) {
 		projectile := &models.Projectile{
 			ID:       utils.GenerateID(),
 			Sphere:   ejectedSphere,
-			OwnerID:  playerID,
+			Owner:    player,
 			Lifetime: 5.0, // 5秒間存在
 		}
 		g.Projectiles = append(g.Projectiles, projectile)

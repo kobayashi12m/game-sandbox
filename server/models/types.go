@@ -21,8 +21,8 @@ func (p Position) MarshalJSON() ([]byte, error) {
 
 // DroppedSatellite は落ちた衛星を表す
 type DroppedSatellite struct {
-	Position Position `json:"p"`  // position → p
-	Radius   float64  `json:"r"`  // radius → r
+	Position Position `json:"p"` // position → p
+	Radius   float64  `json:"r"` // radius → r
 }
 
 // MarshalJSON はDroppedSatelliteを配列形式でJSON化 [position, radius]
@@ -31,7 +31,7 @@ func (d DroppedSatellite) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// 配列形式: [position, radius]
 	result := fmt.Sprintf(`[%s,%g]`, string(posJSON), d.Radius)
 	return []byte(result), nil
@@ -51,34 +51,31 @@ type Player struct {
 
 // Projectile は射出された衛星を表す
 type Projectile struct {
-	ID       string   `json:"id"`
-	Sphere   *Sphere  `json:"sph"`     // sphere → sph
-	OwnerID  string   `json:"oid"`     // ownerId → oid
-	Lifetime float64  `json:"-"` // 残り寿命（秒）
+	ID       string  `json:"id"`
+	Sphere   *Sphere `json:"sph"` // sphere → sph
+	Owner    *Player `json:"-"`   // オーナーへの参照
+	Lifetime float64 `json:"-"`   // 残り寿命（秒）
 }
 
-// MarshalJSON はProjectileを配列形式でJSON化 [id, sphere, ownerId]
+// MarshalJSON はProjectileを配列形式でJSON化 [id, sphere]
 func (p Projectile) MarshalJSON() ([]byte, error) {
 	sphereJSON, err := p.Sphere.MarshalJSON()
 	if err != nil {
 		return nil, err
 	}
-	
-	// 配列形式: [id, sphere, ownerId]
-	// ID と OwnerID を適切にエスケープ
+
+	// 配列形式: [id, sphere]
 	escapedID := fmt.Sprintf("%q", p.ID)
-	escapedOwnerID := fmt.Sprintf("%q", p.OwnerID)
-	result := fmt.Sprintf(`[%s,%s,%s]`,
-		escapedID, string(sphereJSON), escapedOwnerID)
-	
+	result := fmt.Sprintf(`[%s,%s]`, escapedID, string(sphereJSON))
+
 	return []byte(result), nil
 }
 
 // GameState はクライアントに送信される現在の状態を表す
 type GameState struct {
-	Players           []PlayerState      `json:"pls"`      // players → pls
-	DroppedSatellites []DroppedSatellite `json:"ds"`       // droppedSatellites → ds
-	Projectiles       []Projectile       `json:"proj"`     // projectiles → proj
+	Players           []PlayerState      `json:"pls"`  // players → pls
+	DroppedSatellites []DroppedSatellite `json:"ds"`   // droppedSatellites → ds
+	Projectiles       []Projectile       `json:"proj"` // projectiles → proj
 }
 
 // GridLine はSpatialGridの可視化用の線を表す
@@ -92,9 +89,9 @@ type GridLine struct {
 // PlayerState はクライアント同期用のプレイヤーデータを表す
 type PlayerState struct {
 	ID        string     `json:"id"`
-	Name      string     `json:"nm"`          // name → nm
-	Celestial *Celestial `json:"cel"`         // celestial → cel
-	Score     int        `json:"sc"`          // score → sc
+	Name      string     `json:"nm"`  // name → nm
+	Celestial *Celestial `json:"cel"` // celestial → cel
+	Score     int        `json:"sc"`  // score → sc
 }
 
 // MarshalJSON はPlayerStateを配列形式でJSON化 [id, name, celestial, score]
@@ -103,14 +100,14 @@ func (p PlayerState) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// 配列形式: [id, name, celestial, score]
 	// ID と Name を適切にエスケープ
 	escapedID := fmt.Sprintf("%q", p.ID)
 	escapedName := fmt.Sprintf("%q", p.Name)
 	result := fmt.Sprintf(`[%s,%s,%s,%d]`,
 		escapedID, escapedName, string(celestialJSON), p.Score)
-	
+
 	return []byte(result), nil
 }
 

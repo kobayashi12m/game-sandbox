@@ -144,12 +144,17 @@ func (g *Game) checkCelestialCollision(player *models.Player) {
 
 	// 各球体について衝突をチェック
 	for _, sphere := range playerSpheres {
-		collidedPlayer, collidedSphere := g.spatialGrid.CheckCollisionAt(sphere.Position, sphere.Radius, player)
-		if collidedPlayer != nil && collidedSphere != nil {
-			// 個別の球体間で衝突処理
-			g.applySphereCollision(sphere, collidedSphere, player, collidedPlayer)
+		hitSphere, hitPlayer := g.checkSphereCollisionAt(sphere.Position, sphere.Radius, player)
+		if hitSphere != nil {
+			g.applySphereCollision(sphere, hitSphere, player, hitPlayer)
 		}
 	}
+}
+
+// checkSphereCollisionAt は指定位置で球体の衝突を検出する共通メソッド
+func (g *Game) checkSphereCollisionAt(position models.Position, radius float64, excludePlayer *models.Player) (*models.Sphere, *models.Player) {
+	player, sphere := g.spatialGrid.CheckCollisionAt(position, radius, excludePlayer)
+	return sphere, player
 }
 
 // applySphereCollision は個別の球体間の衝突を処理する
@@ -222,54 +227,22 @@ func (g *Game) checkProjectileCollisions() {
 	var activeProjectiles []*models.Projectile
 
 	for _, proj := range g.Projectiles {
-		hit := false
-
-		// 全プレイヤーとの衝突をチェック
-		for _, player := range g.Players {
-			// 自分の射出物はスキップ
-			if player.ID == proj.OwnerID {
-				continue
+		// 衝突検出
+		hitSphere, hitPlayer := g.checkSphereCollisionAt(proj.Sphere.Position, proj.Sphere.Radius, proj.Owner)
+		if hitSphere != nil && hitPlayer != nil {
+			// 衝突時の処理
+			if hitSphere == hitPlayer.Celestial.Core {
+				log.Printf("Projectile hit core: %s destroyed", hitPlayer.Name)
+				g.destroyPlayer(hitPlayer)
+			} else {
+				log.Printf("Projectile hit satellite: %s satellite destroyed", hitPlayer.Name)
+				g.destroySatelliteAtPosition(hitPlayer, hitSphere)
 			}
-
-			if !player.Celestial.Alive {
-				continue
-			}
-
-			// コアとの衝突をチェック
-			if g.checkSphereCollision(proj.Sphere, player.Celestial.Core) {
-				// コアに当たった場合、プレイヤーを破壊（射出物も消滅）
-				log.Printf("Projectile hit core: %s destroyed, projectile destroyed", player.Name)
-				g.destroyPlayer(player)
-				hit = true
-				break
-			}
-
-			// 衛星との衝突をチェック
-			var hitOrbitIndex, hitSatIndex int = -1, -1
-		outerLoop:
-			for oi, orbit := range player.Celestial.Satellites {
-				for si, sat := range orbit {
-					if g.checkSphereCollision(proj.Sphere, sat.Sphere) {
-						hitOrbitIndex = oi
-						hitSatIndex = si
-						break outerLoop
-					}
-				}
-			}
-
-			if hitOrbitIndex >= 0 && hitSatIndex >= 0 {
-				// 衛星に当たった場合、その衛星を完全消滅（射出物も消滅、落ちた衛星は作らない）
-				log.Printf("Projectile hit satellite: %s satellite destroyed, projectile destroyed (both vanish)", player.Name)
-				g.destroySatelliteCompletely(player, hitOrbitIndex, hitSatIndex)
-				hit = true
-				break
-			}
+			continue // 射出物は消滅
 		}
 
 		// 当たらなかった射出物は残す
-		if !hit {
-			activeProjectiles = append(activeProjectiles, proj)
-		}
+		activeProjectiles = append(activeProjectiles, proj)
 	}
 
 	g.Projectiles = activeProjectiles
