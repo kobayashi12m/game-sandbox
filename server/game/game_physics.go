@@ -172,18 +172,18 @@ func (g *Game) applySphereCollision(sphere1, sphere2 *models.Sphere, player1, pl
 		} else if !isCore1 && !isCore2 {
 			// 衛星同士：両方消滅
 			log.Printf("💥 Satellite collision: both satellites destroyed")
-			g.destroySatelliteAtPosition(player1, sphere1)
-			g.destroySatelliteAtPosition(player2, sphere2)
+			g.destroyTargetSatellite(player1, sphere1)
+			g.destroyTargetSatellite(player2, sphere2)
 		} else {
 			// コアと衛星：両方消滅
 			if isCore1 {
 				log.Printf("💥 Core-Satellite collision: %s core destroyed, satellite destroyed", player1.Name)
 				g.destroyPlayer(player1)
-				g.destroySatelliteAtPosition(player2, sphere2)
+				g.destroyTargetSatellite(player2, sphere2)
 			} else {
 				log.Printf("💥 Core-Satellite collision: %s core destroyed, satellite destroyed", player2.Name)
 				g.destroyPlayer(player2)
-				g.destroySatelliteAtPosition(player1, sphere1)
+				g.destroyTargetSatellite(player1, sphere1)
 			}
 		}
 	}
@@ -230,7 +230,7 @@ func (g *Game) checkProjectileCollisions() {
 				g.destroyPlayer(hitPlayer)
 			} else {
 				log.Printf("Projectile hit satellite: %s satellite destroyed", hitPlayer.Name)
-				g.destroySatelliteAtPosition(hitPlayer, hitSphere)
+				g.destroyTargetSatellite(hitPlayer, hitSphere)
 			}
 			continue // 射出物は消滅
 		}
@@ -264,46 +264,8 @@ func (g *Game) destroyPlayer(player *models.Player) {
 	log.Printf("💥 Player %s core destroyed, %d satellites dropped at their locations", player.Name, satelliteCount)
 }
 
-// destroySatellite は指定された衛星を破壊する
-func (g *Game) destroySatellite(player *models.Player, orbitIndex, satIndex int) {
-	if orbitIndex < 0 || orbitIndex >= len(player.Celestial.Satellites) {
-		return
-	}
-	if satIndex < 0 || satIndex >= len(player.Celestial.Satellites[orbitIndex]) {
-		return
-	}
-
-	// 衛星を落とす
-	sat := player.Celestial.Satellites[orbitIndex][satIndex]
-	droppedSat := &models.DroppedSatellite{
-		Position: sat.Sphere.Position,
-		Radius:   sat.Sphere.Radius,
-	}
-	g.DroppedSatellites = append(g.DroppedSatellites, droppedSat)
-
-	// 衛星を削除
-	player.Celestial.RemoveSatellite(orbitIndex, satIndex)
-
-	log.Printf("💫 Satellite destroyed for player %s, dropped satellite at position", player.Name)
-}
-
-// destroySatelliteCompletely は射出物衝突時に衛星を完全消滅させる
-func (g *Game) destroySatelliteCompletely(player *models.Player, orbitIndex, satIndex int) {
-	if orbitIndex < 0 || orbitIndex >= len(player.Celestial.Satellites) {
-		return
-	}
-	if satIndex < 0 || satIndex >= len(player.Celestial.Satellites[orbitIndex]) {
-		return
-	}
-
-	// 衛星を削除
-	player.Celestial.RemoveSatellite(orbitIndex, satIndex)
-
-	log.Printf("💥 Satellite completely destroyed for player %s (no dropped satellite)", player.Name)
-}
-
-// destroySatelliteAtPosition は指定した位置の衛星を完全消滅させる
-func (g *Game) destroySatelliteAtPosition(player *models.Player, sphere *models.Sphere) {
+// destroyTargetSatellite は指定した位置の衛星を完全消滅させる
+func (g *Game) destroyTargetSatellite(player *models.Player, sphere *models.Sphere) {
 	for oi, orbit := range player.Celestial.Satellites {
 		for si, sat := range orbit {
 			if sat.Sphere == sphere {
