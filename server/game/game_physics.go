@@ -144,17 +144,11 @@ func (g *Game) checkCelestialCollision(player *models.Player) {
 
 	// 各球体について衝突をチェック
 	for _, sphere := range playerSpheres {
-		hitSphere, hitPlayer := g.checkSphereCollisionAt(sphere.Position, sphere.Radius, player)
+		hitPlayer, hitSphere := g.spatialGrid.CheckCollisionAt(sphere.Position, sphere.Radius, player)
 		if hitSphere != nil {
 			g.applySphereCollision(sphere, hitSphere, player, hitPlayer)
 		}
 	}
-}
-
-// checkSphereCollisionAt は指定位置で球体の衝突を検出する共通メソッド
-func (g *Game) checkSphereCollisionAt(position models.Position, radius float64, excludePlayer *models.Player) (*models.Sphere, *models.Player) {
-	player, sphere := g.spatialGrid.CheckCollisionAt(position, radius, excludePlayer)
-	return sphere, player
 }
 
 // applySphereCollision は個別の球体間の衝突を処理する
@@ -228,7 +222,7 @@ func (g *Game) checkProjectileCollisions() {
 
 	for _, proj := range g.Projectiles {
 		// 衝突検出
-		hitSphere, hitPlayer := g.checkSphereCollisionAt(proj.Sphere.Position, proj.Sphere.Radius, proj.Owner)
+		hitPlayer, hitSphere := g.spatialGrid.CheckCollisionAt(proj.Sphere.Position, proj.Sphere.Radius, proj.Owner)
 		if hitSphere != nil && hitPlayer != nil {
 			// 衝突時の処理
 			if hitSphere == hitPlayer.Celestial.Core {
@@ -246,15 +240,6 @@ func (g *Game) checkProjectileCollisions() {
 	}
 
 	g.Projectiles = activeProjectiles
-}
-
-// checkSphereCollision は二つの球体が衝突しているかチェックする
-func (g *Game) checkSphereCollision(sphere1, sphere2 *models.Sphere) bool {
-	dx := sphere1.Position.X - sphere2.Position.X
-	dy := sphere1.Position.Y - sphere2.Position.Y
-	dist := math.Sqrt(dx*dx + dy*dy)
-	minDist := sphere1.Radius + sphere2.Radius
-	return dist < minDist
 }
 
 // destroyPlayer はプレイヤーを破壊し、衛星を落とす
