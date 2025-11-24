@@ -648,9 +648,6 @@ const drawUI = (
       ctx.fillText("Press G/C to toggle", 20, yPos);
     }
   }
-
-  // ミニマップ（右下）
-  drawMinimap(ctx, currentPlayer, canvasSize);
 };
 
 // SpatialGridの線を描画
@@ -670,37 +667,6 @@ const drawSpatialGrid = (
   });
 
   ctx.setLineDash([]); // 点線をリセット
-};
-
-// ミニマップの描画
-const drawMinimap = (
-  ctx: CanvasRenderingContext2D,
-  currentPlayer: ConvertedPlayer,
-  canvasSize: { width: number; height: number }
-) => {
-  const mapSize = 120;
-  const mapX = canvasSize.width - mapSize - 10;
-  const mapY = canvasSize.height - mapSize - 10;
-
-  // ミニマップ背景
-  ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-  ctx.fillRect(mapX, mapY, mapSize, mapSize);
-
-  ctx.strokeStyle = "#333";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(mapX, mapY, mapSize, mapSize);
-
-  // プレイヤーの位置を表示
-  if (currentPlayer.cel.c) {
-    const head = currentPlayer.cel.c.p;
-    const playerX = mapX + (head.x / 5000) * mapSize;
-    const playerY = mapY + (head.y / 3000) * mapSize;
-
-    ctx.fillStyle = "#ffd700";
-    ctx.beginPath();
-    ctx.arc(playerX, playerY, 3, 0, 2 * Math.PI);
-    ctx.fill();
-  }
 };
 
 export default GameCanvas;
