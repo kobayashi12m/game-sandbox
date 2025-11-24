@@ -43,11 +43,14 @@ func (g *Game) GenerateDroppedSatellites() {
 			attempts++
 		}
 		if attempts <= 100 {
-			g.DroppedSatellites = append(g.DroppedSatellites, &models.DroppedSatellite{
+			newSatellite := &models.DroppedSatellite{
 				Position: pos,
 				Radius:   utils.SPHERE_RADIUS,
 				Color:    "#FFFFFF",
-			})
+			}
+			g.DroppedSatellites = append(g.DroppedSatellites, newSatellite)
+			// spatial gridに追加
+			g.spatialGrid.AddDroppedSatellite(newSatellite)
 		} else {
 			log.Printf("Failed to place dropped satellite after 100 attempts (current: %d, target: %d)",
 				len(g.DroppedSatellites), targetCount)

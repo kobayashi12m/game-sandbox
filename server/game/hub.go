@@ -39,6 +39,9 @@ func (h *Hub) GetOrCreateGame(roomID string) *Game {
 	// NPCを追加
 	game.AddNPC(game.NPCCount)
 
+	// 初期の落ちた衛星を生成してspatial gridに登録
+	game.GenerateDroppedSatellites()
+
 	h.games[roomID] = game
 	return h.games[roomID]
 }

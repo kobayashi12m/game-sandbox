@@ -15,7 +15,8 @@ type SpatialGrid struct {
 
 // GridCell は各グリッドセルに含まれるオブジェクト
 type GridCell struct {
-	playerSpheres map[*models.Player][]*models.Sphere // プレイヤー別の球体ポインタ
+	playerSpheres     map[*models.Player][]*models.Sphere // プレイヤー別の球体ポインタ
+	droppedSatellites []*models.DroppedSatellite          // 落ちた衛星
 }
 
 // NewSpatialGrid は新しい空間分割グリッドを作成する
@@ -31,7 +32,8 @@ func NewSpatialGrid() *SpatialGrid {
 		cells[i] = make([]*GridCell, width)
 		for j := range cells[i] {
 			cells[i][j] = &GridCell{
-				playerSpheres: make(map[*models.Player][]*models.Sphere),
+				playerSpheres:     make(map[*models.Player][]*models.Sphere),
+				droppedSatellites: make([]*models.DroppedSatellite, 0),
 			}
 		}
 	}
@@ -48,8 +50,9 @@ func NewSpatialGrid() *SpatialGrid {
 func (sg *SpatialGrid) Clear() {
 	for i := range sg.cells {
 		for j := range sg.cells[i] {
-			// 完全に新しいマップを作成してメモリリークを防ぐ
+			// プレイヤー球体のみクリア（落ちた衛星は残す）
 			sg.cells[i][j].playerSpheres = make(map[*models.Player][]*models.Sphere)
+			// 落ちた衛星はそのまま残す
 		}
 	}
 }
@@ -85,6 +88,24 @@ func (sg *SpatialGrid) AddPlayerSpheres(player *models.Player, spheres []*models
 			cell := sg.cells[cellY][cellX]
 			cell.playerSpheres[player] = append(cell.playerSpheres[player], sphere)
 		}
+	}
+}
+
+// AddDroppedSatellites は落ちた衛星をグリッドに追加する
+func (sg *SpatialGrid) AddDroppedSatellites(droppedSatellites []*models.DroppedSatellite) {
+	for _, satellite := range droppedSatellites {
+		sg.AddDroppedSatellite(satellite)
+	}
+}
+
+// AddDroppedSatellite は単一の落ちた衛星をグリッドに追加する
+func (sg *SpatialGrid) AddDroppedSatellite(satellite *models.DroppedSatellite) {
+	cellX, cellY := sg.GetCellCoords(satellite.Position.X, satellite.Position.Y)
+
+	// 安全性チェック
+	if cellY >= 0 && cellY < sg.height && cellX >= 0 && cellX < sg.width {
+		cell := sg.cells[cellY][cellX]
+		cell.droppedSatellites = append(cell.droppedSatellites, satellite)
 	}
 }
 
@@ -132,6 +153,57 @@ func (sg *SpatialGrid) CheckCollisionAt(position models.Position, radius float64
 	})
 
 	return resultPlayer, resultSphere
+}
+
+// CheckDroppedSatelliteCollision は指定したプレイヤーのコア位置で落ちた衛星との衝突をチェックする
+func (sg *SpatialGrid) CheckDroppedSatelliteCollision(player *models.Player) *models.DroppedSatellite {
+	if !player.Celestial.Alive || player.Celestial.Core == nil {
+		return nil
+	}
+
+	// プレイヤーのコア位置
+	corePos := player.Celestial.Core.Position
+	// 最外殻軌道の半径を取得
+	collisionRadius := player.Celestial.GetOutermostOrbitRadius()
+
+	centerX, centerY := sg.GetCellCoords(corePos.X, corePos.Y)
+
+	var result *models.DroppedSatellite
+	sg.iterateNearbyCells(centerX, centerY, 1, func(cell *GridCell) {
+		if result != nil {
+			return
+		}
+		for _, satellite := range cell.droppedSatellites {
+			dx := corePos.X - satellite.Position.X
+			dy := corePos.Y - satellite.Position.Y
+			dist := dx*dx + dy*dy
+			collisionDist := (collisionRadius + satellite.Radius) * (collisionRadius + satellite.Radius)
+			if dist < collisionDist {
+				result = satellite
+				return
+			}
+		}
+	})
+
+	return result
+}
+
+// RemoveDroppedSatellite は指定した落ちた衛星をspatial gridから削除する
+func (sg *SpatialGrid) RemoveDroppedSatellite(satellite *models.DroppedSatellite) {
+	cellX, cellY := sg.GetCellCoords(satellite.Position.X, satellite.Position.Y)
+
+	// 安全性チェック
+	if cellY >= 0 && cellY < sg.height && cellX >= 0 && cellX < sg.width {
+		cell := sg.cells[cellY][cellX]
+
+		// スライスから削除
+		for i, sat := range cell.droppedSatellites {
+			if sat == satellite {
+				cell.droppedSatellites = append(cell.droppedSatellites[:i], cell.droppedSatellites[i+1:]...)
+				return
+			}
+		}
+	}
 }
 
 // AreaResult はエリア内のプレイヤーをまとめて返す構造体

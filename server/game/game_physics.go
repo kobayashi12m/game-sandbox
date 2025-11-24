@@ -90,8 +90,7 @@ func (g *Game) Update(deltaTime float64) {
 			}
 
 			// 落ちた衛星との衝突判定
-			core := player.Celestial.Core.Position
-			collidedSatellite := g.checkDroppedSatelliteCollision(core)
+			collidedSatellite := g.spatialGrid.CheckDroppedSatelliteCollision(player)
 
 			if collidedSatellite != nil {
 				// 拾った衛星の位置から新しい衛星を追加
@@ -244,6 +243,8 @@ func (g *Game) destroyPlayer(player *models.Player) {
 				Color:    sat.Sphere.Color,
 			}
 			g.DroppedSatellites = append(g.DroppedSatellites, droppedSat)
+			// spatial gridに追加
+			g.spatialGrid.AddDroppedSatellite(droppedSat)
 			satelliteCount++
 		}
 	}
@@ -268,23 +269,12 @@ func (g *Game) destroyTargetSatellite(player *models.Player, sphere *models.Sphe
 	}
 }
 
-// checkDroppedSatelliteCollision はコアと落ちた衛星の衝突をチェックする
-func (g *Game) checkDroppedSatelliteCollision(corePos models.Position) *models.DroppedSatellite {
-	for _, droppedSat := range g.DroppedSatellites {
-		dx := corePos.X - droppedSat.Position.X
-		dy := corePos.Y - droppedSat.Position.Y
-		dist := math.Sqrt(dx*dx + dy*dy)
-		collisionDist := utils.SPHERE_RADIUS + droppedSat.Radius
-
-		if dist < collisionDist {
-			return droppedSat
-		}
-	}
-	return nil
-}
-
 // removeDroppedSatellite は落ちた衛星を削除する
 func (g *Game) removeDroppedSatellite(target *models.DroppedSatellite) {
+	// spatial gridから削除
+	g.spatialGrid.RemoveDroppedSatellite(target)
+
+	// スライスから削除
 	for i, droppedSat := range g.DroppedSatellites {
 		if droppedSat == target {
 			g.DroppedSatellites = append(

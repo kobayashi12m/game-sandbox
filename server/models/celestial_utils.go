@@ -81,6 +81,20 @@ func (c *Celestial) GetOutermostOrbitWithSatellites() (int, []*Satellite) {
 	return -1, []*Satellite{}
 }
 
+// GetOutermostOrbitRadius は最外殻軌道の半径を返す
+// 衛星がない場合はコアの半径を返す
+func (c *Celestial) GetOutermostOrbitRadius() float64 {
+	outermostOrbit, _ := c.GetOutermostOrbitWithSatellites()
+	if outermostOrbit < 0 {
+		// 衛星がない場合はコアの半径を返す
+		return c.Core.Radius
+	}
+
+	// 最外殻軌道の設定を取得
+	orbitConfig := c.GetOrbitConfig(outermostOrbit)
+	return orbitConfig.Radius
+}
+
 // IsOrbitFull は指定された軌道が満杯かどうかを返す
 func (c *Celestial) IsOrbitFull(orbitIndex int) bool {
 	if orbitIndex < 0 || orbitIndex >= len(c.Satellites) {
