@@ -94,9 +94,9 @@ func (g *Game) Update(deltaTime float64) {
 			collidedSatellite := g.checkDroppedSatelliteCollision(core)
 
 			if collidedSatellite != nil {
+				// 拾った衛星の位置から新しい衛星を追加
+				player.Celestial.AddSatellite(collidedSatellite.Color, collidedSatellite.Position)
 				g.removeDroppedSatellite(collidedSatellite)
-				// 拾った衛星の色で新しい衛星を追加
-				player.Celestial.AddSatellite(collidedSatellite.Color)
 				player.Score += 10
 			}
 		}()

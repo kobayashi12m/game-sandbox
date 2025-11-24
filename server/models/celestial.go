@@ -301,7 +301,7 @@ func (c *Celestial) SetAcceleration(x, y float64) {
 }
 
 // AddSatellite は新しい衛星を追加する（成長時）
-func (c *Celestial) AddSatellite(color string) {
+func (c *Celestial) AddSatellite(color string, startPos Position) {
 	// 利用可能な最も内側の軌道を取得
 	orbitIndex := c.GetAvailableOrbitForNewSatellite()
 
@@ -331,17 +331,16 @@ func (c *Celestial) AddSatellite(color string) {
 		angle = c.findBestInsertionAngle(orbitIndex)
 	}
 
-	coreX := c.Core.Position.X
-	coreY := c.Core.Position.Y
-	nodeX := coreX + orbitConfig.Radius*math.Cos(angle)
-	nodeY := coreY + orbitConfig.Radius*math.Sin(angle)
+	// 指定された開始位置を使用
+	initialX := startPos.X
+	initialY := startPos.Y
 
 	// 接線方向の初期速度を計算
 	tangentVelX := -orbitConfig.Radius * orbitConfig.Speed * math.Sin(angle)
 	tangentVelY := orbitConfig.Radius * orbitConfig.Speed * math.Cos(angle)
 
 	sphere := &Sphere{
-		Position:     Position{X: nodeX, Y: nodeY},
+		Position:     Position{X: initialX, Y: initialY},
 		Velocity:     Position{X: tangentVelX, Y: tangentVelY},
 		Acceleration: Position{X: 0, Y: 0},
 		Radius:       utils.SPHERE_RADIUS,
