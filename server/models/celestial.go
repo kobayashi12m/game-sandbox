@@ -64,7 +64,6 @@ type Celestial struct {
 	Core       *Sphere   `json:"core"` // 中心球
 	Color      string    `json:"color"`
 	Alive      bool      `json:"alive"`
-	Growing    int       `json:"-"`
 	Respawning bool      `json:"-"`
 	DeathTime  time.Time `json:"-"`
 
@@ -152,7 +151,7 @@ func (c *Celestial) Reset() {
 			Velocity:     Position{X: tangentVelX, Y: tangentVelY},
 			Acceleration: Position{X: 0, Y: 0},
 			Radius:       utils.SPHERE_RADIUS,
-			Color:        c.Color,
+			Color:        "#FFFFFF",
 			Mass:         0.5, // 衛星はコアより軽い
 		}
 
@@ -165,7 +164,6 @@ func (c *Celestial) Reset() {
 	}
 	c.Satellites = append(c.Satellites, firstOrbit)
 
-	c.Growing = 0
 	c.Alive = true
 	c.Respawning = false
 
@@ -303,7 +301,7 @@ func (c *Celestial) SetAcceleration(x, y float64) {
 }
 
 // AddSatellite は新しい衛星を追加する（成長時）
-func (c *Celestial) AddSatellite() {
+func (c *Celestial) AddSatellite(color string) {
 	// 利用可能な最も内側の軌道を取得
 	orbitIndex := c.GetAvailableOrbitForNewSatellite()
 
@@ -347,7 +345,7 @@ func (c *Celestial) AddSatellite() {
 		Velocity:     Position{X: tangentVelX, Y: tangentVelY},
 		Acceleration: Position{X: 0, Y: 0},
 		Radius:       utils.SPHERE_RADIUS,
-		Color:        c.Color,
+		Color:        color,
 		Mass:         0.5,
 	}
 

@@ -95,7 +95,8 @@ func (g *Game) Update(deltaTime float64) {
 
 			if collidedSatellite != nil {
 				g.removeDroppedSatellite(collidedSatellite)
-				player.Celestial.Growing = 3
+				// 拾った衛星の色で新しい衛星を追加
+				player.Celestial.AddSatellite(collidedSatellite.Color)
 				player.Score += 10
 			}
 		}()
@@ -111,17 +112,6 @@ func (g *Game) Update(deltaTime float64) {
 		if player.Celestial.Respawning && time.Since(player.Celestial.DeathTime) > 3*time.Second {
 			player.Celestial.Reset()
 			player.Celestial.Respawning = false
-		}
-	}
-
-	// 成長処理
-	for _, player := range g.Players {
-		if player.Celestial.Growing > 0 {
-			player.Celestial.Growing--
-			if player.Celestial.Growing == 0 {
-				// 衛星を追加
-				player.Celestial.AddSatellite()
-			}
 		}
 	}
 
