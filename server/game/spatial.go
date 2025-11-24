@@ -209,9 +209,10 @@ func (sg *SpatialGrid) RemoveDroppedSatellite(satellite *models.DroppedSatellite
 	}
 }
 
-// AreaResult はエリア内のプレイヤーをまとめて返す構造体
+// AreaResult はエリア内のプレイヤーと落ちた衛星をまとめて返す構造体
 type AreaResult struct {
-	Players []*models.Player
+	Players           []*models.Player
+	DroppedSatellites []*models.DroppedSatellite
 }
 
 // GetObjectsInArea は指定した矩形エリア内のプレイヤーを取得する
@@ -243,8 +244,28 @@ func (sg *SpatialGrid) GetObjectsInArea(minX, maxX, minY, maxY float64) AreaResu
 		visiblePlayers = append(visiblePlayers, player)
 	}
 
+	// 落ちた衛星も収集
+	var droppedSatellites []*models.DroppedSatellite
+	for cellY := startCellY; cellY <= endCellY; cellY++ {
+		for cellX := startCellX; cellX <= endCellX; cellX++ {
+			// 境界チェック
+			if cellX >= 0 && cellX < sg.width && cellY >= 0 && cellY < sg.height {
+				cell := sg.cells[cellY][cellX]
+
+				// 落ちた衛星をエリア内のものだけ追加
+				for _, satellite := range cell.droppedSatellites {
+					if satellite.Position.X >= minX && satellite.Position.X <= maxX &&
+						satellite.Position.Y >= minY && satellite.Position.Y <= maxY {
+						droppedSatellites = append(droppedSatellites, satellite)
+					}
+				}
+			}
+		}
+	}
+
 	return AreaResult{
-		Players: visiblePlayers,
+		Players:           visiblePlayers,
+		DroppedSatellites: droppedSatellites,
 	}
 }
 

@@ -94,13 +94,10 @@ func (g *Game) GetOptimizedState(clientPlayerID string, clientX, clientY, viewWi
 		}
 	}
 
-	// 画面範囲内の落ちた衛星を取得
-	droppedSatellites := make([]models.DroppedSatellite, 0)
-	for _, sat := range g.DroppedSatellites {
-		if sat.Position.X >= minX && sat.Position.X <= maxX &&
-			sat.Position.Y >= minY && sat.Position.Y <= maxY {
-			droppedSatellites = append(droppedSatellites, *sat)
-		}
+	// spatial gridからの落ちた衛星をスライスに変換
+	droppedSatellites := make([]models.DroppedSatellite, len(areaResult.DroppedSatellites))
+	for i, sat := range areaResult.DroppedSatellites {
+		droppedSatellites[i] = *sat
 	}
 
 	return models.GameState{
