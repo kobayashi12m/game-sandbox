@@ -168,8 +168,11 @@ func (sg *SpatialGrid) CheckDroppedSatelliteCollision(player *models.Player) *mo
 
 	centerX, centerY := sg.GetCellCoords(corePos.X, corePos.Y)
 
+	// 衝突半径に基づいてセル範囲を計算
+	cellRadius := int(collisionRadius/sg.cellSize) + 1
+
 	var result *models.DroppedSatellite
-	sg.iterateNearbyCells(centerX, centerY, 1, func(cell *GridCell) {
+	sg.iterateNearbyCells(centerX, centerY, cellRadius, func(cell *GridCell) {
 		if result != nil {
 			return
 		}
