@@ -130,6 +130,9 @@ func (g *Game) Update(deltaTime float64) {
 
 	// 落ちた衛星の補充
 	g.GenerateDroppedSatellites()
+
+	// 自動衛星追加
+	g.updateAutoSatellites()
 }
 
 // checkCelestialCollision は球体レベルでの個別衝突判定を行う
@@ -284,6 +287,10 @@ func (g *Game) destroyTargetSatellite(player *models.Player, sphere *models.Sphe
 			if sat.Sphere == sphere {
 				// 衛星を完全消滅
 				player.Celestial.RemoveSatellite(oi, si)
+
+				// 衛星が減った場合は自動補充タイマーをリセット
+				g.resetAutoSatelliteTimerIfNeeded(player)
+
 				return
 			}
 		}
@@ -321,5 +328,57 @@ func (g *Game) UpdateSpatialGrid() {
 			spheres = append(spheres, player.Celestial.GetAllSpheres()...)
 			g.spatialGrid.AddPlayerSpheres(player, spheres)
 		}
+	}
+}
+
+// updateAutoSatellites は各プレイヤーに定期的に衛星を自動追加する
+func (g *Game) updateAutoSatellites() {
+	for _, player := range g.Players {
+		// 生きているプレイヤーのみ対象
+		if !player.Celestial.Alive {
+			continue
+		}
+
+		// 最後の自動追加から一定時間経過したかチェック
+		if time.Since(player.LastAutoSatellite) < utils.AUTO_SATELLITE_INTERVAL {
+			continue
+		}
+
+		// 現在の衛星数を取得
+		currentSatelliteCount := player.Celestial.GetTotalSatelliteCount()
+
+		// 上限に達していたら追加しない
+		if currentSatelliteCount >= utils.MAX_AUTO_SATELLITES {
+			continue
+		}
+
+		// コア位置
+		corePos := player.Celestial.Core.Position
+
+		startPos := models.Position{
+			X: corePos.X,
+			Y: corePos.Y,
+		}
+
+		// 自動追加の衛星はコアと同じ色
+		player.Celestial.AddSatellite(player.Celestial.Core.Color, startPos)
+		player.LastAutoSatellite = time.Now()
+
+		log.Printf("🌟 Auto satellite added to %s (total: %d/%d)",
+			player.Name, currentSatelliteCount+1, utils.MAX_AUTO_SATELLITES)
+	}
+}
+
+// resetAutoSatelliteTimerIfNeeded は衛星数が上限未満になった場合にタイマーをリセットする
+func (g *Game) resetAutoSatelliteTimerIfNeeded(player *models.Player) {
+	if !player.Celestial.Alive {
+		return
+	}
+
+	currentSatelliteCount := player.Celestial.GetTotalSatelliteCount()
+	if currentSatelliteCount < utils.MAX_AUTO_SATELLITES {
+		player.LastAutoSatellite = time.Now()
+		log.Printf("⏰ Auto satellite timer reset for %s (satellites: %d/%d)",
+			player.Name, currentSatelliteCount, utils.MAX_AUTO_SATELLITES)
 	}
 }

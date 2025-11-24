@@ -54,6 +54,9 @@ func (g *Game) AddPlayer(id, name string, conn *websocket.Conn) {
 		player.LastDirectionChange = time.Now()
 	}
 
+	// 自動衛星タイマーを初期化
+	player.LastAutoSatellite = time.Now()
+
 	g.Players[id] = player
 
 	// 人間プレイヤーの場合はキャッシュに追加
@@ -221,6 +224,10 @@ func (g *Game) EjectPlayerSatellite(playerID string, targetX, targetY float64) {
 			Lifetime: 5.0, // 5秒間存在
 		}
 		g.Projectiles = append(g.Projectiles, projectile)
+
+		// 衛星が減った場合は自動補充タイマーをリセット
+		g.resetAutoSatelliteTimerIfNeeded(player)
+
 		log.Printf("Satellite ejected for player %s, remaining satellites: %d", playerID, len(player.Celestial.Satellites))
 	} else {
 		log.Printf("Failed to eject satellite for player %s, satellites count: %d", playerID, len(player.Celestial.Satellites))

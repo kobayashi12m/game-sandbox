@@ -33,6 +33,10 @@ const (
 
 	// 衛星物理定数
 	SATELLITE_EJECT_SPEED = 800.0 // 衛星の射出速度（ユニット/秒）
+
+	// 自動衛星追加設定
+	AUTO_SATELLITE_INTERVAL = 10 * time.Second // 自動衛星追加間隔
+	MAX_AUTO_SATELLITES     = 10               // 自動追加の上限（2層目まで：第0軌道2個+第1軌道8個）
 )
 
 // Direction represents movement direction (normalized vector)

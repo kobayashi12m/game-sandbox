@@ -49,6 +49,7 @@ type Player struct {
 	Conn                *websocket.Conn
 	IsNPC               bool       `json:"-"` // NPCかどうかのフラグ
 	LastDirectionChange time.Time  `json:"-"` // 最後に方向を変えた時刻
+	LastAutoSatellite   time.Time  `json:"-"` // 最後に自動衛星を追加した時刻
 	ConnMu              sync.Mutex `json:"-"` // WebSocket書き込み用mutex
 }
 
