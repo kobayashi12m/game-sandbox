@@ -23,17 +23,19 @@ func (p Position) MarshalJSON() ([]byte, error) {
 type DroppedSatellite struct {
 	Position Position `json:"p"` // position → p
 	Radius   float64  `json:"r"` // radius → r
+	Color    string   `json:"c"` // color → c
 }
 
-// MarshalJSON はDroppedSatelliteを配列形式でJSON化 [position, radius]
+// MarshalJSON はDroppedSatelliteを配列形式でJSON化 [position, radius, color]
 func (d DroppedSatellite) MarshalJSON() ([]byte, error) {
 	posJSON, err := d.Position.MarshalJSON()
 	if err != nil {
 		return nil, err
 	}
 
-	// 配列形式: [position, radius]
-	result := fmt.Sprintf(`[%s,%g]`, string(posJSON), d.Radius)
+	// 配列形式: [position, radius, color]
+	escapedColor := fmt.Sprintf("%q", d.Color)
+	result := fmt.Sprintf(`[%s,%g,%s]`, string(posJSON), d.Radius, escapedColor)
 	return []byte(result), nil
 }
 

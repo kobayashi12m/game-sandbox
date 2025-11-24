@@ -43,9 +43,14 @@ func (g *Game) GenerateDroppedSatellites() {
 			attempts++
 		}
 		if attempts <= 100 {
+			// ランダムな色を選択
+			colors := []string{"#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#DDA0DD", "#F4A460"}
+			color := colors[rand.IntN(len(colors))]
+
 			g.DroppedSatellites = append(g.DroppedSatellites, &models.DroppedSatellite{
 				Position: pos,
 				Radius:   utils.SPHERE_RADIUS * 0.8, // 少し小さく
+				Color:    color,                     // ランダムな色を設定
 			})
 		} else {
 			log.Printf("Failed to place dropped satellite after 100 attempts (current: %d, target: %d)",

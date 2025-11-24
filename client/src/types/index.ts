@@ -3,8 +3,8 @@
 // Positionは配列形式: [x, y]
 export type Position = [number, number];
 
-// Sphereは配列形式: [[x,y], radius, [vx,vy]?, [ax,ay]?]
-export type Sphere = [Position, number, Position?, Position?];
+// Sphereは配列形式: [[x,y], radius, color, [vx,vy]?, [ax,ay]?]
+export type Sphere = [Position, number, string, Position?, Position?];
 
 // 軌道上を回転する衛星
 export interface Satellite {
@@ -23,8 +23,8 @@ export type Player = [string, string, CelestialSystem, number];
 // Projectileは配列形式: [id, sphere, ownerId]
 export type Projectile = [string, Sphere, string];
 
-// DroppedSatelliteは配列形式: [position, radius]
-export type DroppedSatellite = [Position, number];
+// DroppedSatelliteは配列形式: [position, radius, color]
+export type DroppedSatellite = [Position, number, string];
 
 export interface GameState {
   pls: Player[];                     // players → pls
@@ -104,6 +104,7 @@ export interface ConvertedPosition {
 export interface ConvertedSphere {
   p: ConvertedPosition;
   r: number;
+  c: string; // color
   v?: ConvertedPosition;
   a?: ConvertedPosition;
 }
@@ -131,6 +132,7 @@ export interface ConvertedProjectile {
 export interface ConvertedDroppedSatellite {
   p: ConvertedPosition;
   r: number;
+  c: string; // color
 }
 
 // 配列形式データ用のヘルパー関数
@@ -142,20 +144,21 @@ export const getPosition = (pos: Position): ConvertedPosition => {
 };
 
 export const getSphere = (sphere: Sphere): ConvertedSphere => {
-  if (!sphere || !Array.isArray(sphere) || sphere.length < 2) {
-    return { p: { x: 0, y: 0 }, r: 0 };
+  if (!sphere || !Array.isArray(sphere) || sphere.length < 3) {
+    return { p: { x: 0, y: 0 }, r: 0, c: '#000000' };
   }
   return {
     p: getPosition(sphere[0]),
     r: sphere[1],
-    v: sphere[2] ? getPosition(sphere[2]) : undefined,
-    a: sphere[3] ? getPosition(sphere[3]) : undefined
+    c: sphere[2],
+    v: sphere[3] ? getPosition(sphere[3]) : undefined,
+    a: sphere[4] ? getPosition(sphere[4]) : undefined
   };
 };
 
 export const getCelestialSystem = (cel: CelestialSystem): ConvertedCelestialSystem => {
   if (!cel || !Array.isArray(cel) || cel.length < 4) {
-    return { c: { p: { x: 0, y: 0 }, r: 0 }, col: '#000', a: false, n: [] };
+    return { c: { p: { x: 0, y: 0 }, r: 0, c: '#000000' }, col: '#000', a: false, n: [] };
   }
   return {
     c: getSphere(cel[0]),
@@ -167,7 +170,7 @@ export const getCelestialSystem = (cel: CelestialSystem): ConvertedCelestialSyst
 
 export const getPlayer = (player: Player): ConvertedPlayer => {
   if (!player || !Array.isArray(player) || player.length < 4) {
-    return { id: '', nm: '', cel: { c: { p: { x: 0, y: 0 }, r: 0 }, col: '#000', a: false, n: [] }, sc: 0 };
+    return { id: '', nm: '', cel: { c: { p: { x: 0, y: 0 }, r: 0, c: '#000000' }, col: '#000', a: false, n: [] }, sc: 0 };
   }
   return {
     id: player[0],
@@ -178,7 +181,8 @@ export const getPlayer = (player: Player): ConvertedPlayer => {
 };
 export const getDroppedSatellite = (ds: DroppedSatellite): ConvertedDroppedSatellite => ({
   p: getPosition(ds[0]),
-  r: ds[1]
+  r: ds[1],
+  c: ds[2]
 });
 export const getProjectile = (proj: Projectile): ConvertedProjectile => ({
   id: proj[0],

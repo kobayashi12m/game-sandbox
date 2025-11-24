@@ -251,6 +251,7 @@ func (g *Game) destroyPlayer(player *models.Player) {
 			droppedSat := &models.DroppedSatellite{
 				Position: sat.Sphere.Position,
 				Radius:   sat.Sphere.Radius,
+				Color:    sat.Sphere.Color,
 			}
 			g.DroppedSatellites = append(g.DroppedSatellites, droppedSat)
 			satelliteCount++

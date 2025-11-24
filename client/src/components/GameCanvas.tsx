@@ -1,11 +1,11 @@
 import React, { useRef, useEffect, useState, useMemo, memo } from "react";
-import type {
-  GameState,
-  GameConfig,
-  GridLine,
-} from "../types";
+import type { GameState, GameConfig, GridLine } from "../types";
 import { getPlayer, getDroppedSatellite, getProjectile } from "../types";
-import type { ConvertedPlayer, ConvertedDroppedSatellite, ConvertedProjectile } from "../types";
+import type {
+  ConvertedPlayer,
+  ConvertedDroppedSatellite,
+  ConvertedProjectile,
+} from "../types";
 
 interface GameCanvasProps {
   gameState: GameState;
@@ -28,7 +28,6 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
 
       return { width: windowWidth, height: windowHeight };
     }, []);
-
 
     // キーボードショートカット
     useEffect(() => {
@@ -191,7 +190,7 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
 
       try {
         if (!gameState || !gameState.pls) return;
-        
+
         drawGame(
           ctx,
           gameState,
@@ -201,7 +200,6 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
           showGrid,
           showCulling
         );
-
       } catch (error) {
         console.error("🚨 DRAW ERROR:", error);
         console.error("GameState:", gameState);
@@ -292,7 +290,7 @@ const drawGame = (
 
     gameState.pls.forEach((player) => {
       const playerData = getPlayer(player);
-      
+
       // プレイヤーが画面範囲内にいるかチェック
       if (playerData.cel?.c?.p) {
         const head = playerData.cel.c.p;
@@ -308,7 +306,6 @@ const drawGame = (
         }
       }
     });
-
   }
 
   // カメラ変換を元に戻す
@@ -372,10 +369,6 @@ const drawDroppedSatellites = (
   const minY = cameraY - margin;
   const maxY = cameraY + canvasSize.height + margin;
 
-  ctx.fillStyle = "#4ECDC4"; // 青緑色
-  ctx.shadowBlur = 8;
-  ctx.shadowColor = "#4ECDC4";
-
   droppedSatellites.forEach((satellite) => {
     // 画面範囲内の落ちた衛星のみ描画
     if (
@@ -384,14 +377,13 @@ const drawDroppedSatellites = (
       satellite.p.y >= minY &&
       satellite.p.y <= maxY
     ) {
+      // 衛星の色を使用
+      ctx.fillStyle = satellite.c;
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = satellite.c;
+
       ctx.beginPath();
-      ctx.arc(
-        satellite.p.x,
-        satellite.p.y,
-        satellite.r,
-        0,
-        2 * Math.PI
-      );
+      ctx.arc(satellite.p.x, satellite.p.y, satellite.r, 0, 2 * Math.PI);
       ctx.fill();
 
       // 内側に小さな光る点を追加
@@ -399,19 +391,8 @@ const drawDroppedSatellites = (
       ctx.shadowBlur = 4;
       ctx.shadowColor = "#FFFFFF";
       ctx.beginPath();
-      ctx.arc(
-        satellite.p.x,
-        satellite.p.y,
-        satellite.r * 0.3,
-        0,
-        2 * Math.PI
-      );
+      ctx.arc(satellite.p.x, satellite.p.y, satellite.r * 0.3, 0, 2 * Math.PI);
       ctx.fill();
-
-      // 色を戻す
-      ctx.fillStyle = "#4ECDC4";
-      ctx.shadowBlur = 8;
-      ctx.shadowColor = "#4ECDC4";
     }
   });
 
@@ -441,10 +422,11 @@ const drawProjectiles = (
 
     // 画面範囲内の射出物のみ描画
     if (pos.x >= minX && pos.x <= maxX && pos.y >= minY && pos.y <= maxY) {
-      // 射出物の描画（高速で飛ぶ衛星）
-      ctx.fillStyle = "#FFD700"; // ゴールド色
+      // 射出物の色を使用
+      const projectileColor = projectile.sph.c;
+      ctx.fillStyle = projectileColor;
       ctx.shadowBlur = 15;
-      ctx.shadowColor = "#FFD700";
+      ctx.shadowColor = projectileColor;
 
       ctx.beginPath();
       ctx.arc(pos.x, pos.y, radius, 0, 2 * Math.PI);
@@ -459,7 +441,7 @@ const drawProjectiles = (
           const dirX = -vel.x / speed;
           const dirY = -vel.y / speed;
 
-          ctx.strokeStyle = "#FFD700";
+          ctx.strokeStyle = projectileColor;
           ctx.lineWidth = 3;
           ctx.globalAlpha = 0.5;
           ctx.beginPath();
@@ -488,18 +470,16 @@ const drawCelestialSystem = (
   ctx.fillStyle = celestialSystem.col;
 
   // 軌道を先に描画 - 核から各衛星への放射状線
-  ctx.strokeStyle = celestialSystem.col;
   ctx.lineWidth = 2;
   ctx.globalAlpha = 0.6; // 線を少し透明に
 
   // コアから各ノードへの線を描画
   if (celestialSystem.n && celestialSystem.n.length > 0) {
     celestialSystem.n.forEach((node) => {
+      // 各衛星の色で線を描画
+      ctx.strokeStyle = node.c;
       ctx.beginPath();
-      ctx.moveTo(
-        celestialSystem.c.p.x,
-        celestialSystem.c.p.y
-      );
+      ctx.moveTo(celestialSystem.c.p.x, celestialSystem.c.p.y);
       ctx.lineTo(node.p.x, node.p.y);
       ctx.stroke();
     });
@@ -514,13 +494,15 @@ const drawCelestialSystem = (
     ctx,
     celestialSystem.c.p,
     celestialSystem.c.r,
-    celestialSystem.col,
+    celestialSystem.c.c, // コア球体の色を使用
     isCurrentPlayer
   );
 
   // ノード（周辺球）を描画
   if (celestialSystem.n && celestialSystem.n.length > 0) {
     celestialSystem.n.forEach((node) => {
+      // 各衛星の色を使用
+      ctx.fillStyle = node.c;
       ctx.beginPath();
       ctx.arc(node.p.x, node.p.y, node.r, 0, 2 * Math.PI);
       ctx.fill();
@@ -528,12 +510,7 @@ const drawCelestialSystem = (
   }
 
   // プレイヤー名を描画
-  drawPlayerName(
-    ctx,
-    player.nm,
-    celestialSystem.c.p,
-    isCurrentPlayer
-  );
+  drawPlayerName(ctx, player.nm, celestialSystem.c.p, isCurrentPlayer);
 
   ctx.globalAlpha = 1;
 };
@@ -592,7 +569,7 @@ const drawCoreHead = (
   ctx.fillStyle = color;
 };
 
-// プレイヤー名の描画  
+// プレイヤー名の描画
 const drawPlayerName = (
   ctx: CanvasRenderingContext2D,
   name: string,
@@ -637,11 +614,7 @@ const drawUI = (
   ctx.font = "bold 18px Arial";
   ctx.textAlign = "left";
   ctx.fillText(`Score: ${currentPlayer.sc}`, 20, 35);
-  ctx.fillText(
-    `Length: ${(currentPlayer.cel.n?.length || 0) + 1}`,
-    20,
-    55
-  );
+  ctx.fillText(`Length: ${(currentPlayer.cel.n?.length || 0) + 1}`, 20, 55);
 
   // 死んでいる場合はDEAD表示
   if (!currentPlayer.cel.a) {

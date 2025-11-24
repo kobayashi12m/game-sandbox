@@ -14,14 +14,16 @@ type Sphere struct {
 	Velocity     Position `json:"velocity,omitempty"`
 	Acceleration Position `json:"acceleration,omitempty"` // 加速度
 	Radius       float64  `json:"radius"`
-	Mass         float64  `json:"-"` // 質量
+	Color        string   `json:"color"` // 球体の色
+	Mass         float64  `json:"-"`     // 質量
 }
 
-// MarshalJSON は配列形式でJSONサイズを最大削減する [[x,y], radius, [vx,vy], [ax,ay]]
+// MarshalJSON は配列形式でJSONサイズを最大削減する [[x,y], radius, color, [vx,vy], [ax,ay]]
 func (s Sphere) MarshalJSON() ([]byte, error) {
-	// 基本形式: [position, radius]
-	result := fmt.Sprintf(`[[%d,%d],%d`,
-		int(s.Position.X), int(s.Position.Y), int(s.Radius))
+	// 基本形式: [position, radius, color]
+	escapedColor := fmt.Sprintf("%q", s.Color)
+	result := fmt.Sprintf(`[[%d,%d],%d,%s`,
+		int(s.Position.X), int(s.Position.Y), int(s.Radius), escapedColor)
 
 	// velocityがゼロでない場合のみ追加
 	vx, vy := int(s.Velocity.X), int(s.Velocity.Y)
@@ -117,6 +119,7 @@ func (c *Celestial) Reset() {
 		Velocity:     Position{X: 0, Y: 0},
 		Acceleration: Position{X: 0, Y: 0},
 		Radius:       utils.SPHERE_RADIUS,
+		Color:        c.Color,
 		Mass:         1.0,
 	}
 
@@ -149,6 +152,7 @@ func (c *Celestial) Reset() {
 			Velocity:     Position{X: tangentVelX, Y: tangentVelY},
 			Acceleration: Position{X: 0, Y: 0},
 			Radius:       utils.SPHERE_RADIUS,
+			Color:        c.Color,
 			Mass:         0.5, // 衛星はコアより軽い
 		}
 
@@ -343,6 +347,7 @@ func (c *Celestial) AddSatellite() {
 		Velocity:     Position{X: tangentVelX, Y: tangentVelY},
 		Acceleration: Position{X: 0, Y: 0},
 		Radius:       utils.SPHERE_RADIUS,
+		Color:        c.Color,
 		Mass:         0.5,
 	}
 
@@ -412,6 +417,7 @@ func (c *Celestial) EjectSatelliteWithReturn(targetX, targetY float64) *Sphere {
 		Velocity:     closestSatellite.Sphere.Velocity,
 		Acceleration: Position{X: 0, Y: 0},
 		Radius:       closestSatellite.Sphere.Radius,
+		Color:        closestSatellite.Sphere.Color,
 		Mass:         closestSatellite.Sphere.Mass,
 	}
 
