@@ -151,7 +151,7 @@ func (c *Celestial) Reset() {
 			Velocity:     Position{X: tangentVelX, Y: tangentVelY},
 			Acceleration: Position{X: 0, Y: 0},
 			Radius:       utils.SPHERE_RADIUS,
-			Color:        "#FFFFFF",
+			Color:        c.Core.Color,
 			Mass:         0.5, // 衛星はコアより軽い
 		}
 
