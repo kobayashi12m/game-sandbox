@@ -44,9 +44,10 @@ func (g *Game) GenerateDroppedSatellites() {
 		}
 		if attempts <= 100 {
 			newSatellite := &models.DroppedSatellite{
-				Position: pos,
-				Radius:   utils.SPHERE_RADIUS,
-				Color:    "#FFFFFF",
+				Position:       pos,
+				Radius:         utils.SPHERE_RADIUS,
+				Color:          "#FFFFFF",
+				IsOriginalCore: false,
 			}
 			g.DroppedSatellites = append(g.DroppedSatellites, newSatellite)
 			// spatial gridに追加

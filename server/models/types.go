@@ -21,9 +21,10 @@ func (p Position) MarshalJSON() ([]byte, error) {
 
 // DroppedSatellite は落ちた衛星を表す
 type DroppedSatellite struct {
-	Position Position `json:"p"` // position → p
-	Radius   float64  `json:"r"` // radius → r
-	Color    string   `json:"c"` // color → c
+	Position       Position `json:"p"` // position → p
+	Radius         float64  `json:"r"` // radius → r
+	Color          string   `json:"c"` // color → c
+	IsOriginalCore bool     `json:"-"` // 元コアかどうか（JSONに含めない）
 }
 
 // MarshalJSON はDroppedSatelliteを配列形式でJSON化 [position, radius, color]

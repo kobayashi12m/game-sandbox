@@ -94,7 +94,15 @@ func (g *Game) Update(deltaTime float64) {
 
 			if collidedSatellite != nil {
 				// 拾った衛星の位置から新しい衛星を追加
-				player.Celestial.AddSatellite(player.Celestial.Core.Color, collidedSatellite.Position)
+				var satelliteColor string
+				if collidedSatellite.IsOriginalCore {
+					// 元コアの場合は元の色を維持
+					satelliteColor = collidedSatellite.Color
+				} else {
+					// 元衛星の場合は拾ったプレイヤーのコア色
+					satelliteColor = player.Celestial.Core.Color
+				}
+				player.Celestial.AddSatellite(satelliteColor, collidedSatellite.Position)
 				g.removeDroppedSatellite(collidedSatellite)
 				player.Score += 10
 			}
@@ -231,16 +239,29 @@ func (g *Game) checkProjectileCollisions() {
 	g.Projectiles = activeProjectiles
 }
 
-// destroyPlayer はプレイヤーを破壊し、衛星を落とす
+// destroyPlayer はプレイヤーを破壊し、コアと衛星を落とす
 func (g *Game) destroyPlayer(player *models.Player) {
-	// 全ての衛星を落とす
+	// コアを落ちた衛星として追加（元コアとして記録）
+	if player.Celestial.Core != nil {
+		droppedCore := &models.DroppedSatellite{
+			Position:       player.Celestial.Core.Position,
+			Radius:         player.Celestial.Core.Radius,
+			Color:          player.Celestial.Core.Color, // 元の色を維持
+			IsOriginalCore: true,
+		}
+		g.DroppedSatellites = append(g.DroppedSatellites, droppedCore)
+		g.spatialGrid.AddDroppedSatellite(droppedCore)
+	}
+
+	// 全ての衛星を落とす（元衛星として記録）
 	satelliteCount := 0
 	for _, orbit := range player.Celestial.Satellites {
 		for _, sat := range orbit {
 			droppedSat := &models.DroppedSatellite{
-				Position: sat.Sphere.Position,
-				Radius:   sat.Sphere.Radius,
-				Color:    sat.Sphere.Color,
+				Position:       sat.Sphere.Position,
+				Radius:         sat.Sphere.Radius,
+				Color:          "#FFFFFF", // 落ちた時は白色
+				IsOriginalCore: false,
 			}
 			g.DroppedSatellites = append(g.DroppedSatellites, droppedSat)
 			// spatial gridに追加
@@ -253,7 +274,7 @@ func (g *Game) destroyPlayer(player *models.Player) {
 	player.Celestial.Alive = false
 	player.Celestial.Satellites = [][]*models.Satellite{}
 
-	log.Printf("💥 Player %s core destroyed, %d satellites dropped at their locations", player.Name, satelliteCount)
+	log.Printf("💥 Player %s core destroyed, core + %d satellites dropped at their locations", player.Name, satelliteCount)
 }
 
 // destroyTargetSatellite は指定した位置の衛星を完全消滅させる
