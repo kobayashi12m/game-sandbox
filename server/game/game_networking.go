@@ -200,9 +200,10 @@ func (g *Game) BroadcastOptimized() {
 	// スナップショットを使って各プレイヤーに送信（デッドロック回避）
 	for _, player := range playerList {
 		core := player.Celestial.Core.Position
-		// constants.goからカリング範囲を取得
-		viewWidth := utils.CULLING_WIDTH
-		viewHeight := utils.CULLING_HEIGHT
+		// ズームレベルに応じてカリング範囲を調整
+		zoomScale := utils.CAMERA_ZOOM_SCALE
+		viewWidth := utils.CULLING_WIDTH / zoomScale
+		viewHeight := utils.CULLING_HEIGHT / zoomScale
 
 		// このクライアント専用の最適化されたゲーム状態を取得
 		optimizedState := g.GetOptimizedState(player.ID, core.X, core.Y, viewWidth, viewHeight)

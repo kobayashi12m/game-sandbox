@@ -131,10 +131,11 @@ type ScoreUpdate struct {
 
 // GameConfig はゲームの設定を表す
 type GameConfig struct {
-	FieldWidth    float64    `json:"fieldWidth"`
-	FieldHeight   float64    `json:"fieldHeight"`
-	SphereRadius  float64    `json:"sphereRadius"`
-	CullingWidth  float64    `json:"cullingWidth"`
-	CullingHeight float64    `json:"cullingHeight"`
-	GridLines     []GridLine `json:"gridLines,omitempty"` // SpatialGrid可視化用
+	FieldWidth      float64    `json:"fieldWidth"`
+	FieldHeight     float64    `json:"fieldHeight"`
+	SphereRadius    float64    `json:"sphereRadius"`
+	CullingWidth    float64    `json:"cullingWidth"`
+	CullingHeight   float64    `json:"cullingHeight"`
+	CameraZoomScale float64    `json:"cameraZoomScale"` // カメラの固定ズーム倍率
+	GridLines       []GridLine `json:"gridLines,omitempty"` // SpatialGrid可視化用
 }

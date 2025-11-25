@@ -82,12 +82,13 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 					gridLines := gameInstance.GetSpatialGridLines()
 
 					config := models.GameConfig{
-						FieldWidth:    utils.FIELD_WIDTH,
-						FieldHeight:   utils.FIELD_HEIGHT,
-						SphereRadius:  utils.SPHERE_RADIUS,
-						CullingWidth:  utils.CULLING_WIDTH,
-						CullingHeight: utils.CULLING_HEIGHT,
-						GridLines:     gridLines,
+						FieldWidth:      utils.FIELD_WIDTH,
+						FieldHeight:     utils.FIELD_HEIGHT,
+						SphereRadius:    utils.SPHERE_RADIUS,
+						CullingWidth:    utils.CULLING_WIDTH,
+						CullingHeight:   utils.CULLING_HEIGHT,
+						CameraZoomScale: utils.CAMERA_ZOOM_SCALE,
+						GridLines:       gridLines,
 					}
 					configMsg := map[string]interface{}{
 						"type":   "gameConfig",

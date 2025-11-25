@@ -13,6 +13,9 @@ const (
 	GAME_TICK             = 16 * time.Millisecond // ゲーム更新間隔（60FPS）
 	NPC_COUNT             = 50                    // デフォルトNPC数
 
+	// カメラ・表示設定
+	CAMERA_ZOOM_SCALE = 0.85 // カメラの固定ズーム倍率（0.85=少し引いた視点、物が少し小さく見える）
+
 	// カリング設定
 	CULLING_WIDTH  = 1300.0 // カリング範囲の幅
 	CULLING_HEIGHT = 800.0  // カリング範囲の高さ

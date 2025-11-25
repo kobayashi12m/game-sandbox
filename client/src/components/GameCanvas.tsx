@@ -74,12 +74,15 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
 
         if (!playerPosition) return;
 
-        // カメラオフセットを考慮したワールド座標に変換
-        const cameraX = playerPosition.x - canvasSize.width / 2;
-        const cameraY = playerPosition.y - canvasSize.height / 2;
+        // カメラズーム設定を取得
+        const zoomScale = gameConfig.cameraZoomScale || 1.0;
 
-        const worldX = event.clientX - rect.left + cameraX;
-        const worldY = event.clientY - rect.top + cameraY;
+        // カメラオフセットを考慮したワールド座標に変換（固定ズーム適用）
+        const cameraX = playerPosition.x - canvasSize.width / 2 / zoomScale;
+        const cameraY = playerPosition.y - canvasSize.height / 2 / zoomScale;
+
+        const worldX = (event.clientX - rect.left) / zoomScale + cameraX;
+        const worldY = (event.clientY - rect.top) / zoomScale + cameraY;
 
         // コアからマウス位置への方向ベクトルを計算
         const dx = worldX - playerPosition.x;
@@ -165,12 +168,15 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
 
         if (!playerPosition) return;
 
-        // カメラオフセットを考慮したワールド座標に変換
-        const cameraX = playerPosition.x - canvasSize.width / 2;
-        const cameraY = playerPosition.y - canvasSize.height / 2;
+        // カメラズーム設定を取得
+        const zoomScale = gameConfig.cameraZoomScale || 1.0;
 
-        const worldX = event.clientX - rect.left + cameraX;
-        const worldY = event.clientY - rect.top + cameraY;
+        // カメラオフセットを考慮したワールド座標に変換（固定ズーム適用）
+        const cameraX = playerPosition.x - canvasSize.width / 2 / zoomScale;
+        const cameraY = playerPosition.y - canvasSize.height / 2 / zoomScale;
+
+        const worldX = (event.clientX - rect.left) / zoomScale + cameraX;
+        const worldY = (event.clientY - rect.top) / zoomScale + cameraY;
 
         onMouseClick(worldX, worldY);
       };
@@ -235,16 +241,24 @@ const drawGame = (
   const playerData = currentPlayer ? getPlayer(currentPlayer) : null;
   const playerPosition = playerData?.cel?.c?.p;
 
-  // カメラの中心位置を計算
-  const cameraX = playerPosition ? playerPosition.x - canvasSize.width / 2 : 0;
-  const cameraY = playerPosition ? playerPosition.y - canvasSize.height / 2 : 0;
+  // カメラズーム設定を取得
+  const zoomScale = gameConfig.cameraZoomScale || 1.0;
+
+  // カメラの中心位置を計算（固定ズーム適用）
+  const cameraX = playerPosition
+    ? playerPosition.x - canvasSize.width / 2 / zoomScale
+    : 0;
+  const cameraY = playerPosition
+    ? playerPosition.y - canvasSize.height / 2 / zoomScale
+    : 0;
 
   // キャンバスをクリア
   ctx.fillStyle = "#0a0a0a";
   ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
 
-  // カメラ変換を適用
+  // カメラ変換を適用（固定ズーム付き）
   ctx.save();
+  ctx.scale(zoomScale, zoomScale);
   ctx.translate(-cameraX, -cameraY);
 
   // フィールドの境界を描画
@@ -257,7 +271,13 @@ const drawGame = (
 
   // サーバーカリング範囲を描画
   if (showCulling) {
-    drawServerCullingBounds(ctx, playerPosition, gameConfig);
+    // 実際のサーバー側カリング範囲を計算（ズーム調整済み）
+    const actualCullingConfig = {
+      ...gameConfig,
+      cullingWidth: gameConfig.cullingWidth / zoomScale,
+      cullingHeight: gameConfig.cullingHeight / zoomScale,
+    };
+    drawServerCullingBounds(ctx, playerPosition, actualCullingConfig);
   }
 
   // 落ちた衛星を描画（カリング付き）
@@ -266,7 +286,8 @@ const drawGame = (
     gameState.ds?.map(getDroppedSatellite) || [],
     cameraX,
     cameraY,
-    canvasSize
+    canvasSize,
+    zoomScale
   );
 
   // 射出物を描画（カリング付き）
@@ -276,17 +297,18 @@ const drawGame = (
     gameConfig.sphereRadius,
     cameraX,
     cameraY,
-    canvasSize
+    canvasSize,
+    zoomScale
   );
 
   // プレイヤーを描画（カリング付き）
   if (gameState.pls && gameState.pls.length > 0) {
-    // カリング用の画面境界計算（余裕を持たせる）
+    // カリング用の画面境界計算（余裕を持たせる、ズーム考慮）
     const cullingMargin = 300; // 画面外300pxまで描画
-    const minX = cameraX - cullingMargin;
-    const maxX = cameraX + canvasSize.width + cullingMargin;
-    const minY = cameraY - cullingMargin;
-    const maxY = cameraY + canvasSize.height + cullingMargin;
+    const minX = cameraX - cullingMargin / zoomScale;
+    const maxX = cameraX + (canvasSize.width + cullingMargin) / zoomScale;
+    const minY = cameraY - cullingMargin / zoomScale;
+    const maxY = cameraY + (canvasSize.height + cullingMargin) / zoomScale;
 
     gameState.pls.forEach((player) => {
       const playerData = getPlayer(player);
@@ -358,16 +380,17 @@ const drawDroppedSatellites = (
   droppedSatellites: ConvertedDroppedSatellite[] | undefined,
   cameraX: number,
   cameraY: number,
-  canvasSize: { width: number; height: number }
+  canvasSize: { width: number; height: number },
+  zoomScale: number
 ) => {
   if (!droppedSatellites || droppedSatellites.length === 0) return;
 
-  // カリング境界
+  // カリング境界（ズーム考慮）
   const margin = 100;
-  const minX = cameraX - margin;
-  const maxX = cameraX + canvasSize.width + margin;
-  const minY = cameraY - margin;
-  const maxY = cameraY + canvasSize.height + margin;
+  const minX = cameraX - margin / zoomScale;
+  const maxX = cameraX + (canvasSize.width + margin) / zoomScale;
+  const minY = cameraY - margin / zoomScale;
+  const maxY = cameraY + (canvasSize.height + margin) / zoomScale;
 
   droppedSatellites.forEach((satellite) => {
     // 画面範囲内の落ちた衛星のみ描画
@@ -406,16 +429,17 @@ const drawProjectiles = (
   radius: number,
   cameraX: number,
   cameraY: number,
-  canvasSize: { width: number; height: number }
+  canvasSize: { width: number; height: number },
+  zoomScale: number
 ) => {
   if (!projectiles || projectiles.length === 0) return;
 
-  // カリング境界
+  // カリング境界（ズーム考慮）
   const margin = 100;
-  const minX = cameraX - margin;
-  const maxX = cameraX + canvasSize.width + margin;
-  const minY = cameraY - margin;
-  const maxY = cameraY + canvasSize.height + margin;
+  const minX = cameraX - margin / zoomScale;
+  const maxX = cameraX + (canvasSize.width + margin) / zoomScale;
+  const minY = cameraY - margin / zoomScale;
+  const maxY = cameraY + (canvasSize.height + margin) / zoomScale;
 
   projectiles.forEach((projectile) => {
     const pos = projectile.sph.p;

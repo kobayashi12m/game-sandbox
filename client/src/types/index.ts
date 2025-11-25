@@ -84,6 +84,7 @@ export interface GameConfig {
   sphereRadius: number;
   cullingWidth: number;
   cullingHeight: number;
+  cameraZoomScale: number;
   gridLines?: GridLine[];
 }
 
@@ -197,4 +198,5 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   sphereRadius: 7.5,
   cullingWidth: 1300,
   cullingHeight: 800,
+  cameraZoomScale: 0.85,
 };
