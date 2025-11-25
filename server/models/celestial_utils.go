@@ -119,6 +119,16 @@ func (c *Celestial) GetAvailableOrbitForNewSatellite() int {
 	return maxOrbits
 }
 
+// AreAllOrbitsFullUpToLayer は指定した層まで全ての軌道が満杯かどうかをチェックする
+func (c *Celestial) AreAllOrbitsFullUpToLayer(maxLayer int) bool {
+	for i := 0; i <= maxLayer; i++ {
+		if !c.IsOrbitFull(i) {
+			return false
+		}
+	}
+	return true
+}
+
 // RebalanceSatellitesInOrbit は指定された軌道の衛星を等間隔に再配置する
 func (c *Celestial) RebalanceSatellitesInOrbit(orbitIndex int) {
 	if orbitIndex < 0 || orbitIndex >= len(c.Satellites) {

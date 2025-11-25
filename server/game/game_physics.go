@@ -89,8 +89,11 @@ func (g *Game) Update(deltaTime float64) {
 				g.checkCelestialCollision(player)
 			}
 
-			// 落ちた衛星との衝突判定
-			collidedSatellite := g.spatialGrid.CheckDroppedSatelliteCollision(player)
+			// 落ちた衛星との衝突判定（0-3層が全て満杯の場合は衝突判定しない）
+			var collidedSatellite *models.DroppedSatellite
+			if !player.Celestial.AreAllOrbitsFullUpToLayer(3) {
+				collidedSatellite = g.spatialGrid.CheckDroppedSatelliteCollision(player)
+			}
 
 			if collidedSatellite != nil {
 				// 拾った衛星の位置から新しい衛星を追加
