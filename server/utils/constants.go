@@ -32,7 +32,7 @@ const (
 	COLLISION_MIN_DISTANCE = 2.0 // 最小衝突距離（半径の倍数）
 
 	// 衛星物理定数
-	SATELLITE_EJECT_SPEED = 800.0 // 衛星の射出速度（ユニット/秒）
+	SATELLITE_EJECT_SPEED = 1200.0 // 衛星の射出速度（ユニット/秒）
 
 	// 自動衛星追加設定
 	AUTO_SATELLITE_INTERVAL = 10 * time.Second // 自動衛星追加間隔
