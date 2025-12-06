@@ -1,7 +1,6 @@
 package game
 
 import (
-	"log"
 	"sync"
 	"time"
 
@@ -24,6 +23,7 @@ type Game struct {
 	humanPlayers      []*models.Player // WebSocket接続する人間プレイヤーのキャッシュ
 	// 通信統計（シンプル版）
 	totalBytesSent int64 // 送信バイト数の累計
+	startTime      time.Time
 	mu             sync.RWMutex
 }
 
@@ -127,8 +127,9 @@ func (g *Game) ShouldStart() bool {
 	// 人間プレイヤーが1人以上いて、ゲームが開始されていない場合
 	if humanPlayers >= 1 && !g.Running {
 		g.Running = true
+		g.startTime = time.Now()
 		go g.RunGameLoop()
-		log.Printf("Game started with %d human players and %d total players", humanPlayers, len(g.Players))
+		utils.LogGameSessionEvent("game_start", g.ID, humanPlayers, len(g.Players), 0)
 		return true
 	}
 	return false
@@ -156,7 +157,7 @@ func (g *Game) RunGameLoop() {
 	// パニックリカバリー
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("\033[35m🚨 PANIC_RECOVERED in RunGameLoop for game %s: %v\033[0m", g.ID, r)
+			utils.LogPanicRecovery("RunGameLoop", g.ID, r)
 		}
 	}()
 
@@ -164,8 +165,14 @@ func (g *Game) RunGameLoop() {
 	defer ticker.Stop()
 	lastUpdate := time.Now()
 
-	log.Printf("\033[32m✅ GAME_LOOP: Started for game %s\033[0m", g.ID)
-	defer log.Printf("\033[33m⚠️ GAME_LOOP: Ended for game %s\033[0m", g.ID)
+	utils.Info("Game loop started", map[string]interface{}{
+		"game_id": g.ID,
+		"event":   "game_loop_start",
+	})
+	defer utils.Info("Game loop ended", map[string]interface{}{
+		"game_id": g.ID,
+		"event":   "game_loop_end",
+	})
 
 	for g.Running {
 		<-ticker.C
@@ -177,7 +184,7 @@ func (g *Game) RunGameLoop() {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					log.Printf("\033[35m🚨 PANIC_RECOVERED in game update for game %s: %v\033[0m", g.ID, r)
+					utils.LogPanicRecovery("game_update", g.ID, r)
 				}
 			}()
 
@@ -201,6 +208,20 @@ func (g *Game) RunGameLoop() {
 // GetSpatialGridLines はSpatialGridの分割線を取得する
 func (g *Game) GetSpatialGridLines() []models.GridLine {
 	return g.spatialGrid.GetGridLines()
+}
+
+// GetStartTime returns the game start time
+func (g *Game) GetStartTime() time.Time {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.startTime
+}
+
+// GetPlayers returns all players in the game
+func (g *Game) GetPlayers() map[string]*models.Player {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.Players
 }
 
 // EjectPlayerSatellite はプレイヤーの衛星を射出する
@@ -228,8 +249,11 @@ func (g *Game) EjectPlayerSatellite(playerID string, targetX, targetY float64) {
 		// 衛星が減った場合は自動補充タイマーをリセット
 		g.resetAutoSatelliteTimerIfNeeded(player)
 
-		log.Printf("Satellite ejected for player %s, remaining satellites: %d", playerID, len(player.Celestial.Satellites))
-	} else {
-		log.Printf("Failed to eject satellite for player %s, satellites count: %d", playerID, len(player.Celestial.Satellites))
+		utils.Debug("Satellite ejected", map[string]interface{}{
+			"player_id":            playerID,
+			"player_name":          player.Name,
+			"remaining_satellites": len(player.Celestial.Satellites),
+			"event":                "satellite_eject",
+		})
 	}
 }

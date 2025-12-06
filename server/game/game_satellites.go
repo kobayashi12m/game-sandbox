@@ -1,7 +1,6 @@
 package game
 
 import (
-	"log"
 	"math/rand/v2"
 
 	"game-sandbox/server/models"
@@ -53,8 +52,12 @@ func (g *Game) GenerateDroppedSatellites() {
 			// spatial gridに追加
 			g.spatialGrid.AddDroppedSatellite(newSatellite)
 		} else {
-			log.Printf("Failed to place dropped satellite after 100 attempts (current: %d, target: %d)",
-				len(g.DroppedSatellites), targetCount)
+			utils.Warn("Failed to place dropped satellite", map[string]interface{}{
+				"current_count": len(g.DroppedSatellites),
+				"target_count":  targetCount,
+				"attempts":      attempts,
+				"game_id":       g.ID,
+			})
 			break
 		}
 	}

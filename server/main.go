@@ -1,11 +1,11 @@
 package main
 
 import (
-	"log"
 	"net/http"
 
 	"game-sandbox/server/game"
 	"game-sandbox/server/handlers"
+	"game-sandbox/server/utils"
 )
 
 func main() {
@@ -20,6 +20,12 @@ func main() {
 	http.Handle("/", fs)
 
 	// Start server
-	log.Println("game server running on :8081")
-	log.Fatal(http.ListenAndServe(":8081", nil))
+	utils.LogServerStart(":8081")
+	err := http.ListenAndServe(":8081", nil)
+	if err != nil {
+		utils.Fatal("Server failed to start", map[string]interface{}{
+			"error": err.Error(),
+			"port":  ":8081",
+		})
+	}
 }

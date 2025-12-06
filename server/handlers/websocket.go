@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
+	"time"
 
 	"game-sandbox/server/game"
 	"game-sandbox/server/models"
@@ -17,8 +17,8 @@ var (
 			// 全てのオリジンを許可（開発用）
 			return true
 		},
-		ReadBufferSize:   1024,
-		WriteBufferSize:  1024,
+		ReadBufferSize:    1024,
+		WriteBufferSize:   1024,
 		EnableCompression: true, // gzip圧縮を有効化
 	}
 )
@@ -28,7 +28,10 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			log.Printf("Failed to upgrade connection: %v", err)
+			utils.Error("Failed to upgrade WebSocket connection", map[string]interface{}{
+				"error":       err.Error(),
+				"remote_addr": r.RemoteAddr,
+			})
 			return
 		}
 		defer conn.Close()
@@ -41,7 +44,11 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 			var msg map[string]interface{}
 			err := conn.ReadJSON(&msg)
 			if err != nil {
-				log.Printf("Error reading message: %v", err)
+				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+					// Normal disconnect
+					break
+				}
+				utils.LogWebSocketError(playerID, "read_message", err)
 				break
 			}
 
@@ -63,6 +70,8 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 
 				gameInstance.AddPlayer(playerID, playerName, conn)
 				player, _ = gameInstance.GetPlayer(playerID)
+
+				utils.LogConnectionEvent("connect", playerID, playerName, false)
 
 				gameInstance.ShouldStart()
 
@@ -132,13 +141,18 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 
 		// 切断時のクリーンアップ
 		if gameInstance != nil && playerID != "" {
+			if player != nil {
+				utils.LogConnectionEvent("disconnect", playerID, player.Name, player.IsNPC)
+			}
 			gameInstance.RemovePlayer(playerID)
 
 			// 人間プレイヤーがいなくなったらゲームを停止
 			if gameInstance.GetHumanPlayerCount() == 0 {
+				endTime := time.Now()
+				duration := endTime.Sub(gameInstance.GetStartTime())
+				utils.LogGameSessionEvent("game_end", gameInstance.ID, 0, len(gameInstance.GetPlayers()), duration)
 				gameInstance.Stop()
 				hub.RemoveGame(gameInstance.ID)
-				log.Printf("Game stopped - no human players remaining")
 			}
 		}
 	}

@@ -1,7 +1,6 @@
 package game
 
 import (
-	"log"
 	"math"
 	"time"
 
@@ -18,37 +17,15 @@ func (g *Game) Update(deltaTime float64) {
 	// フレームカウンターを増加
 	g.frameCount++
 
-	// デバッグ用：詳細なゲーム状態をログ出力
-	if g.frameCount%300 == 0 { // 5秒に1回
-		totalSegments := 0
+	// メトリクス収集（デバッグレベル）
+	if g.frameCount%1800 == 0 { // 30秒に1回
 		humanPlayers := 0
-		maxOrganismLength := 0
-		minOrganismLength := 999999
-		deadPlayers := 0
-
 		for _, player := range g.Players {
-			segments := player.Celestial.GetTotalSatelliteCount() + 1 // コア + ノード
-			totalSegments += segments
-
 			if !player.IsNPC {
 				humanPlayers++
 			}
-
-			if segments > maxOrganismLength {
-				maxOrganismLength = segments
-			}
-			if segments < minOrganismLength {
-				minOrganismLength = segments
-			}
-
-			if !player.Celestial.Alive {
-				deadPlayers++
-			}
 		}
-
-		log.Printf("🎮 SERVER STATE: Frame %d | Players: %d (Human: %d, Dead: %d) | Dropped Satellites: %d | Segments: %d (Max: %d, Min: %d)",
-			g.frameCount, len(g.Players), humanPlayers, deadPlayers, len(g.DroppedSatellites), totalSegments, maxOrganismLength, minOrganismLength)
-		log.Printf("📡 TEST: Network monitoring test")
+		utils.LogGameMetrics(g.ID, g.frameCount, len(g.Players), len(g.DroppedSatellites))
 	}
 
 	// 全ての天体システムの運動を更新
@@ -61,7 +38,7 @@ func (g *Game) Update(deltaTime float64) {
 	func() {
 		defer func() {
 			if r := recover(); r != nil {
-				log.Printf("\033[35m🚨 PANIC_RECOVERED in UpdateSpatialGrid: %v, Frame: %d\033[0m", r, g.frameCount)
+				utils.LogPanicRecovery("UpdateSpatialGrid", g.ID, r)
 			}
 		}()
 		g.UpdateSpatialGrid()
@@ -73,7 +50,7 @@ func (g *Game) Update(deltaTime float64) {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					log.Printf("\033[35m🚨 PANIC_RECOVERED in collision detection for player %s: %v, Frame: %d\033[0m", player.Name, r, g.frameCount)
+					utils.LogPanicRecovery("collision_detection", g.ID, r)
 				}
 			}()
 
@@ -174,17 +151,44 @@ func (g *Game) applySphereCollision(sphere1, sphere2 *models.Sphere, player1, pl
 			return
 		} else if !isCore1 && !isCore2 {
 			// 衛星同士：両方消滅
-			log.Printf("💥 Satellite collision: both satellites destroyed")
+			utils.Info("Collision event", map[string]interface{}{
+				"event":        "satellite_collision",
+				"game_id":      g.ID,
+				"player1_id":   player1.ID,
+				"player1_name": player1.Name,
+				"player2_id":   player2.ID,
+				"player2_name": player2.Name,
+				"result":       "both_destroyed",
+				"metric":       "game_event",
+			})
 			g.destroyTargetSatellite(player1, sphere1)
 			g.destroyTargetSatellite(player2, sphere2)
 		} else {
 			// コアと衛星：両方消滅
 			if isCore1 {
-				log.Printf("💥 Core-Satellite collision: %s core destroyed, satellite destroyed", player1.Name)
+				utils.Info("Collision event", map[string]interface{}{
+					"event":                 "core_satellite_collision",
+					"game_id":               g.ID,
+					"core_player_id":        player1.ID,
+					"core_player_name":      player1.Name,
+					"satellite_player_id":   player2.ID,
+					"satellite_player_name": player2.Name,
+					"result":                "core_destroyed",
+					"metric":                "game_event",
+				})
 				g.destroyPlayer(player1)
 				g.destroyTargetSatellite(player2, sphere2)
 			} else {
-				log.Printf("💥 Core-Satellite collision: %s core destroyed, satellite destroyed", player2.Name)
+				utils.Info("Collision event", map[string]interface{}{
+					"event":                 "core_satellite_collision",
+					"game_id":               g.ID,
+					"core_player_id":        player2.ID,
+					"core_player_name":      player2.Name,
+					"satellite_player_id":   player1.ID,
+					"satellite_player_name": player1.Name,
+					"result":                "core_destroyed",
+					"metric":                "game_event",
+				})
 				g.destroyPlayer(player2)
 				g.destroyTargetSatellite(player1, sphere1)
 			}
@@ -229,10 +233,23 @@ func (g *Game) checkProjectileCollisions() {
 		if hitSphere != nil && hitPlayer != nil {
 			// 衝突時の処理
 			if hitSphere == hitPlayer.Celestial.Core {
-				log.Printf("Projectile hit core: %s destroyed", hitPlayer.Name)
+				utils.Info("Projectile hit", map[string]interface{}{
+					"event":         "projectile_hit_core",
+					"game_id":       g.ID,
+					"attacker_id":   proj.Owner.ID,
+					"attacker_name": proj.Owner.Name,
+					"victim_id":     hitPlayer.ID,
+					"victim_name":   hitPlayer.Name,
+					"result":        "core_destroyed",
+					"metric":        "game_event",
+				})
 				g.destroyPlayer(hitPlayer)
 			} else {
-				log.Printf("Projectile hit satellite: %s satellite destroyed", hitPlayer.Name)
+				utils.Debug("Projectile hit satellite", map[string]interface{}{
+					"event":       "projectile_hit_satellite",
+					"attacker_id": proj.Owner.ID,
+					"victim_id":   hitPlayer.ID,
+				})
 				g.destroyTargetSatellite(hitPlayer, hitSphere)
 			}
 			continue // 射出物は消滅
@@ -280,7 +297,15 @@ func (g *Game) destroyPlayer(player *models.Player) {
 	player.Celestial.Alive = false
 	player.Celestial.Satellites = [][]*models.Satellite{}
 
-	log.Printf("💥 Player %s core destroyed, core + %d satellites dropped at their locations", player.Name, satelliteCount)
+	utils.Info("Player destroyed", map[string]interface{}{
+		"event":              "player_destroyed",
+		"game_id":            g.ID,
+		"player_id":          player.ID,
+		"player_name":        player.Name,
+		"is_npc":             player.IsNPC,
+		"satellites_dropped": satelliteCount,
+		"metric":             "game_event",
+	})
 }
 
 // destroyTargetSatellite は指定した位置の衛星を完全消滅させる
@@ -367,8 +392,13 @@ func (g *Game) updateAutoSatellites() {
 		player.Celestial.AddSatellite(player.Celestial.Core.Color, startPos)
 		player.LastAutoSatellite = time.Now()
 
-		log.Printf("🌟 Auto satellite added to %s (total: %d/%d)",
-			player.Name, currentSatelliteCount+1, utils.MAX_AUTO_SATELLITES)
+		utils.Debug("Auto satellite added", map[string]interface{}{
+			"event":           "auto_satellite_added",
+			"player_id":       player.ID,
+			"player_name":     player.Name,
+			"satellite_count": currentSatelliteCount + 1,
+			"max_satellites":  utils.MAX_AUTO_SATELLITES,
+		})
 	}
 }
 
@@ -381,7 +411,12 @@ func (g *Game) resetAutoSatelliteTimerIfNeeded(player *models.Player) {
 	currentSatelliteCount := player.Celestial.GetTotalSatelliteCount()
 	if currentSatelliteCount < utils.MAX_AUTO_SATELLITES {
 		player.LastAutoSatellite = time.Now()
-		log.Printf("⏰ Auto satellite timer reset for %s (satellites: %d/%d)",
-			player.Name, currentSatelliteCount, utils.MAX_AUTO_SATELLITES)
+		utils.Debug("Auto satellite timer reset", map[string]interface{}{
+			"event":           "auto_satellite_timer_reset",
+			"player_id":       player.ID,
+			"player_name":     player.Name,
+			"satellite_count": currentSatelliteCount,
+			"max_satellites":  utils.MAX_AUTO_SATELLITES,
+		})
 	}
 }

@@ -3,7 +3,6 @@ package game
 import (
 	"game-sandbox/server/models"
 	"game-sandbox/server/utils"
-	"log"
 	"math"
 	"math/rand"
 	"time"
@@ -11,8 +10,6 @@ import (
 
 // NPCを追加
 func (g *Game) AddNPC(count int) {
-	log.Printf("Adding %d NPCs to game", count)
-
 	names := []string{"Bot Alpha", "Bot Beta", "Bot Gamma", "Bot Delta", "Bot Epsilon",
 		"Bot Zeta", "Bot Eta", "Bot Theta", "Bot Iota", "Bot Kappa"}
 
@@ -23,14 +20,18 @@ func (g *Game) AddNPC(count int) {
 			npcName = "Bot " + string(rune('A'+i))
 		}
 
-		log.Printf("Creating NPC: %s (%s)", npcName, npcID)
-
 		// 既存のAddPlayer関数を使ってNPCを追加（WebSocket接続はnil）
 		g.AddPlayer(npcID, npcName, nil)
-		log.Printf("NPC %s added successfully", npcName)
+
+		utils.LogConnectionEvent("npc_joined", npcID, npcName, true)
 	}
 
-	log.Printf("Total players after adding NPCs: %d", len(g.Players))
+	utils.Info("NPCs added to game", map[string]interface{}{
+		"event":         "npc_batch_add",
+		"game_id":       g.ID,
+		"npc_count":     count,
+		"total_players": len(g.Players),
+	})
 }
 
 // NPCの方向をより自然に更新
