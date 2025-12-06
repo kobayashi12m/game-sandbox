@@ -97,8 +97,7 @@ func (g *Game) Update(deltaTime float64) {
 		}
 
 		if player.Celestial.Respawning && time.Since(player.Celestial.DeathTime) > 3*time.Second {
-			player.Celestial.Reset()
-			player.Celestial.Respawning = false
+			g.RespawnPlayer(player)
 		}
 	}
 

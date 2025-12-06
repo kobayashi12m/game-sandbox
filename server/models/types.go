@@ -2,10 +2,6 @@ package models
 
 import (
 	"fmt"
-	"sync"
-	"time"
-
-	"github.com/gorilla/websocket"
 )
 
 // Position はゲームフィールド上の座標を表す（浮動小数点）
@@ -38,19 +34,6 @@ func (d DroppedSatellite) MarshalJSON() ([]byte, error) {
 	escapedColor := fmt.Sprintf("%q", d.Color)
 	result := fmt.Sprintf(`[%s,%g,%s]`, string(posJSON), d.Radius, escapedColor)
 	return []byte(result), nil
-}
-
-// Player はゲーム内のプレイヤーを表す
-type Player struct {
-	ID                  string     `json:"id"`
-	Name                string     `json:"name"`
-	Celestial           *Celestial `json:"celestial"`
-	Score               int        `json:"score"`
-	Conn                *websocket.Conn
-	IsNPC               bool       `json:"-"` // NPCかどうかのフラグ
-	LastDirectionChange time.Time  `json:"-"` // 最後に方向を変えた時刻
-	LastAutoSatellite   time.Time  `json:"-"` // 最後に自動衛星を追加した時刻
-	ConnMu              sync.Mutex `json:"-"` // WebSocket書き込み用mutex
 }
 
 // Projectile は射出された衛星を表す
@@ -90,45 +73,6 @@ type GridLine struct {
 	EndY   float64 `json:"endY"`
 }
 
-// PlayerState はクライアント同期用のプレイヤーデータを表す
-type PlayerState struct {
-	ID        string     `json:"id"`
-	Name      string     `json:"nm"`  // name → nm
-	Celestial *Celestial `json:"cel"` // celestial → cel
-	Score     int        `json:"sc"`  // score → sc
-}
-
-// MarshalJSON はPlayerStateを配列形式でJSON化 [id, name, celestial, score]
-func (p PlayerState) MarshalJSON() ([]byte, error) {
-	celestialJSON, err := p.Celestial.MarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-
-	// 配列形式: [id, name, celestial, score]
-	// ID と Name を適切にエスケープ
-	escapedID := fmt.Sprintf("%q", p.ID)
-	escapedName := fmt.Sprintf("%q", p.Name)
-	result := fmt.Sprintf(`[%s,%s,%s,%d]`,
-		escapedID, escapedName, string(celestialJSON), p.Score)
-
-	return []byte(result), nil
-}
-
-// ScoreInfo はスコアボード用の軽量プレイヤー情報を表す
-type ScoreInfo struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Score int    `json:"score"`
-	Alive bool   `json:"alive"`
-	Color string `json:"color"`
-}
-
-// ScoreUpdate はスコアボードの更新情報を表す（さらに軽量化）
-type ScoreUpdate struct {
-	Players []ScoreInfo `json:"players"`
-}
-
 // GameConfig はゲームの設定を表す
 type GameConfig struct {
 	FieldWidth      float64    `json:"fieldWidth"`
@@ -136,6 +80,6 @@ type GameConfig struct {
 	SphereRadius    float64    `json:"sphereRadius"`
 	CullingWidth    float64    `json:"cullingWidth"`
 	CullingHeight   float64    `json:"cullingHeight"`
-	CameraZoomScale float64    `json:"cameraZoomScale"` // カメラの固定ズーム倍率
+	CameraZoomScale float64    `json:"cameraZoomScale"`     // カメラの固定ズーム倍率
 	GridLines       []GridLine `json:"gridLines,omitempty"` // SpatialGrid可視化用
 }

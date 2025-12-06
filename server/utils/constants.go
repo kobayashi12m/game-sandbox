@@ -44,6 +44,10 @@ const (
 	// 落ちた衛星設定
 	MIN_FALLEN_SATELLITES        = 10  // 落ちた衛星の最低数
 	FALLEN_SATELLITES_PER_PLAYER = 3.0 // プレイヤー1人あたりの落ちた衛星数倍率
+
+	// リスポーン設定
+	RESPAWN_INVULNERABILITY_TIME = 3 * time.Second // リスポーン後の無敵時間
+	RESPAWN_SAFE_DISTANCE        = 300.0           // リスポーン時の他プレイヤーからの最小距離
 )
 
 // Direction represents movement direction (normalized vector)

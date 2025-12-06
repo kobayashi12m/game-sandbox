@@ -170,7 +170,68 @@ func (c *Celestial) Reset() {
 	// 天体システムの移動パラメータ
 	c.MaxSpeed = utils.CELESTIAL_SPEED
 	c.AccelForce = utils.CELESTIAL_ACCEL_FORCE // 加速力
+}
 
+// ResetAtPosition は指定位置で天体システムを初期化する
+func (c *Celestial) ResetAtPosition(x, y float64) {
+	// コア（中心球）を初期化
+	c.Core = &Sphere{
+		Position:     Position{X: x, Y: y},
+		Velocity:     Position{X: 0, Y: 0},
+		Acceleration: Position{X: 0, Y: 0},
+		Radius:       utils.SPHERE_RADIUS,
+		Color:        c.Color,
+		Mass:         1.0,
+	}
+
+	// 軌道設定を初期化
+	c.OrbitConfigs = map[int]*OrbitConfig{
+		0: {
+			Radius: utils.SPHERE_RADIUS * utils.ORBITAL_RADIUS_RATIO,
+			Speed:  utils.ORBITAL_SPEED,
+		},
+	}
+
+	// 初期衛星を配置（第0軌道に2個）
+	c.Satellites = [][]*Satellite{}
+	firstOrbit := []*Satellite{}
+	nodeCount := 2 // 第0軌道は最大2個
+
+	for i := 0; i < nodeCount; i++ {
+		angle := float64(i) * 2.0 * math.Pi / float64(nodeCount) // 等間隔で配置
+		orbitConfig := c.OrbitConfigs[0]
+
+		nodeX := x + orbitConfig.Radius*math.Cos(angle)
+		nodeY := y + orbitConfig.Radius*math.Sin(angle)
+
+		// 軌道接線方向の初期速度を計算
+		tangentVelX := -orbitConfig.Radius * orbitConfig.Speed * math.Sin(angle)
+		tangentVelY := orbitConfig.Radius * orbitConfig.Speed * math.Cos(angle)
+
+		sphere := &Sphere{
+			Position:     Position{X: nodeX, Y: nodeY},
+			Velocity:     Position{X: tangentVelX, Y: tangentVelY},
+			Acceleration: Position{X: 0, Y: 0},
+			Radius:       utils.SPHERE_RADIUS,
+			Color:        c.Core.Color,
+			Mass:         0.5, // 衛星はコアより軽い
+		}
+
+		satellite := &Satellite{
+			Sphere: sphere,
+			Angle:  angle,
+		}
+
+		firstOrbit = append(firstOrbit, satellite)
+	}
+	c.Satellites = append(c.Satellites, firstOrbit)
+
+	c.Alive = true
+	c.Respawning = false
+
+	// 天体システムの移動パラメータ
+	c.MaxSpeed = utils.CELESTIAL_SPEED
+	c.AccelForce = utils.CELESTIAL_ACCEL_FORCE
 }
 
 // UpdateMotion は天体システムの運動を更新する

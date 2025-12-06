@@ -57,6 +57,9 @@ func (g *Game) AddPlayer(id, name string, conn *websocket.Conn) {
 	// 自動衛星タイマーを初期化
 	player.LastAutoSatellite = time.Now()
 
+	// 初回参加時は無敵時間を設定
+	player.RespawnTime = time.Now()
+
 	g.Players[id] = player
 
 	// 人間プレイヤーの場合はキャッシュに追加

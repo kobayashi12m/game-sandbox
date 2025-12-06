@@ -22,10 +22,11 @@ func (g *Game) GetState() models.GameState {
 		celestialCopy := *p.Celestial
 
 		players = append(players, models.PlayerState{
-			ID:        p.ID,
-			Name:      p.Name,
-			Celestial: &celestialCopy,
-			Score:     p.Score,
+			ID:           p.ID,
+			Name:         p.Name,
+			Celestial:    &celestialCopy,
+			Score:        p.Score,
+			Invulnerable: p.IsInvulnerable(),
 		})
 	}
 
@@ -75,10 +76,11 @@ func (g *Game) GetOptimizedState(clientPlayerID string, clientX, clientY, viewWi
 			}
 
 			players = append(players, models.PlayerState{
-				ID:        p.ID,
-				Name:      p.Name,
-				Celestial: &celestialCopy,
-				Score:     p.Score,
+				ID:           p.ID,
+				Name:         p.Name,
+				Celestial:    &celestialCopy,
+				Score:        p.Score,
+				Invulnerable: p.IsInvulnerable(),
 			})
 		}
 	}

@@ -125,7 +125,12 @@ func (sg *SpatialGrid) iterateNearbyCells(centerX, centerY, radius int, callback
 }
 
 // CheckCollisionAt は指定した位置で衝突しているプレイヤーと球体を返す
-func (sg *SpatialGrid) CheckCollisionAt(position models.Position, radius float64, excludePlayer *models.Player) (*models.Player, *models.Sphere) {
+func (sg *SpatialGrid) CheckCollisionAt(position models.Position, radius float64, selfPlayer *models.Player) (*models.Player, *models.Sphere) {
+	// 自分が無敵状態の場合は衝突しない
+	if selfPlayer != nil && selfPlayer.IsInvulnerable() {
+		return nil, nil
+	}
+
 	centerX, centerY := sg.GetCellCoords(position.X, position.Y)
 
 	var resultPlayer *models.Player
@@ -135,7 +140,7 @@ func (sg *SpatialGrid) CheckCollisionAt(position models.Position, radius float64
 			return
 		}
 		for player, spheres := range cell.playerSpheres {
-			if player == excludePlayer || !player.Celestial.Alive {
+			if player == selfPlayer || !player.Celestial.Alive || player.IsInvulnerable() {
 				continue
 			}
 			for _, sphere := range spheres {
