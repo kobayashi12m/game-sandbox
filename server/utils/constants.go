@@ -40,6 +40,10 @@ const (
 	// 自動衛星追加設定
 	AUTO_SATELLITE_INTERVAL = 10 * time.Second // 自動衛星追加間隔
 	MAX_AUTO_SATELLITES     = 10               // 自動追加の上限（2層目まで：第0軌道2個+第1軌道8個）
+
+	// 落ちた衛星設定
+	MIN_FALLEN_SATELLITES        = 10  // 落ちた衛星の最低数
+	FALLEN_SATELLITES_PER_PLAYER = 3.0 // プレイヤー1人あたりの落ちた衛星数倍率
 )
 
 // Direction represents movement direction (normalized vector)
