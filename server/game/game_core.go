@@ -212,36 +212,3 @@ func (g *Game) GetPlayers() map[string]*models.Player {
 	defer g.mu.RUnlock()
 	return g.Players
 }
-
-// EjectPlayerSatellite はプレイヤーの衛星を射出する
-func (g *Game) EjectPlayerSatellite(player *models.Player, targetX, targetY float64) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	if player == nil || player.Celestial == nil || !player.Celestial.Alive {
-		return
-	}
-
-	// 衛星を射出して、射出された衛星を取得
-	ejectedSphere := player.Celestial.EjectSatelliteWithReturn(targetX, targetY)
-	if ejectedSphere != nil {
-		// 射出物として追加
-		projectile := &models.Projectile{
-			ID:       utils.GenerateID(),
-			Sphere:   ejectedSphere,
-			Owner:    player,
-			Lifetime: 5.0, // 5秒間存在
-		}
-		g.Projectiles = append(g.Projectiles, projectile)
-
-		// 衛星が減った場合は自動補充タイマーをリセット
-		player.ResetAutoSatelliteTimerIfNeeded()
-
-		utils.Debug("Satellite ejected", map[string]interface{}{
-			"player_id":            player.ID,
-			"player_name":          player.Name,
-			"remaining_satellites": len(player.Celestial.Satellites),
-			"event":                "satellite_eject",
-		})
-	}
-}
