@@ -38,7 +38,6 @@ func (g *Game) AddPlayer(id, name string, conn *websocket.Conn) {
 	celestial := &models.Celestial{
 		Color: color,
 	}
-	celestial.Reset()
 
 	player := &models.Player{
 		ID:        id,
@@ -54,13 +53,10 @@ func (g *Game) AddPlayer(id, name string, conn *websocket.Conn) {
 		player.LastDirectionChange = time.Now()
 	}
 
-	// 自動衛星タイマーを初期化
-	player.LastAutoSatellite = time.Now()
-
-	// 初回参加時は無敵時間を設定
-	player.RespawnTime = time.Now()
-
 	g.Players[id] = player
+
+	// 初期スポーン処理（安全な位置でスポーン）
+	g.SpawnPlayer(player)
 
 	// 人間プレイヤーの場合はキャッシュに追加
 	if !player.IsNPC && player.Conn != nil {
