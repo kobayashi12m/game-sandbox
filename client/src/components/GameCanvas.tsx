@@ -313,6 +313,11 @@ const drawGame = (
     gameState.pls.forEach((player) => {
       const playerData = getPlayer(player);
 
+      // 死んでいるプレイヤーは表示しない
+      if (!playerData.cel?.a) {
+        return;
+      }
+
       // プレイヤーが画面範囲内にいるかチェック
       if (playerData.cel?.c?.p) {
         const head = playerData.cel.c.p;
@@ -488,14 +493,11 @@ const drawCelestialSystem = (
   isCurrentPlayer: boolean
 ) => {
   const celestialSystem = player.cel;
-
-  // 死んでいる天体システムは半透明に
-  ctx.globalAlpha = celestialSystem.a ? 1 : 0.3;
   ctx.fillStyle = celestialSystem.col;
 
   // 軌道を先に描画 - 核から各衛星への放射状線
   ctx.lineWidth = 2;
-  ctx.globalAlpha = 0.6; // 線を少し透明に
+  ctx.globalAlpha = player.inv ? 0.3 : 0.6; // 無敵時は線も透明に
 
   // コアから各ノードへの線を描画
   if (celestialSystem.n && celestialSystem.n.length > 0) {
@@ -509,9 +511,7 @@ const drawCelestialSystem = (
     });
   }
 
-  // 衛星同士の環状接続線は削除（核と衛星の線のみ表示）
-
-  ctx.globalAlpha = celestialSystem.a ? 1 : 0.3; // 透明度を戻す
+  ctx.globalAlpha = player.inv ? 0.5 : 1.0; // 球体描画用の透明度に設定
 
   // コア（中心球）を描画
   drawCoreHead(

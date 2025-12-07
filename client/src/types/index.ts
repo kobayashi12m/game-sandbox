@@ -17,8 +17,8 @@ export interface Satellite {
 // CelestialSystemは配列形式: [core, color, alive, nodes]
 export type CelestialSystem = [Sphere, string, boolean, Sphere[]];
 
-// Playerは配列形式: [id, name, celestial, score]
-export type Player = [string, string, CelestialSystem, number];
+// Playerは配列形式: [id, name, celestial, score, invulnerable]
+export type Player = [string, string, CelestialSystem, number, boolean?];
 
 // Projectileは配列形式: [id, sphere, ownerId]
 export type Projectile = [string, Sphere, string];
@@ -122,6 +122,7 @@ export interface ConvertedPlayer {
   nm: string;
   cel: ConvertedCelestialSystem;
   sc: number;
+  inv?: boolean;
 }
 
 export interface ConvertedProjectile {
@@ -177,7 +178,8 @@ export const getPlayer = (player: Player): ConvertedPlayer => {
     id: player[0],
     nm: player[1],
     cel: getCelestialSystem(player[2]),
-    sc: player[3]
+    sc: player[3],
+    inv: player[4]
   };
 };
 export const getDroppedSatellite = (ds: DroppedSatellite): ConvertedDroppedSatellite => ({
