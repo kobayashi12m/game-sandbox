@@ -106,72 +106,6 @@ func (c *Celestial) MarshalJSON() ([]byte, error) {
 	return []byte(result), nil
 }
 
-// Reset は天体システムを初期状態に初期化する
-func (c *Celestial) Reset() {
-	// フィールド内のランダムな位置にスポーン
-	startX := rand.Float64()*(utils.FIELD_WIDTH-100) + 50
-	startY := rand.Float64()*(utils.FIELD_HEIGHT-100) + 50
-
-	// コア（中心球）を初期化
-	c.Core = &Sphere{
-		Position:     Position{X: startX, Y: startY},
-		Velocity:     Position{X: 0, Y: 0},
-		Acceleration: Position{X: 0, Y: 0},
-		Radius:       utils.SPHERE_RADIUS,
-		Color:        c.Color,
-		Mass:         1.0,
-	}
-
-	// 軌道設定を初期化
-	c.OrbitConfigs = map[int]*OrbitConfig{
-		0: {
-			Radius: utils.SPHERE_RADIUS * utils.ORBITAL_RADIUS_RATIO,
-			Speed:  utils.ORBITAL_SPEED,
-		},
-	}
-
-	// 初期衛星を配置（第0軌道に2個）
-	c.Satellites = [][]*Satellite{}
-	firstOrbit := []*Satellite{}
-	nodeCount := 2 // 第0軌道は最大2個
-
-	for i := 0; i < nodeCount; i++ {
-		angle := float64(i) * 2.0 * math.Pi / float64(nodeCount) // 等間隔で配置
-		orbitConfig := c.OrbitConfigs[0]
-
-		nodeX := startX + orbitConfig.Radius*math.Cos(angle)
-		nodeY := startY + orbitConfig.Radius*math.Sin(angle)
-
-		// 軌道接線方向の初期速度を計算
-		tangentVelX := -orbitConfig.Radius * orbitConfig.Speed * math.Sin(angle)
-		tangentVelY := orbitConfig.Radius * orbitConfig.Speed * math.Cos(angle)
-
-		sphere := &Sphere{
-			Position:     Position{X: nodeX, Y: nodeY},
-			Velocity:     Position{X: tangentVelX, Y: tangentVelY},
-			Acceleration: Position{X: 0, Y: 0},
-			Radius:       utils.SPHERE_RADIUS,
-			Color:        c.Core.Color,
-			Mass:         0.5, // 衛星はコアより軽い
-		}
-
-		satellite := &Satellite{
-			Sphere: sphere,
-			Angle:  angle,
-		}
-
-		firstOrbit = append(firstOrbit, satellite)
-	}
-	c.Satellites = append(c.Satellites, firstOrbit)
-
-	c.Alive = true
-	c.Respawning = false
-
-	// 天体システムの移動パラメータ
-	c.MaxSpeed = utils.CELESTIAL_SPEED
-	c.AccelForce = utils.CELESTIAL_ACCEL_FORCE // 加速力
-}
-
 // ResetAtPosition は指定位置で天体システムを初期化する
 func (c *Celestial) ResetAtPosition(x, y float64) {
 	// コア（中心球）を初期化
@@ -229,9 +163,8 @@ func (c *Celestial) ResetAtPosition(x, y float64) {
 	c.Alive = true
 	c.Respawning = false
 
-	// 天体システムの移動パラメータ
-	c.MaxSpeed = utils.CELESTIAL_SPEED
-	c.AccelForce = utils.CELESTIAL_ACCEL_FORCE
+	// 天体システムの移動パラメータ（衛星数による調整）
+	c.updateSpeedParameters()
 }
 
 // UpdateMotion は天体システムの運動を更新する
@@ -420,6 +353,9 @@ func (c *Celestial) AddSatellite(color string, startPos Position) {
 	}
 
 	c.Satellites[orbitIndex] = append(c.Satellites[orbitIndex], satellite)
+
+	// 衛星追加後に速度パラメータを更新
+	c.updateSpeedParameters()
 }
 
 // EjectSatelliteWithReturn は指定された方向に最も近い最外殻の衛星を射出し、射出された衛星を返す
@@ -565,4 +501,21 @@ func (c *Celestial) shortestAngleDifference(from, to float64) float64 {
 	}
 
 	return diff
+}
+
+// updateSpeedParameters は衛星数に応じて速度と加速力を更新する
+func (c *Celestial) updateSpeedParameters() {
+	satelliteCount := c.GetTotalSatelliteCount()
+
+	// 基本値から衛星数分を減算
+	c.MaxSpeed = utils.CELESTIAL_SPEED - float64(satelliteCount)*utils.SPEED_REDUCTION_PER_SATELLITE
+	c.AccelForce = utils.CELESTIAL_ACCEL_FORCE - float64(satelliteCount)*utils.ACCEL_REDUCTION_PER_SATELLITE
+
+	// 最低限の値を保つ
+	if c.MaxSpeed < 50.0 {
+		c.MaxSpeed = 50.0
+	}
+	if c.AccelForce < 50.0 {
+		c.AccelForce = 50.0
+	}
 }

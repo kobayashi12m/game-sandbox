@@ -3,15 +3,19 @@ package utils
 import "time"
 
 const (
-	FIELD_WIDTH           = 5000.0                // フィールドの幅
-	FIELD_HEIGHT          = 3000.0                // フィールドの高さ
-	SPHERE_RADIUS         = 15.0                  // 球体の半径
-	CELESTIAL_SPEED       = 500.0                 // 天体システムの速度（ユニット/秒）
-	CELESTIAL_ACCEL_FORCE = 500.0                 // 天体システムの加速力
-	AIR_RESISTANCE        = 0.98                  // 空気抵抗（非アクティブ時の減衰）
-	STOP_THRESHOLD_RATIO  = 0.02                  // 停止閾値（最大速度の2%）
-	GAME_TICK             = 16 * time.Millisecond // ゲーム更新間隔（60FPS）
-	NPC_COUNT             = 50                    // デフォルトNPC数
+	FIELD_WIDTH           = 5000.0 // フィールドの幅
+	FIELD_HEIGHT          = 3000.0 // フィールドの高さ
+	SPHERE_RADIUS         = 15.0   // 球体の半径
+	CELESTIAL_SPEED       = 700.0  // 天体システムの基本速度（ユニット/秒）
+	CELESTIAL_ACCEL_FORCE = 700.0  // 天体システムの基本加速力
+
+	// 衛星による速度減少設定
+	SPEED_REDUCTION_PER_SATELLITE = 3.0                   // 衛星1個につき減少する速度（ユニット/秒）
+	ACCEL_REDUCTION_PER_SATELLITE = 3.0                   // 衛星1個につき減少する加速力
+	AIR_RESISTANCE                = 0.98                  // 空気抵抗（非アクティブ時の減衰）
+	STOP_THRESHOLD_RATIO          = 0.02                  // 停止閾値（最大速度の2%）
+	GAME_TICK                     = 16 * time.Millisecond // ゲーム更新間隔（60FPS）
+	NPC_COUNT                     = 50                    // デフォルトNPC数
 
 	// カメラ・表示設定
 	CAMERA_ZOOM_SCALE = 0.85 // カメラの固定ズーム倍率（0.85=少し引いた視点、物が少し小さく見える）

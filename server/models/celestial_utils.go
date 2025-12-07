@@ -39,6 +39,9 @@ func (c *Celestial) RemoveSatellite(orbitIndex, satIndex int) bool {
 		return false
 	}
 	c.Satellites[orbitIndex] = append(c.Satellites[orbitIndex][:satIndex], c.Satellites[orbitIndex][satIndex+1:]...)
+
+	// 衛星削除後に速度パラメータを更新
+	c.updateSpeedParameters()
 	return true
 }
 
