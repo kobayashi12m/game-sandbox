@@ -316,7 +316,7 @@ func (g *Game) destroyTargetSatellite(player *models.Player, sphere *models.Sphe
 				player.Celestial.RemoveSatellite(oi, si)
 
 				// 衛星が減った場合は自動補充タイマーをリセット
-				g.resetAutoSatelliteTimerIfNeeded(player)
+				player.ResetAutoSatelliteTimerIfNeeded()
 
 				return
 			}
@@ -396,25 +396,6 @@ func (g *Game) updateAutoSatellites() {
 			"player_id":       player.ID,
 			"player_name":     player.Name,
 			"satellite_count": currentSatelliteCount + 1,
-			"max_satellites":  utils.MAX_AUTO_SATELLITES,
-		})
-	}
-}
-
-// resetAutoSatelliteTimerIfNeeded は衛星数が上限未満になった場合にタイマーをリセットする
-func (g *Game) resetAutoSatelliteTimerIfNeeded(player *models.Player) {
-	if !player.Celestial.Alive {
-		return
-	}
-
-	currentSatelliteCount := player.Celestial.GetTotalSatelliteCount()
-	if currentSatelliteCount < utils.MAX_AUTO_SATELLITES {
-		player.LastAutoSatellite = time.Now()
-		utils.Debug("Auto satellite timer reset", map[string]interface{}{
-			"event":           "auto_satellite_timer_reset",
-			"player_id":       player.ID,
-			"player_name":     player.Name,
-			"satellite_count": currentSatelliteCount,
 			"max_satellites":  utils.MAX_AUTO_SATELLITES,
 		})
 	}

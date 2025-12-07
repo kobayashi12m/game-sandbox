@@ -29,6 +29,25 @@ func (p *Player) IsInvulnerable() bool {
 	return time.Since(p.RespawnTime) < utils.RESPAWN_INVULNERABILITY_TIME
 }
 
+// ResetAutoSatelliteTimerIfNeeded は衛星数が上限未満になった場合にタイマーをリセットする
+func (p *Player) ResetAutoSatelliteTimerIfNeeded() {
+	if !p.Celestial.Alive {
+		return
+	}
+
+	currentSatelliteCount := p.Celestial.GetTotalSatelliteCount()
+	if currentSatelliteCount < utils.MAX_AUTO_SATELLITES {
+		p.LastAutoSatellite = time.Now()
+		utils.Debug("Auto satellite timer reset", map[string]interface{}{
+			"event":           "auto_satellite_timer_reset",
+			"player_id":       p.ID,
+			"player_name":     p.Name,
+			"satellite_count": currentSatelliteCount,
+			"max_satellites":  utils.MAX_AUTO_SATELLITES,
+		})
+	}
+}
+
 // PlayerState はクライアント同期用のプレイヤーデータを表す
 type PlayerState struct {
 	ID           string     `json:"id"`

@@ -134,16 +134,6 @@ func (g *Game) ShouldStart() bool {
 	return false
 }
 
-// SetPlayerAcceleration はプレイヤーの加速度を直接設定する（360度自由移動）
-func (g *Game) SetPlayerAcceleration(playerID string, x, y float64) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	if player, exists := g.Players[playerID]; exists && player.Celestial.Alive {
-		player.Celestial.SetAcceleration(x, y)
-	}
-}
-
 // Stop はゲームを安全に停止する
 func (g *Game) Stop() {
 	g.mu.Lock()
@@ -224,12 +214,11 @@ func (g *Game) GetPlayers() map[string]*models.Player {
 }
 
 // EjectPlayerSatellite はプレイヤーの衛星を射出する
-func (g *Game) EjectPlayerSatellite(playerID string, targetX, targetY float64) {
+func (g *Game) EjectPlayerSatellite(player *models.Player, targetX, targetY float64) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	player, exists := g.Players[playerID]
-	if !exists || player.Celestial == nil || !player.Celestial.Alive {
+	if player == nil || player.Celestial == nil || !player.Celestial.Alive {
 		return
 	}
 
@@ -246,10 +235,10 @@ func (g *Game) EjectPlayerSatellite(playerID string, targetX, targetY float64) {
 		g.Projectiles = append(g.Projectiles, projectile)
 
 		// 衛星が減った場合は自動補充タイマーをリセット
-		g.resetAutoSatelliteTimerIfNeeded(player)
+		player.ResetAutoSatelliteTimerIfNeeded()
 
 		utils.Debug("Satellite ejected", map[string]interface{}{
-			"player_id":            playerID,
+			"player_id":            player.ID,
 			"player_name":          player.Name,
 			"remaining_satellites": len(player.Celestial.Satellites),
 			"event":                "satellite_eject",
