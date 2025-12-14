@@ -42,10 +42,14 @@ func (g *Game) GetState() models.GameState {
 		droppedSatellites[i] = *sat
 	}
 
+	// NPCデバッグ情報を追加
+	npcDebug := g.createNPCDebugInfo()
+
 	return models.GameState{
 		Players:           players,
 		DroppedSatellites: droppedSatellites,
 		Projectiles:       projectiles,
+		NPCDebug:          npcDebug,
 	}
 }
 
@@ -100,10 +104,14 @@ func (g *Game) GetOptimizedState(clientPlayerID string, clientX, clientY, viewWi
 		droppedSatellites[i] = *sat
 	}
 
+	// NPCデバッグ情報を追加
+	npcDebug := g.createNPCDebugInfo()
+
 	return models.GameState{
 		Players:           players,
 		DroppedSatellites: droppedSatellites,
 		Projectiles:       projectiles,
+		NPCDebug:          npcDebug,
 	}
 }
 

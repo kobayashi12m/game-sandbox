@@ -60,9 +60,23 @@ func (p Projectile) MarshalJSON() ([]byte, error) {
 
 // GameState はクライアントに送信される現在の状態を表す
 type GameState struct {
-	Players           []PlayerState      `json:"pls"`  // players → pls
-	DroppedSatellites []DroppedSatellite `json:"ds"`   // droppedSatellites → ds
-	Projectiles       []Projectile       `json:"proj"` // projectiles → proj
+	Players           []PlayerState      `json:"pls"`                // players → pls
+	DroppedSatellites []DroppedSatellite `json:"ds"`                 // droppedSatellites → ds
+	Projectiles       []Projectile       `json:"proj"`               // projectiles → proj
+	NPCDebug          *NPCDebugStats     `json:"npcDebug,omitempty"` // NPCデバッグ情報
+}
+
+// NPCDebugStats はNPCの状態表示用
+type NPCDebugStats struct {
+	ID         string  `json:"id"`
+	Name       string  `json:"name"`
+	VelocityX  float64 `json:"velX"`
+	VelocityY  float64 `json:"velY"`
+	AccelX     float64 `json:"accelX"`
+	AccelY     float64 `json:"accelY"`
+	AccelForce float64 `json:"accelForce"`
+	MaxSpeed   float64 `json:"maxSpeed"`
+	Satellites int     `json:"satellites"`
 }
 
 // GridLine はSpatialGridの可視化用の線を表す

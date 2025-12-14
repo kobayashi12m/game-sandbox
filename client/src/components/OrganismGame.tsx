@@ -132,12 +132,18 @@ const OrganismGame: React.FC = () => {
                     if (playerData?.cel?.c) {
                       const velocity = playerData.cel.c.v;
                       const acceleration = playerData.cel.c.a;
-                      
                       return (
                         <VectorDisplay
-                          velocity={velocity ? [velocity.x, velocity.y] : undefined}
-                          acceleration={acceleration ? [acceleration.x, acceleration.y] : undefined}
+                          velocity={
+                            velocity ? [velocity.x, velocity.y] : undefined
+                          }
+                          acceleration={
+                            acceleration
+                              ? [acceleration.x, acceleration.y]
+                              : undefined
+                          }
                           maxSpeed={500}
+                          npcDebug={gameState?.npcDebug}
                         />
                       );
                     }

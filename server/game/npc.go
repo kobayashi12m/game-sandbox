@@ -1,9 +1,7 @@
 package game
 
 import (
-	"game-sandbox/server/models"
 	"game-sandbox/server/utils"
-	"math"
 	"math/rand"
 	"time"
 )
@@ -34,91 +32,29 @@ func (g *Game) AddNPC(count int) {
 	})
 }
 
-// NPCの方向をより自然に更新
-func (g *Game) updateNPCDirections() {
-	now := time.Now()
-
+// NPCのAIを更新 - 毎フレーム加速度を設定
+func (g *Game) UpdateNPCAI() {
 	for _, player := range g.Players {
 		if !player.IsNPC || !player.Celestial.Alive {
 			continue
 		}
 
-		// 最低1秒は同じ方向に進む
-		if now.Sub(player.LastDirectionChange) < time.Second {
-			continue
-		}
-
-		// 落ちた衛星に向かう行動を優先
-		targetSatellite := g.findNearestDroppedSatellite(player.Celestial.Core.Position)
-
-		var newDirection *utils.Direction
-
-		if targetSatellite != nil && rand.Float64() < 0.7 { // 70%の確率で落ちた衛星に向かう
-			newDirection = g.calculateDirectionToTarget(player.Celestial.Core.Position, *targetSatellite)
-		} else if rand.Float64() < 0.3 { // 30%の確率でランダムに方向変更
-			directions := []string{"UP", "DOWN", "LEFT", "RIGHT"}
-			randomDir := directions[rand.Intn(len(directions))]
-			if dir, ok := utils.DIRECTIONS[randomDir]; ok {
-				newDirection = &dir
+		// 初回または1秒経過で方向を新しく選択
+		if player.TargetDirection == nil || time.Since(player.LastDirectionChange) > time.Second {
+			// 4方向のシンプルな移動
+			directions := []struct{ X, Y float64 }{
+				{1, 0},  // 右
+				{-1, 0}, // 左
+				{0, 1},  // 下
+				{0, -1}, // 上
 			}
+
+			dir := directions[rand.Intn(len(directions))]
+			player.TargetDirection = &dir
+			player.LastDirectionChange = time.Now()
 		}
 
-		// 新しい方向が決まった場合のみ変更
-		if newDirection != nil {
-			player.Celestial.SetAcceleration(newDirection.X, newDirection.Y)
-			player.LastDirectionChange = now
-		}
-	}
-}
-
-// 最も近い落ちた衛星を探す
-func (g *Game) findNearestDroppedSatellite(head models.Position) *models.Position {
-	if len(g.DroppedSatellites) == 0 {
-		return nil
-	}
-
-	var nearestSatellite *models.Position
-	minDistance := math.MaxFloat64
-
-	for _, satellite := range g.DroppedSatellites {
-		distance := g.calculateDistance(head, satellite.Position)
-		if distance < minDistance {
-			minDistance = distance
-			nearestSatellite = &satellite.Position
-		}
-	}
-
-	return nearestSatellite
-}
-
-// 2点間の距離を計算
-func (g *Game) calculateDistance(p1 models.Position, p2 models.Position) float64 {
-	dx := p1.X - p2.X
-	dy := p1.Y - p2.Y
-	return math.Sqrt(dx*dx + dy*dy)
-}
-
-// 目標位置への方向を計算
-func (g *Game) calculateDirectionToTarget(from, to models.Position) *utils.Direction {
-	dx := to.X - from.X
-	dy := to.Y - from.Y
-
-	// より大きい成分の方向を選択
-	if math.Abs(dx) > math.Abs(dy) {
-		if dx > 0 {
-			dir := utils.DIRECTIONS["RIGHT"]
-			return &dir
-		} else {
-			dir := utils.DIRECTIONS["LEFT"]
-			return &dir
-		}
-	} else {
-		if dy > 0 {
-			dir := utils.DIRECTIONS["DOWN"]
-			return &dir
-		} else {
-			dir := utils.DIRECTIONS["UP"]
-			return &dir
-		}
+		// 毎フレーム、目標方向に加速し続ける（プレイヤーと同じ）
+		player.Celestial.SetAcceleration(player.TargetDirection.X, player.TargetDirection.Y)
 	}
 }

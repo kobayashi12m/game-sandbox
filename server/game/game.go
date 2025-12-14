@@ -167,8 +167,6 @@ func (g *Game) RunGameLoop() {
 			}()
 
 			g.mu.Lock()
-			// NPCの方向を更新
-			// g.updateNPCDirections()
 			g.Update(deltaTime)
 			g.mu.Unlock()
 

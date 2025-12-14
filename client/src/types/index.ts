@@ -26,10 +26,23 @@ export type Projectile = [string, Sphere, string];
 // DroppedSatelliteは配列形式: [position, radius, color]
 export type DroppedSatellite = [Position, number, string];
 
+export interface NPCDebugStats {
+  id: string;
+  name: string;
+  velX: number;
+  velY: number;
+  accelX: number;
+  accelY: number;
+  accelForce: number;
+  maxSpeed: number;
+  satellites: number;
+}
+
 export interface GameState {
   pls: Player[];                     // players → pls
   ds?: DroppedSatellite[];          // droppedSatellites → ds
   proj?: Projectile[];              // projectiles → proj
+  npcDebug?: NPCDebugStats | null;   // NPCデバッグ情報
 }
 
 // WebSocket メッセージの型

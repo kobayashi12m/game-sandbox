@@ -17,6 +17,9 @@ func (g *Game) Update(deltaTime float64) {
 	// フレームカウンターを増加
 	g.frameCount++
 
+	// NPCのAIを更新
+	g.UpdateNPCAI()
+
 	// メトリクス収集（デバッグレベル）
 	if g.frameCount%1800 == 0 { // 30秒に1回
 		humanPlayers := 0

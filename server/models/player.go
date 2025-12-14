@@ -17,11 +17,13 @@ type Player struct {
 	Celestial           *Celestial `json:"celestial"`
 	Score               int        `json:"score"`
 	Conn                *websocket.Conn
-	IsNPC               bool       `json:"-"` // NPCかどうかのフラグ
-	LastDirectionChange time.Time  `json:"-"` // 最後に方向を変えた時刻
-	LastAutoSatellite   time.Time  `json:"-"` // 最後に自動衛星を追加した時刻
-	RespawnTime         time.Time  `json:"-"` // リスポーンした時刻（無敵時間の計算用）
-	ConnMu              sync.Mutex `json:"-"` // WebSocket書き込み用mutex
+	IsNPC               bool                    `json:"-"` // NPCかどうかのフラグ
+	LastDirectionChange time.Time               `json:"-"` // 最後に方向を変えた時刻
+	LastAutoSatellite   time.Time               `json:"-"` // 最後に自動衛星を追加した時刻
+	RespawnTime         time.Time               `json:"-"` // リスポーンした時刻（無敵時間の計算用）
+	LastShoot           time.Time               `json:"-"` // 最後に射撃した時刻（NPC用）
+	TargetDirection     *struct{ X, Y float64 } `json:"-"` // NPCの目標方向
+	ConnMu              sync.Mutex              `json:"-"` // WebSocket書き込み用mutex
 }
 
 // IsInvulnerable はプレイヤーが無敵状態かどうかを返す
