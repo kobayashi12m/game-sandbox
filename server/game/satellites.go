@@ -1,8 +1,6 @@
 package game
 
 import (
-	"math/rand/v2"
-
 	"game-sandbox/server/models"
 	"game-sandbox/server/utils"
 )
@@ -16,49 +14,17 @@ func (g *Game) GenerateDroppedSatellites() {
 	}
 
 	for len(g.DroppedSatellites) < targetCount {
-		var pos models.Position
-		attempts := 0
-		for {
-			pos = models.Position{
-				X: rand.Float64() * utils.FIELD_WIDTH,
-				Y: rand.Float64() * utils.FIELD_HEIGHT,
-			}
-			// 簡単な重複チェック（プレイヤーコアから一定距離離れているか）
-			occupied := false
-			for _, player := range g.Players {
-				if player.Celestial.Core != nil {
-					dx := pos.X - player.Celestial.Core.Position.X
-					dy := pos.Y - player.Celestial.Core.Position.Y
-					dist := dx*dx + dy*dy
-					if dist < (utils.SPHERE_RADIUS*4)*(utils.SPHERE_RADIUS*4) {
-						occupied = true
-						break
-					}
-				}
-			}
-			if !occupied || attempts > 100 {
-				break
-			}
-			attempts++
+		// FindSafeSpawnPosition を使用して安全な位置を取得
+		pos := g.FindSafeSpawnPosition()
+
+		newSatellite := &models.DroppedSatellite{
+			Position:       pos,
+			Radius:         utils.SPHERE_RADIUS,
+			Color:          "#FFFFFF",
+			IsOriginalCore: false,
 		}
-		if attempts <= 100 {
-			newSatellite := &models.DroppedSatellite{
-				Position:       pos,
-				Radius:         utils.SPHERE_RADIUS,
-				Color:          "#FFFFFF",
-				IsOriginalCore: false,
-			}
-			g.DroppedSatellites = append(g.DroppedSatellites, newSatellite)
-			// spatial gridに追加
-			g.spatialGrid.AddDroppedSatellite(newSatellite)
-		} else {
-			utils.Warn("Failed to place dropped satellite", map[string]interface{}{
-				"current_count": len(g.DroppedSatellites),
-				"target_count":  targetCount,
-				"attempts":      attempts,
-				"game_id":       g.ID,
-			})
-			break
-		}
+		g.DroppedSatellites = append(g.DroppedSatellites, newSatellite)
+		// spatial gridに追加
+		g.spatialGrid.AddDroppedSatellite(newSatellite)
 	}
 }

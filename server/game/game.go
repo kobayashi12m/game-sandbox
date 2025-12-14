@@ -102,13 +102,7 @@ func (g *Game) GetHumanPlayerCount() int {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 
-	count := 0
-	for _, player := range g.Players {
-		if !player.IsNPC {
-			count++
-		}
-	}
-	return count
+	return len(g.humanPlayers)
 }
 
 // ShouldStart はゲームを開始すべきかチェックし、必要なら開始する
@@ -116,12 +110,7 @@ func (g *Game) ShouldStart() bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	humanPlayers := 0
-	for _, player := range g.Players {
-		if !player.IsNPC {
-			humanPlayers++
-		}
-	}
+	humanPlayers := len(g.humanPlayers)
 
 	// 人間プレイヤーが1人以上いて、ゲームが開始されていない場合
 	if humanPlayers >= 1 && !g.Running {
