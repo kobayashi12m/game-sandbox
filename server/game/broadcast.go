@@ -70,10 +70,12 @@ func (g *Game) GetOptimizedState(clientPlayerID string, clientX, clientY, viewWi
 	players := make([]models.PlayerState, 0, len(areaResult.Players))
 	for _, p := range areaResult.Players {
 		if p.Celestial.Core != nil {
-			// 元のデータを変更しないよう球体構造のコピーを作成
+			// 元のデータを変更しないよう球体構造の深いコピーを作成
 			celestialCopy := *p.Celestial
+			coreCopy := *p.Celestial.Core
+			celestialCopy.Core = &coreCopy
 
-			// 自分以外のプレイヤーの速度・加速度情報はクリア
+			// 自分以外のプレイヤーの速度・加速度情報をクリア
 			if p.ID != clientPlayerID {
 				celestialCopy.Core.Velocity = models.Position{}
 				celestialCopy.Core.Acceleration = models.Position{}
