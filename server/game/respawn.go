@@ -61,5 +61,11 @@ func (g *Game) SpawnPlayer(player *models.Player) {
 func (g *Game) RespawnPlayer(player *models.Player) {
 	// 死亡ペナルティ：スコアを減少
 	player.ApplyDeathPenalty()
+
+	// NPCの場合、リスポーン可否をチェック
+	if !g.ShouldNPCRespawn(player) {
+		return
+	}
+
 	g.spawnPlayerInternal(player, true)
 }

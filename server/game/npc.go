@@ -14,7 +14,6 @@ func (g *Game) AddNPC(count int) {
 		npcID := utils.GenerateID()
 		npcName := utils.GenerateRandomNickname()
 
-		// 既存のAddPlayer関数を使ってNPCを追加（WebSocket接続はnil）
 		g.AddPlayer(npcID, npcName, nil)
 
 		utils.LogConnectionEvent("npc_joined", npcID, npcName, true)
@@ -244,4 +243,77 @@ func (g *Game) distance(a, b *models.Celestial) float64 {
 	dx := b.Core.Position.X - a.Core.Position.X
 	dy := b.Core.Position.Y - a.Core.Position.Y
 	return math.Sqrt(dx*dx + dy*dy)
+}
+
+// GetDesiredNPCCount は現在の人間プレイヤー数から必要なNPC数を計算する
+func (g *Game) GetDesiredNPCCount() int {
+	humanCount := len(g.humanPlayers)
+	desiredNPCCount := utils.MAX_NPC_COUNT - humanCount
+	if desiredNPCCount < 0 {
+		return 0
+	}
+	return desiredNPCCount
+}
+
+// ReplenishNPCs は不足したNPCを補充する
+func (g *Game) ReplenishNPCs() {
+	desiredNPCCount := g.GetDesiredNPCCount()
+	currentNPCCount := len(g.Players) - len(g.humanPlayers)
+	humanCount := len(g.humanPlayers)
+
+	// NPCが不足している場合は追加
+	if currentNPCCount < desiredNPCCount {
+		toAdd := desiredNPCCount - currentNPCCount
+		g.AddNPC(toAdd)
+		utils.Info("NPCs added to maintain player count", map[string]interface{}{
+			"event":       "npc_add_maintain",
+			"game_id":     g.ID,
+			"human_count": humanCount,
+			"current_npc": currentNPCCount,
+			"desired_npc": desiredNPCCount,
+			"added":       toAdd,
+		})
+	}
+}
+
+// ShouldNPCRespawn はNPCがリスポーンすべきかを判定する
+func (g *Game) ShouldNPCRespawn(npc *models.Player) bool {
+	if !npc.IsNPC {
+		return true // 人間プレイヤーは常にリスポーン
+	}
+
+	desiredNPCCount := g.GetDesiredNPCCount()
+	humanCount := len(g.humanPlayers)
+	currentNPCCount := len(g.Players) - humanCount
+
+	// NPC数が上限以下ならリスポーン
+	if currentNPCCount <= desiredNPCCount {
+		return true
+	}
+
+	// NPC数が上限を超えている場合、スコアランキングをチェック
+	// 効率的な方法：自分のスコアより高いNPCの数を数える
+	higherScoreCount := 0
+	for _, player := range g.Players {
+		if player.IsNPC && player.ID != npc.ID && player.Score > npc.Score {
+			higherScoreCount++
+			if higherScoreCount >= 10 {
+				// 10人以上が自分より高スコアならNPCを削除
+				delete(g.Players, npc.ID)
+				utils.Info("NPC removed due to low rank", map[string]interface{}{
+					"event":       "npc_removed_low_rank",
+					"game_id":     g.ID,
+					"npc_id":      npc.ID,
+					"npc_name":    npc.Name,
+					"npc_score":   npc.Score,
+					"human_count": humanCount,
+					"npc_count":   currentNPCCount - 1,
+				})
+				return false
+			}
+		}
+	}
+
+	// 上位10位以内ならリスポーン
+	return true
 }

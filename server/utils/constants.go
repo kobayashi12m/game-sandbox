@@ -15,7 +15,7 @@ const (
 	AIR_RESISTANCE                = 0.98                  // 空気抵抗（非アクティブ時の減衰）
 	STOP_THRESHOLD_RATIO          = 0.02                  // 停止閾値（最大速度の2%）
 	GAME_TICK                     = 16 * time.Millisecond // ゲーム更新間隔（60FPS）
-	NPC_COUNT                     = 50                    // デフォルトNPC数
+	MAX_NPC_COUNT                 = 50                    // NPC数上限
 
 	// カメラ・表示設定
 	CAMERA_ZOOM_SCALE = 0.85 // カメラの固定ズーム倍率（0.85=少し引いた視点、物が少し小さく見える）

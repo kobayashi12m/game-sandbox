@@ -32,13 +32,12 @@ func (h *Hub) GetOrCreateGame(roomID string) *Game {
 		ID:          roomID,
 		Players:     make(map[string]*models.Player),
 		Running:     false,
-		NPCCount:    utils.NPC_COUNT,             // constants.goから取得
 		spatialGrid: NewSpatialGrid(),            // 空間分割グリッドを初期化
 		commands:    make(chan GameCommand, 500), // 統一コマンドキュー初期化
 	}
 
 	// NPCを追加
-	game.AddNPC(game.NPCCount)
+	game.AddNPC(utils.MAX_NPC_COUNT)
 
 	// 初期の落ちた衛星を生成してspatial gridに登録
 	game.GenerateDroppedSatellites()

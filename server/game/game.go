@@ -67,7 +67,6 @@ type Game struct {
 	DroppedSatellites []*models.DroppedSatellite // 落ちた衛星
 	Projectiles       []*models.Projectile       // 射出された衛星
 	Running           bool
-	NPCCount          int              // NPC数の設定
 	spatialGrid       *SpatialGrid     // 空間分割グリッド
 	frameCount        int64            // フレームカウンター
 	humanPlayers      []*models.Player // WebSocket接続する人間プレイヤーのキャッシュ
@@ -142,6 +141,8 @@ func (g *Game) RemovePlayer(id string) {
 		for i, cachedPlayer := range g.humanPlayers {
 			if cachedPlayer == player {
 				g.humanPlayers = append(g.humanPlayers[:i], g.humanPlayers[i+1:]...)
+				// 人間プレイヤーが減ったらNPCを補充
+				go g.ReplenishNPCs()
 				break
 			}
 		}
