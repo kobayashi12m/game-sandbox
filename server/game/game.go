@@ -76,7 +76,14 @@ type Game struct {
 	startTime      time.Time
 	// コマンドキュー（デッドロック防止）
 	commands chan GameCommand
-	mu       sync.RWMutex
+	// コマンド統計
+	commandsPerSecond      float64
+	maxQueueLength         int
+	commandsLast10Sec      int64 // 直近10秒間の処理数
+	lastCommandLog         time.Time
+	lastCommandStatUpdate  time.Time
+	commandsSinceLastCheck int64
+	mu                     sync.RWMutex
 }
 
 // AddPlayer はゲームに新しいプレイヤーを追加する

@@ -71,15 +71,6 @@ func (g *Game) destroyPlayer(player *models.Player) {
 	player.Celestial.Alive = false
 	player.Celestial.Satellites = [][]*models.Satellite{}
 
-	utils.Info("Player destroyed", map[string]interface{}{
-		"event":              "player_destroyed",
-		"game_id":            g.ID,
-		"player_id":          player.ID,
-		"player_name":        player.Name,
-		"is_npc":             player.IsNPC,
-		"satellites_dropped": satelliteCount,
-		"metric":             "game_event",
-	})
 }
 
 // destroyTargetSatellite は指定した位置の衛星を完全消滅させる

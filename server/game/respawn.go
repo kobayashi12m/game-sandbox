@@ -50,16 +50,6 @@ func (g *Game) spawnPlayerInternal(player *models.Player, isRespawn bool) {
 	// 自動衛星タイマーを初期化
 	player.LastAutoSatellite = time.Now()
 
-	// ログ出力
-	action := "spawn"
-	if isRespawn {
-		action = "respawn"
-	}
-	utils.LogPlayerAction(action, player.ID, player.Name, map[string]interface{}{
-		"position_x":            safePos.X,
-		"position_y":            safePos.Y,
-		"invulnerable_duration": utils.RESPAWN_INVULNERABILITY_TIME.Seconds(),
-	})
 }
 
 // SpawnPlayer は新規プレイヤーを初期スポーンさせる

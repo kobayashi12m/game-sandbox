@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"math"
 	"time"
 
@@ -10,7 +11,14 @@ import (
 
 // processGameCommands はWebSocketからの全コマンドを処理する
 func (g *Game) processGameCommands() {
+	// 処理前のキュー長を記録
+	queueLengthBefore := len(g.commands)
+	if queueLengthBefore > g.maxQueueLength {
+		g.maxQueueLength = queueLengthBefore
+	}
+
 	// キューにあるコマンドを全て処理（ノンブロッキング）
+	processedThisFrame := 0
 	for {
 		select {
 		case cmd := <-g.commands:
@@ -26,8 +34,35 @@ func (g *Game) processGameCommands() {
 					"error":        err.Error(),
 				})
 			}
+			g.commandsSinceLastCheck++
+			g.commandsLast10Sec++
+			processedThisFrame++
 		default:
 			// キューが空の場合は終了
+			// コマンドレート計算（1秒ごと）
+			now := time.Now()
+			if now.Sub(g.lastCommandStatUpdate) >= time.Second {
+				elapsed := now.Sub(g.lastCommandStatUpdate).Seconds()
+				g.commandsPerSecond = float64(g.commandsSinceLastCheck) / elapsed
+				g.commandsSinceLastCheck = 0
+				g.lastCommandStatUpdate = now
+			}
+
+			// コマンド統計をログに記録（10秒ごと）
+			if time.Since(g.lastCommandLog) > 10*time.Second {
+				if g.commandsLast10Sec > 0 {
+					utils.Info("Command statistics (last 10s)", map[string]interface{}{
+						"commands_processed": g.commandsLast10Sec,
+						"avg_per_second":     float64(g.commandsLast10Sec) / 10.0,
+						"max_queue_length":   g.maxQueueLength,
+						"queue_utilization":  fmt.Sprintf("%.1f%%", float64(g.maxQueueLength)/float64(cap(g.commands))*100),
+						"event":              "command_stats_10s",
+					})
+				}
+				g.lastCommandLog = time.Now()
+				g.commandsLast10Sec = 0 // リセット
+				g.maxQueueLength = 0    // リセット
+			}
 			return
 		}
 	}
@@ -185,44 +220,14 @@ func (g *Game) applySphereCollision(sphere1, sphere2 *models.Sphere, player1, pl
 			return
 		} else if !isCore1 && !isCore2 {
 			// 衛星同士：両方消滅
-			utils.Info("Collision event", map[string]interface{}{
-				"event":        "satellite_collision",
-				"game_id":      g.ID,
-				"player1_id":   player1.ID,
-				"player1_name": player1.Name,
-				"player2_id":   player2.ID,
-				"player2_name": player2.Name,
-				"result":       "both_destroyed",
-				"metric":       "game_event",
-			})
 			g.destroyTargetSatellite(player1, sphere1)
 			g.destroyTargetSatellite(player2, sphere2)
 		} else {
 			// コアと衛星：両方消滅
 			if isCore1 {
-				utils.Info("Collision event", map[string]interface{}{
-					"event":                 "core_satellite_collision",
-					"game_id":               g.ID,
-					"core_player_id":        player1.ID,
-					"core_player_name":      player1.Name,
-					"satellite_player_id":   player2.ID,
-					"satellite_player_name": player2.Name,
-					"result":                "core_destroyed",
-					"metric":                "game_event",
-				})
 				g.destroyPlayer(player1)
 				g.destroyTargetSatellite(player2, sphere2)
 			} else {
-				utils.Info("Collision event", map[string]interface{}{
-					"event":                 "core_satellite_collision",
-					"game_id":               g.ID,
-					"core_player_id":        player2.ID,
-					"core_player_name":      player2.Name,
-					"satellite_player_id":   player1.ID,
-					"satellite_player_name": player1.Name,
-					"result":                "core_destroyed",
-					"metric":                "game_event",
-				})
 				g.destroyPlayer(player2)
 				g.destroyTargetSatellite(player1, sphere1)
 			}
@@ -267,23 +272,10 @@ func (g *Game) checkProjectileCollisions() {
 		if hitSphere != nil && hitPlayer != nil {
 			// 衝突時の処理
 			if hitSphere == hitPlayer.Celestial.Core {
-				utils.Info("Projectile hit", map[string]interface{}{
-					"event":         "projectile_hit_core",
-					"game_id":       g.ID,
-					"attacker_id":   proj.Owner.ID,
-					"attacker_name": proj.Owner.Name,
-					"victim_id":     hitPlayer.ID,
-					"victim_name":   hitPlayer.Name,
-					"result":        "core_destroyed",
-					"metric":        "game_event",
-				})
+				// 射出物がコアに命中
 				g.destroyPlayer(hitPlayer)
 			} else {
-				utils.Debug("Projectile hit satellite", map[string]interface{}{
-					"event":       "projectile_hit_satellite",
-					"attacker_id": proj.Owner.ID,
-					"victim_id":   hitPlayer.ID,
-				})
+				// 衛星への射撃ヒット
 				g.destroyTargetSatellite(hitPlayer, hitSphere)
 			}
 			continue // 射出物は消滅

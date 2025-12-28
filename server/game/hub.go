@@ -34,7 +34,7 @@ func (h *Hub) GetOrCreateGame(roomID string) *Game {
 		Running:     false,
 		NPCCount:    utils.NPC_COUNT,             // constants.goから取得
 		spatialGrid: NewSpatialGrid(),            // 空間分割グリッドを初期化
-		commands:    make(chan GameCommand, 100), // 統一コマンドキュー初期化
+		commands:    make(chan GameCommand, 500), // 統一コマンドキュー初期化
 	}
 
 	// NPCを追加
