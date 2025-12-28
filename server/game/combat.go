@@ -11,6 +11,12 @@ func (g *Game) EjectPlayerSatellite(player *models.Player, targetX, targetY floa
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
+	g.ejectPlayerSatelliteNoLock(player, targetX, targetY)
+}
+
+// ejectPlayerSatelliteNoLock はロックを取らずに衛星を射出する（内部使用）
+func (g *Game) ejectPlayerSatelliteNoLock(player *models.Player, targetX, targetY float64) {
+
 	if player == nil || player.Celestial == nil || !player.Celestial.Alive {
 		return
 	}

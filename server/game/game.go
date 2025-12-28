@@ -166,9 +166,8 @@ func (g *Game) RunGameLoop() {
 				}
 			}()
 
-			g.mu.Lock()
+			// Updateメソッド内で必要に応じてロックを取得する
 			g.Update(deltaTime)
-			g.mu.Unlock()
 
 			// 各クライアントに最適化されたデータを個別送信
 			g.BroadcastOptimized()

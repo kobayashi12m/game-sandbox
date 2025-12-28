@@ -10,6 +10,10 @@ import (
 
 // Update はゲームの1ティックを処理する
 func (g *Game) Update(deltaTime float64) {
+	// ロックを取得
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	if !g.Running {
 		return
 	}
