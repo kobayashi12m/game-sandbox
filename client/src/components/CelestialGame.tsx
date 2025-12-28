@@ -9,7 +9,7 @@ import { useGameInput } from "../hooks/useGameInput";
 import { getPlayer } from "../types";
 
 const CelestialGame: React.FC = () => {
-  const [playerName] = useState<string>("Player");
+  const [playerName] = useState<string>("");
   const [roomId] = useState<string>("default");
   const [isConnected, setIsConnected] = useState(false);
   const [hasInitiallyConnected, setHasInitiallyConnected] = useState(false);

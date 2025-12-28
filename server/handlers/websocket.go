@@ -62,7 +62,7 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 				roomID, _ := msg["roomId"].(string)
 				playerName, _ := msg["playerName"].(string)
 				if playerName == "" {
-					playerName = "Player"
+					playerName = utils.GenerateRandomNickname()
 				}
 
 				playerID = utils.GenerateID()
