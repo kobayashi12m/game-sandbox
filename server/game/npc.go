@@ -72,51 +72,38 @@ type shootAction struct {
 	dirY float64
 }
 
+// NPCのターゲット情報
+type npcTarget struct {
+	position   models.Position
+	velocity   models.Position
+	targetType string // "satellite" or "enemy"
+}
+
+// 予測位置を計算
+func (g *Game) predictPosition(position, velocity models.Position, deltaTime float64) models.Position {
+	return models.Position{
+		X: position.X + velocity.X*deltaTime,
+		Y: position.Y + velocity.Y*deltaTime,
+	}
+}
+
 // NPCの行動を更新
 func (g *Game) updateNPCBehavior(npc *models.Player) *shootAction {
 	// ターゲット探索（0.5秒ごと）
 	if time.Since(npc.LastDirectionChange) > 500*time.Millisecond {
-		target, targetType := g.findBestTarget(npc)
+		// ターゲットを探す
+		target := g.findBestTarget(npc)
 
-		if target != nil {
-			// ターゲットへ向かう
-			dx := target.Core.Position.X - npc.Celestial.Core.Position.X
-			dy := target.Core.Position.Y - npc.Celestial.Core.Position.Y
-			dist := math.Sqrt(dx*dx + dy*dy)
-
-			if dist > 0 {
-				// 予測位置を計算
-				predictedX := target.Core.Position.X + target.Core.Velocity.X*0.3
-				predictedY := target.Core.Position.Y + target.Core.Velocity.Y*0.3
-
-				dx = predictedX - npc.Celestial.Core.Position.X
-				dy = predictedY - npc.Celestial.Core.Position.Y
-				norm := math.Sqrt(dx*dx + dy*dy)
-
-				if norm > 0 {
-					npc.TargetDirection = &struct{ X, Y float64 }{
-						X: dx / norm,
-						Y: dy / norm,
-					}
-
-					// 敵プレイヤーが近い場合、射撃を検討
-					if targetType == "enemy" && dist < 300 { // 射程
-						if g.shouldNPCShoot(npc) {
-							return &shootAction{
-								npc:  npc,
-								dirX: dx / norm,
-								dirY: dy / norm,
-							}
-						}
-					}
-				}
-			}
-		} else {
-			// ターゲットがない場合はランダム移動
+		// ターゲットに応じた行動を決定
+		var shootAction *shootAction
+		if target == nil {
 			g.randomWander(npc)
+		} else {
+			shootAction = g.moveTowardTarget(npc, target)
 		}
 
 		npc.LastDirectionChange = time.Now()
+		return shootAction
 	}
 
 	// 加速度を設定
@@ -127,10 +114,48 @@ func (g *Game) updateNPCBehavior(npc *models.Player) *shootAction {
 	return nil
 }
 
+// ターゲットへ向かって移動し、必要なら射撃アクションを返す
+func (g *Game) moveTowardTarget(npc *models.Player, target *npcTarget) *shootAction {
+	// 現在位置への距離
+	dx := target.position.X - npc.Celestial.Core.Position.X
+	dy := target.position.Y - npc.Celestial.Core.Position.Y
+	dist := math.Sqrt(dx*dx + dy*dy)
+
+	if dist <= 0 {
+		return nil
+	}
+
+	// 予測位置へ向かう方向を計算
+	predictedPos := g.predictPosition(target.position, target.velocity, 0.3)
+	dx = predictedPos.X - npc.Celestial.Core.Position.X
+	dy = predictedPos.Y - npc.Celestial.Core.Position.Y
+	norm := math.Sqrt(dx*dx + dy*dy)
+
+	if norm <= 0 {
+		return nil
+	}
+
+	// 移動方向を設定
+	npc.TargetDirection = &struct{ X, Y float64 }{
+		X: dx / norm,
+		Y: dy / norm,
+	}
+
+	// 敵への射撃判定
+	if target.targetType == "enemy" && dist < 300 && g.shouldNPCShoot(npc) {
+		return &shootAction{
+			npc:  npc,
+			dirX: dx / norm,
+			dirY: dy / norm,
+		}
+	}
+
+	return nil
+}
+
 // 最適なターゲットを探す
-func (g *Game) findBestTarget(npc *models.Player) (*models.Celestial, string) {
-	var bestTarget *models.Celestial
-	var targetType string
+func (g *Game) findBestTarget(npc *models.Player) *npcTarget {
+	var bestTarget *npcTarget
 	minScore := math.MaxFloat64
 
 	npcPos := npc.Celestial.Core.Position
@@ -156,20 +181,17 @@ func (g *Game) findBestTarget(npc *models.Player) (*models.Celestial, string) {
 
 			if score < minScore {
 				minScore = score
-				bestTarget = &models.Celestial{
-					Core: &models.Sphere{
-						Position: satellite.Position,
-						Velocity: models.Position{X: 0, Y: 0},
-					},
-					Alive: true,
+				bestTarget = &npcTarget{
+					position:   satellite.Position,
+					velocity:   models.Position{X: 0, Y: 0},
+					targetType: "satellite",
 				}
-				targetType = "satellite"
 			}
 		}
 	}
 
 	// 他のプレイヤー（NPCも含む）を探す
-	if mySatellites >= 1 { // 衛星が1個以上あれば攻撃を検討
+	if mySatellites >= 12 { // 衛星が12個以上あれば攻撃を検討
 		for _, player := range nearbyObjects.Players {
 			if player.ID == npc.ID || !player.Celestial.Alive || player.IsInvulnerable() {
 				continue
@@ -186,21 +208,24 @@ func (g *Game) findBestTarget(npc *models.Player) (*models.Celestial, string) {
 
 					if score < minScore {
 						minScore = score
-						bestTarget = player.Celestial
-						targetType = "enemy"
+						bestTarget = &npcTarget{
+							position:   player.Celestial.Core.Position,
+							velocity:   player.Celestial.Core.Velocity,
+							targetType: "enemy",
+						}
 					}
 				}
 			}
 		}
 	}
 
-	return bestTarget, targetType
+	return bestTarget
 }
 
 // NPCが射撃すべきか判定
 func (g *Game) shouldNPCShoot(npc *models.Player) bool {
 	// クールダウン中は撃たない
-	if time.Since(npc.LastShoot) < 300*time.Millisecond { // 800ms→300msに短縮
+	if time.Since(npc.LastShoot) < 300*time.Millisecond { // 300ms
 		return false
 	}
 
@@ -209,8 +234,8 @@ func (g *Game) shouldNPCShoot(npc *models.Player) bool {
 		return false
 	}
 
-	// 一定確率で射撃（常に撃つと不自然なので）
-	return rand.Float64() < 0.95 // 70%→95%に大幅上昇
+	// 一定確率で射撃
+	return rand.Float64() < 0.95
 }
 
 // ランダムな徘徊
