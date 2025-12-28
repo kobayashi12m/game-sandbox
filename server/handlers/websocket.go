@@ -123,7 +123,12 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 				x, xOk := msg["x"].(float64)
 				y, yOk := msg["y"].(float64)
 				if xOk && yOk && player.Celestial != nil && player.Celestial.Alive {
-					player.Celestial.SetAcceleration(x, y)
+					// 加速度コマンドを送信
+					gameInstance.SendCommand(game.AccelerationCommand{
+						Player: player,
+						X:      x,
+						Y:      y,
+					})
 				}
 
 			case "ejectSatellite":
@@ -134,7 +139,12 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 				targetX, xOk := msg["targetX"].(float64)
 				targetY, yOk := msg["targetY"].(float64)
 				if xOk && yOk {
-					gameInstance.EjectPlayerSatellite(player, targetX, targetY)
+					// 射撃コマンドを送信
+					gameInstance.SendCommand(game.ShootCommand{
+						Player:  player,
+						TargetX: targetX,
+						TargetY: targetY,
+					})
 				}
 			}
 		}

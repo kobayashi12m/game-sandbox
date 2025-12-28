@@ -36,40 +36,14 @@ func (g *Game) AddNPC(count int) {
 
 // NPCのAIを更新 - 毎フレーム加速度を設定
 func (g *Game) UpdateNPCAI() {
-	// 射撃予定のNPCを記録
-	type shootAction struct {
-		npc  *models.Player
-		dirX float64
-		dirY float64
-	}
-	var pendingShoots []shootAction
-
 	for _, npc := range g.Players {
 		if !npc.IsNPC || !npc.Celestial.Alive {
 			continue
 		}
 
-		// 行動更新と射撃判定
-		if shoot := g.updateNPCBehavior(npc); shoot != nil {
-			pendingShoots = append(pendingShoots, shootAction{
-				npc:  shoot.npc,
-				dirX: shoot.dirX,
-				dirY: shoot.dirY,
-			})
-		}
+		// 行動更新
+		g.updateNPCBehavior(npc)
 	}
-
-	// 射撃処理を後でまとめて実行（ロックを取らない内部メソッドを使用）
-	for _, shoot := range pendingShoots {
-		g.ejectPlayerSatelliteNoLock(shoot.npc, shoot.dirX, shoot.dirY)
-		shoot.npc.LastShoot = time.Now()
-	}
-}
-
-type shootAction struct {
-	npc  *models.Player
-	dirX float64
-	dirY float64
 }
 
 // NPCのターゲット情報
@@ -88,41 +62,40 @@ func (g *Game) predictPosition(position, velocity models.Position, deltaTime flo
 }
 
 // NPCの行動を更新
-func (g *Game) updateNPCBehavior(npc *models.Player) *shootAction {
+func (g *Game) updateNPCBehavior(npc *models.Player) {
+	// グリッドセルサイズを取得
+	cellSize := g.spatialGrid.cellSize
+
 	// ターゲット探索（0.5秒ごと）
 	if time.Since(npc.LastDirectionChange) > 500*time.Millisecond {
 		// ターゲットを探す
-		target := g.findBestTarget(npc)
+		target := g.findBestTarget(npc, cellSize)
 
 		// ターゲットに応じた行動を決定
-		var shootAction *shootAction
 		if target == nil {
-			g.randomWander(npc)
+			g.randomWander(npc, cellSize)
 		} else {
-			shootAction = g.moveTowardTarget(npc, target)
+			g.moveTowardTarget(npc, target)
 		}
 
 		npc.LastDirectionChange = time.Now()
-		return shootAction
 	}
 
 	// 加速度を設定
 	if npc.TargetDirection != nil {
 		npc.Celestial.SetAcceleration(npc.TargetDirection.X, npc.TargetDirection.Y)
 	}
-
-	return nil
 }
 
-// ターゲットへ向かって移動し、必要なら射撃アクションを返す
-func (g *Game) moveTowardTarget(npc *models.Player, target *npcTarget) *shootAction {
+// ターゲットへ向かって移動し、必要なら直接射撃
+func (g *Game) moveTowardTarget(npc *models.Player, target *npcTarget) {
 	// 現在位置への距離
 	dx := target.position.X - npc.Celestial.Core.Position.X
 	dy := target.position.Y - npc.Celestial.Core.Position.Y
 	dist := math.Sqrt(dx*dx + dy*dy)
 
 	if dist <= 0 {
-		return nil
+		return
 	}
 
 	// 予測位置へ向かう方向を計算
@@ -132,7 +105,7 @@ func (g *Game) moveTowardTarget(npc *models.Player, target *npcTarget) *shootAct
 	norm := math.Sqrt(dx*dx + dy*dy)
 
 	if norm <= 0 {
-		return nil
+		return
 	}
 
 	// 移動方向を設定
@@ -142,25 +115,20 @@ func (g *Game) moveTowardTarget(npc *models.Player, target *npcTarget) *shootAct
 	}
 
 	// 敵への射撃判定
-	if target.targetType == "enemy" && dist < 300 && g.shouldNPCShoot(npc) {
-		return &shootAction{
-			npc:  npc,
-			dirX: dx / norm,
-			dirY: dy / norm,
-		}
+	if target.targetType == "enemy" && g.shouldNPCShoot(npc) {
+		g.EjectPlayerSatellite(npc, dx/norm, dy/norm)
+		npc.LastShoot = time.Now()
 	}
-
-	return nil
 }
 
 // 最適なターゲットを探す
-func (g *Game) findBestTarget(npc *models.Player) *npcTarget {
+func (g *Game) findBestTarget(npc *models.Player, cellSize float64) *npcTarget {
 	var bestTarget *npcTarget
 	minScore := math.MaxFloat64
 
 	npcPos := npc.Celestial.Core.Position
 	mySatellites := npc.Celestial.GetTotalSatelliteCount()
-	searchRadius := 600.0 // 探索範囲
+	searchRadius := cellSize * 7.0 // グリッド7個分の探索範囲
 
 	// spatial gridで周囲のオブジェクトを取得
 	minX := npcPos.X - searchRadius
@@ -239,9 +207,9 @@ func (g *Game) shouldNPCShoot(npc *models.Player) bool {
 }
 
 // ランダムな徘徊
-func (g *Game) randomWander(npc *models.Player) {
-	// フィールドの端に近い場合は中央へ向かう
-	margin := 300.0
+func (g *Game) randomWander(npc *models.Player, cellSize float64) {
+	// フィールドの端に近い場合は中央へ向かう（グリッド5個分のマージン）
+	margin := cellSize * 5.0
 	if npc.Celestial.Core.Position.X < margin || npc.Celestial.Core.Position.X > utils.FIELD_WIDTH-margin ||
 		npc.Celestial.Core.Position.Y < margin || npc.Celestial.Core.Position.Y > utils.FIELD_HEIGHT-margin {
 		centerX := utils.FIELD_WIDTH / 2

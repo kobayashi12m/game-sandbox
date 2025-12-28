@@ -10,6 +10,56 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// GameCommand はゲームアクションの統一インターフェース
+type GameCommand interface {
+	Execute(*Game) error
+	GetType() string
+	GetPlayer() *models.Player
+}
+
+// AccelerationCommand はWebSocketからの加速度コマンド
+type AccelerationCommand struct {
+	Player *models.Player
+	X, Y   float64
+}
+
+func (cmd AccelerationCommand) Execute(g *Game) error {
+	if cmd.Player != nil && cmd.Player.Celestial != nil && cmd.Player.Celestial.Alive {
+		cmd.Player.Celestial.SetAcceleration(cmd.X, cmd.Y)
+	}
+	return nil
+}
+
+func (cmd AccelerationCommand) GetType() string {
+	return "acceleration"
+}
+
+func (cmd AccelerationCommand) GetPlayer() *models.Player {
+	return cmd.Player
+}
+
+// ShootCommand は衛星射出コマンド
+type ShootCommand struct {
+	Player  *models.Player
+	TargetX float64
+	TargetY float64
+}
+
+func (cmd ShootCommand) Execute(g *Game) error {
+	if cmd.Player != nil {
+		g.EjectPlayerSatellite(cmd.Player, cmd.TargetX, cmd.TargetY)
+	}
+	return nil
+}
+
+func (cmd ShootCommand) GetType() string {
+	return "shoot"
+}
+
+func (cmd ShootCommand) GetPlayer() *models.Player {
+	return cmd.Player
+}
+
 // Game はゲームセッションを表す
 type Game struct {
 	ID                string
@@ -24,7 +74,9 @@ type Game struct {
 	// 通信統計（シンプル版）
 	totalBytesSent int64 // 送信バイト数の累計
 	startTime      time.Time
-	mu             sync.RWMutex
+	// コマンドキュー（デッドロック防止）
+	commands chan GameCommand
+	mu       sync.RWMutex
 }
 
 // AddPlayer はゲームに新しいプレイヤーを追加する
@@ -128,6 +180,9 @@ func (g *Game) Stop() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.Running = false
+
+	// コマンドチャネルをクリーンアップ
+	close(g.commands)
 }
 
 // RunGameLoop はメインゲームの更新ループを実行する
@@ -190,6 +245,30 @@ func (g *Game) GetStartTime() time.Time {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 	return g.startTime
+}
+
+// GetCommandChannel はGameCommandチャネルを返す（WebSocketハンドラー用）
+func (g *Game) GetCommandChannel() chan GameCommand {
+	return g.commands
+}
+
+// SendCommand はコマンドを安全に送信する
+func (g *Game) SendCommand(cmd GameCommand) bool {
+	select {
+	case g.commands <- cmd:
+		return true
+	default:
+		// キュー満杯の場合は失敗
+		var playerID string
+		if player := cmd.GetPlayer(); player != nil {
+			playerID = player.ID
+		}
+		utils.Warn("Command queue full", map[string]interface{}{
+			"command_type": cmd.GetType(),
+			"player_id":    playerID,
+		})
+		return false
+	}
 }
 
 // GetPlayers returns all players in the game

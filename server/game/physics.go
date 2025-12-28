@@ -8,6 +8,31 @@ import (
 	"game-sandbox/server/utils"
 )
 
+// processGameCommands はWebSocketからの全コマンドを処理する
+func (g *Game) processGameCommands() {
+	// キューにあるコマンドを全て処理（ノンブロッキング）
+	for {
+		select {
+		case cmd := <-g.commands:
+			// コマンドを安全に実行（ロック下で）
+			if err := cmd.Execute(g); err != nil {
+				var playerID string
+				if player := cmd.GetPlayer(); player != nil {
+					playerID = player.ID
+				}
+				utils.Warn("Command execution failed", map[string]interface{}{
+					"command_type": cmd.GetType(),
+					"player_id":    playerID,
+					"error":        err.Error(),
+				})
+			}
+		default:
+			// キューが空の場合は終了
+			return
+		}
+	}
+}
+
 // Update はゲームの1ティックを処理する
 func (g *Game) Update(deltaTime float64) {
 	// ロックを取得
@@ -20,6 +45,9 @@ func (g *Game) Update(deltaTime float64) {
 
 	// フレームカウンターを増加
 	g.frameCount++
+
+	// WebSocketからの全コマンドを処理（デッドロック防止）
+	g.processGameCommands()
 
 	// NPCのAIを更新
 	g.UpdateNPCAI()

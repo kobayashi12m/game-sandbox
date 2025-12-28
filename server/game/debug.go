@@ -94,11 +94,8 @@ func (g *Game) StartDeadlockDetector() {
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 
-		for {
-			select {
-			case <-ticker.C:
-				g.checkForDeadlock()
-			}
+		for range ticker.C {
+			g.checkForDeadlock()
 		}
 	}()
 }
