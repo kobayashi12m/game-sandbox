@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import "./OrganismGame.css";
+import "./CelestialGame.css";
 import TouchControls from "./TouchControls";
 import GameCanvas from "./GameCanvas";
 import Scoreboard from "./Scoreboard";
@@ -8,7 +8,7 @@ import { useWebSocket } from "../hooks/useWebSocket";
 import { useGameInput } from "../hooks/useGameInput";
 import { getPlayer } from "../types";
 
-const OrganismGame: React.FC = () => {
+const CelestialGame: React.FC = () => {
   const [playerName] = useState<string>("Player");
   const [roomId] = useState<string>("default");
   const [isConnected, setIsConnected] = useState(false);
@@ -182,4 +182,4 @@ const OrganismGame: React.FC = () => {
   );
 };
 
-export default OrganismGame;
+export default CelestialGame;
