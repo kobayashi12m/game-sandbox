@@ -50,6 +50,34 @@ func (p *Player) ResetAutoSatelliteTimerIfNeeded() {
 	}
 }
 
+// addScore はプレイヤーのスコアを増加させる
+func (p *Player) addScore(points int) {
+	if points <= 0 {
+		return
+	}
+	p.Score += points
+}
+
+// ApplyDeathPenalty は死亡ペナルティを適用する
+func (p *Player) ApplyDeathPenalty() {
+	p.Score = int(float64(p.Score) * utils.SCORE_DEATH_PENALTY_RATIO)
+}
+
+// AwardKillScore は敵を倒した時のスコアを付与する
+func (p *Player) AwardKillScore(enemy *Player) {
+	if enemy == nil || enemy.Celestial == nil {
+		return
+	}
+	satelliteCount := enemy.Celestial.GetTotalSatelliteCount()
+	points := satelliteCount * utils.SCORE_PER_SATELLITE_KILL
+	p.addScore(points)
+}
+
+// AwardPickupScore は落ちた衛星を拾った時のスコアを付与する
+func (p *Player) AwardPickupScore() {
+	p.addScore(utils.SCORE_PICKUP_SATELLITE)
+}
+
 // PlayerState はクライアント同期用のプレイヤーデータを表す
 type PlayerState struct {
 	ID           string     `json:"id"`

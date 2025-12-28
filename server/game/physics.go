@@ -154,7 +154,7 @@ func (g *Game) Update(deltaTime float64) {
 				}
 				player.Celestial.AddSatellite(satelliteColor, collidedSatellite.Position)
 				g.removeDroppedSatellite(collidedSatellite)
-				player.Score += 10
+				player.AwardPickupScore()
 			}
 		}()
 	}
@@ -225,9 +225,13 @@ func (g *Game) applySphereCollision(sphere1, sphere2 *models.Sphere, player1, pl
 		} else {
 			// コアと衛星：両方消滅
 			if isCore1 {
+				// player2がplayer1を破壊
+				player2.AwardKillScore(player1)
 				g.destroyPlayer(player1)
 				g.destroyTargetSatellite(player2, sphere2)
 			} else {
+				// player1がplayer2を破壊
+				player1.AwardKillScore(player2)
 				g.destroyPlayer(player2)
 				g.destroyTargetSatellite(player1, sphere1)
 			}
@@ -273,6 +277,8 @@ func (g *Game) checkProjectileCollisions() {
 			// 衝突時の処理
 			if hitSphere == hitPlayer.Celestial.Core {
 				// 射出物がコアに命中
+				// スコアを追加
+				proj.Owner.AwardKillScore(hitPlayer)
 				g.destroyPlayer(hitPlayer)
 			} else {
 				// 衛星への射撃ヒット

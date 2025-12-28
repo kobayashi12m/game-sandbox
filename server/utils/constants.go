@@ -52,6 +52,11 @@ const (
 	// リスポーン設定
 	RESPAWN_INVULNERABILITY_TIME = 5 * time.Second // リスポーン後の無敵時間
 	RESPAWN_SAFE_DISTANCE        = 300.0           // リスポーン時の他プレイヤーからの最小距離
+
+	// スコア設定
+	SCORE_PICKUP_SATELLITE    = 10  // 落ちた衛星を拾った時のスコア
+	SCORE_PER_SATELLITE_KILL  = 20  // 敵を倒した時の衛星1個あたりのスコア
+	SCORE_DEATH_PENALTY_RATIO = 0.5 // 死亡時のスコア減少率（50%）
 )
 
 // Direction represents movement direction (normalized vector)
