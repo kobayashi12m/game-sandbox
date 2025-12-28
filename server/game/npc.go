@@ -100,7 +100,7 @@ func (g *Game) updateNPCBehavior(npc *models.Player) *shootAction {
 					}
 
 					// 敵プレイヤーが近い場合、射撃を検討
-					if targetType == "enemy" && dist < 700 { // 射程を350→700に大幅拡大
+					if targetType == "enemy" && dist < 300 { // 射程
 						if g.shouldNPCShoot(npc) {
 							return &shootAction{
 								npc:  npc,
@@ -133,14 +133,21 @@ func (g *Game) findBestTarget(npc *models.Player) (*models.Celestial, string) {
 	var targetType string
 	minScore := math.MaxFloat64
 
+	npcPos := npc.Celestial.Core.Position
 	mySatellites := npc.Celestial.GetTotalSatelliteCount()
-	searchRadius := 1500.0 // 探索範囲を1000→1500に拡大
+	searchRadius := 600.0 // 探索範囲
+
+	// spatial gridで周囲のオブジェクトを取得
+	minX := npcPos.X - searchRadius
+	maxX := npcPos.X + searchRadius
+	minY := npcPos.Y - searchRadius
+	maxY := npcPos.Y + searchRadius
+	nearbyObjects := g.spatialGrid.GetObjectsInArea(minX, maxX, minY, maxY)
 
 	// 落ちている衛星を探す（最優先）
-	for _, satellite := range g.DroppedSatellites {
-		// DroppedSatelliteとCelestialの距離を計算
-		dx := satellite.Position.X - npc.Celestial.Core.Position.X
-		dy := satellite.Position.Y - npc.Celestial.Core.Position.Y
+	for _, satellite := range nearbyObjects.DroppedSatellites {
+		dx := satellite.Position.X - npcPos.X
+		dy := satellite.Position.Y - npcPos.Y
 		dist := math.Sqrt(dx*dx + dy*dy)
 
 		if dist < searchRadius {
@@ -149,7 +156,6 @@ func (g *Game) findBestTarget(npc *models.Player) (*models.Celestial, string) {
 
 			if score < minScore {
 				minScore = score
-				// DroppedSatelliteをCelestialとして扱うためのダミーオブジェクト
 				bestTarget = &models.Celestial{
 					Core: &models.Sphere{
 						Position: satellite.Position,
@@ -162,43 +168,10 @@ func (g *Game) findBestTarget(npc *models.Player) (*models.Celestial, string) {
 		}
 	}
 
-	// 落ちているコアも特別にチェック（IsOriginalCoreがtrueのもの）
-	for _, dropped := range g.DroppedSatellites {
-		// 元コアだけを特別扱い
-		if !dropped.IsOriginalCore {
-			continue
-		}
-
-		dx := dropped.Position.X - npc.Celestial.Core.Position.X
-		dy := dropped.Position.Y - npc.Celestial.Core.Position.Y
-		dist := math.Sqrt(dx*dx + dy*dy)
-
-		if dist < searchRadius {
-			// 元コアは最も価値が高い
-			score := dist * 0.3 // 非常に高い優先度
-			if score < minScore {
-				minScore = score
-				bestTarget = &models.Celestial{
-					Core: &models.Sphere{
-						Position: dropped.Position,
-						Velocity: models.Position{X: 0, Y: 0},
-					},
-					Alive: true,
-				}
-				targetType = "core"
-			}
-		}
-	}
-
 	// 他のプレイヤー（NPCも含む）を探す
 	if mySatellites >= 1 { // 衛星が1個以上あれば攻撃を検討
-		for _, player := range g.Players {
-			if player.ID == npc.ID || !player.Celestial.Alive {
-				continue
-			}
-
-			// 無敵状態のプレイヤーは狙わない
-			if player.IsInvulnerable() {
+		for _, player := range nearbyObjects.Players {
+			if player.ID == npc.ID || !player.Celestial.Alive || player.IsInvulnerable() {
 				continue
 			}
 
