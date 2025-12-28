@@ -42,15 +42,15 @@ const (
 	SATELLITE_EJECT_SPEED = 1200.0 // 衛星の射出速度（ユニット/秒）
 
 	// 自動衛星追加設定
-	AUTO_SATELLITE_INTERVAL = 10 * time.Second // 自動衛星追加間隔
-	MAX_AUTO_SATELLITES     = 10               // 自動追加の上限（2層目まで：第0軌道2個+第1軌道8個）
+	AUTO_SATELLITE_INTERVAL = 5 * time.Second // 自動衛星追加間隔
+	MAX_AUTO_SATELLITES     = 10              // 自動追加の上限（2層目まで：第0軌道2個+第1軌道8個）
 
 	// 落ちた衛星設定
 	MIN_FALLEN_SATELLITES        = 10  // 落ちた衛星の最低数
 	FALLEN_SATELLITES_PER_PLAYER = 3.0 // プレイヤー1人あたりの落ちた衛星数倍率
 
 	// リスポーン設定
-	RESPAWN_INVULNERABILITY_TIME = 3 * time.Second // リスポーン後の無敵時間
+	RESPAWN_INVULNERABILITY_TIME = 5 * time.Second // リスポーン後の無敵時間
 	RESPAWN_SAFE_DISTANCE        = 300.0           // リスポーン時の他プレイヤーからの最小距離
 )
 
