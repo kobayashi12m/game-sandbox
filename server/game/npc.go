@@ -83,7 +83,11 @@ func (g *Game) updateNPCBehavior(npc *models.Player) {
 
 	// 加速度を設定
 	if npc.TargetDirection != nil {
-		npc.Celestial.SetAcceleration(npc.TargetDirection.X, npc.TargetDirection.Y)
+		g.SendCommand(AccelerationCommand{
+			Player: npc,
+			X:      npc.TargetDirection.X,
+			Y:      npc.TargetDirection.Y,
+		})
 	}
 }
 
@@ -116,7 +120,11 @@ func (g *Game) moveTowardTarget(npc *models.Player, target *npcTarget) {
 
 	// 敵への射撃判定
 	if target.targetType == "enemy" && g.shouldNPCShoot(npc) {
-		g.EjectPlayerSatellite(npc, dx/norm, dy/norm)
+		g.SendCommand(ShootCommand{
+			Player:  npc,
+			TargetX: dx / norm,
+			TargetY: dy / norm,
+		})
 		npc.LastShoot = time.Now()
 	}
 }
