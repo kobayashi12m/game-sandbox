@@ -21,8 +21,8 @@ const (
 	CAMERA_ZOOM_SCALE = 0.85 // カメラの固定ズーム倍率（0.85=少し引いた視点、物が少し小さく見える）
 
 	// カリング設定
-	CULLING_WIDTH  = 1300.0 // カリング範囲の幅
-	CULLING_HEIGHT = 800.0  // カリング範囲の高さ
+	CULLING_WIDTH  = 1920.0 // カリング範囲の幅
+	CULLING_HEIGHT = 1080.0 // カリング範囲の高さ
 
 	// デバッグ設定
 	DISABLE_COLLISION = false // trueで当たり判定を無効化

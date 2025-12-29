@@ -406,15 +406,8 @@ const drawGame = (
     zoomScale
   );
 
-  // プレイヤーを描画（カリング付き）
+  // プレイヤーを描画
   if (gameState.pls && gameState.pls.length > 0) {
-    // カリング用の画面境界計算（余裕を持たせる、ズーム考慮）
-    const cullingMargin = GAME_CONSTANTS.CULLING_MARGIN;
-    const minX = cameraX - cullingMargin / zoomScale;
-    const maxX = cameraX + (canvasSize.width + cullingMargin) / zoomScale;
-    const minY = cameraY - cullingMargin / zoomScale;
-    const maxY = cameraY + (canvasSize.height + cullingMargin) / zoomScale;
-
     gameState.pls.forEach((player) => {
       const playerData = getPlayer(player);
 
@@ -423,20 +416,7 @@ const drawGame = (
         return;
       }
 
-      // プレイヤーが画面範囲内にいるかチェック
-      if (playerData.cel?.c?.p) {
-        const head = playerData.cel.c.p;
-
-        // 頭が画面範囲内にあるかチェック
-        if (
-          head.x >= minX &&
-          head.x <= maxX &&
-          head.y >= minY &&
-          head.y <= maxY
-        ) {
-          drawCelestialSystem(ctx, playerData, playerData.id === playerId);
-        }
-      }
+      drawCelestialSystem(ctx, playerData, playerData.id === playerId);
     });
   }
 
