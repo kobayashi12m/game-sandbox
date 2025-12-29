@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useMemo, memo } from "react";
+import React, { useRef, useEffect, useState, memo } from "react";
 import type { GameState, GameConfig, GridLine } from "../types";
 import { getPlayer, getDroppedSatellite, getProjectile } from "../types";
 import type {
@@ -6,6 +6,11 @@ import type {
   ConvertedDroppedSatellite,
   ConvertedProjectile,
 } from "../types";
+import { GAME_CONSTANTS, COLORS } from "../constants/game";
+import {
+  calculateCameraOffset,
+  convertMouseToGameCoords,
+} from "../utils/viewport";
 
 interface GameCanvasProps {
   gameState: GameState;
@@ -15,19 +20,73 @@ interface GameCanvasProps {
   onMouseClick?: (x: number, y: number) => void;
 }
 
+interface Viewport {
+  width: number;
+  height: number;
+  scale: number;
+  gameWidth: number;
+  gameHeight: number;
+  offsetX: number;
+  offsetY: number;
+}
+
 const GameCanvas: React.FC<GameCanvasProps> = memo(
   ({ gameState, playerId, gameConfig, onMouseMove, onMouseClick }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [showGrid, setShowGrid] = useState(true);
     const [showCulling, setShowCulling] = useState(true);
-    // サーバー設定を基に固定サイズを計算（レイアウトシフト防止）
-    const canvasSize = useMemo(() => {
-      // 画面いっぱいにキャンバスを表示
-      const windowWidth = window.innerWidth;
-      const windowHeight = window.innerHeight;
+    // 基準解像度（デザイン時の解像度）
+    const { BASE_WIDTH, BASE_HEIGHT } = GAME_CONSTANTS;
 
-      return { width: windowWidth, height: windowHeight };
+    // キャンバスサイズとスケール計算
+    const [viewport, setViewport] = useState(() => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+
+      // アスペクト比を維持しつつ、画面に収まるスケールを計算
+      const scaleX = width / BASE_WIDTH;
+      const scaleY = height / BASE_HEIGHT;
+      const scale = Math.min(scaleX, scaleY);
+
+      return {
+        width,
+        height,
+        scale,
+        // 実際のゲーム描画領域
+        gameWidth: BASE_WIDTH * scale,
+        gameHeight: BASE_HEIGHT * scale,
+        offsetX: (width - BASE_WIDTH * scale) / 2,
+        offsetY: (height - BASE_HEIGHT * scale) / 2,
+      };
+    });
+
+    // ウィンドウリサイズ時のハンドラー
+    useEffect(() => {
+      const handleResize = () => {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        const scaleX = width / BASE_WIDTH;
+        const scaleY = height / BASE_HEIGHT;
+        const scale = Math.min(scaleX, scaleY);
+
+        setViewport({
+          width,
+          height,
+          scale,
+          gameWidth: BASE_WIDTH * scale,
+          gameHeight: BASE_HEIGHT * scale,
+          offsetX: (width - BASE_WIDTH * scale) / 2,
+          offsetY: (height - BASE_HEIGHT * scale) / 2,
+        });
+      };
+
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
     }, []);
+
+    // 固定キャンバスサイズ（基準解像度を使用）
+    const canvasSize = { width: BASE_WIDTH, height: BASE_HEIGHT };
 
     // キーボードショートカット
     useEffect(() => {
@@ -52,7 +111,8 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
       let animationFrameId: number | null = null;
       let pendingMouseEvent: MouseEvent | null = null;
       let lastSendTime = 0;
-      const SEND_INTERVAL = 33; // 約30fps（33ms間隔）
+      let lastWasInDeadZone = false;
+      const SEND_INTERVAL = GAME_CONSTANTS.SEND_INTERVAL;
 
       const processMouseMove = () => {
         if (!pendingMouseEvent) return;
@@ -69,20 +129,27 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
         lastSendTime = now;
         const rect = canvas.getBoundingClientRect();
         const currentPlayer = gameState.pls?.find((p) => p[0] === playerId);
-        const playerData = currentPlayer ? getPlayer(currentPlayer) : null;
-        const playerPosition = playerData?.cel?.c?.p;
+        const playerPosition = currentPlayer
+          ? getPlayer(currentPlayer)?.cel?.c?.p
+          : undefined;
 
         if (!playerPosition) return;
 
         // カメラズーム設定を取得
-        const zoomScale = gameConfig.cameraZoomScale || 1.0;
+        const gameZoomScale = gameConfig.cameraZoomScale || 1.0;
 
-        // カメラオフセットを考慮したワールド座標に変換（固定ズーム適用）
-        const cameraX = playerPosition.x - canvasSize.width / 2 / zoomScale;
-        const cameraY = playerPosition.y - canvasSize.height / 2 / zoomScale;
+        // カメラオフセットを考慮したワールド座標に変換
+        const { x: cameraX, y: cameraY } = calculateCameraOffset(
+          playerPosition,
+          gameZoomScale
+        );
 
-        const worldX = (event.clientX - rect.left) / zoomScale + cameraX;
-        const worldY = (event.clientY - rect.top) / zoomScale + cameraY;
+        // マウス座標をビューポート座標系からゲーム座標系に変換（スケールファクター考慮）
+        const gameCoords = convertMouseToGameCoords(event, rect);
+        const { x: gameX, y: gameY } = gameCoords;
+
+        const worldX = gameX / gameZoomScale + cameraX;
+        const worldY = gameY / gameZoomScale + cameraY;
 
         // コアからマウス位置への方向ベクトルを計算
         const dx = worldX - playerPosition.x;
@@ -90,8 +157,8 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         // 距離に応じた速度制御
-        const minDistance = 150; // デッドゾーン
-        const maxDistance = 400; // 最大速度に達する距離
+        const { MIN_DISTANCE: minDistance, MAX_DISTANCE: maxDistance } =
+          GAME_CONSTANTS;
 
         if (distance > minDistance) {
           // 正規化された方向ベクトル
@@ -128,7 +195,6 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
       };
 
       let hasLeftWindow = false;
-      let lastWasInDeadZone = false;
 
       const handleMouseLeave = () => {
         if (!hasLeftWindow) {
@@ -153,7 +219,14 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
           cancelAnimationFrame(animationFrameId);
         }
       };
-    }, [gameState, playerId, canvasSize, onMouseMove]);
+    }, [
+      gameState,
+      playerId,
+      canvasSize,
+      onMouseMove,
+      gameConfig.cameraZoomScale,
+      viewport,
+    ]);
 
     // マウスクリックの処理
     useEffect(() => {
@@ -163,20 +236,27 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
       const handleClick = (event: MouseEvent) => {
         const rect = canvas.getBoundingClientRect();
         const currentPlayer = gameState.pls?.find((p) => p[0] === playerId);
-        const playerData = currentPlayer ? getPlayer(currentPlayer) : null;
-        const playerPosition = playerData?.cel?.c?.p;
+        const playerPosition = currentPlayer
+          ? getPlayer(currentPlayer)?.cel?.c?.p
+          : undefined;
 
         if (!playerPosition) return;
 
         // カメラズーム設定を取得
-        const zoomScale = gameConfig.cameraZoomScale || 1.0;
+        const gameZoomScale = gameConfig.cameraZoomScale || 1.0;
 
-        // カメラオフセットを考慮したワールド座標に変換（固定ズーム適用）
-        const cameraX = playerPosition.x - canvasSize.width / 2 / zoomScale;
-        const cameraY = playerPosition.y - canvasSize.height / 2 / zoomScale;
+        // カメラオフセットを考慮したワールド座標に変換
+        const { x: cameraX, y: cameraY } = calculateCameraOffset(
+          playerPosition,
+          gameZoomScale
+        );
 
-        const worldX = (event.clientX - rect.left) / zoomScale + cameraX;
-        const worldY = (event.clientY - rect.top) / zoomScale + cameraY;
+        // マウス座標をビューポート座標系からゲーム座標系に変換（スケールファクター考慮）
+        const gameCoords = convertMouseToGameCoords(event, rect);
+        const { x: gameX, y: gameY } = gameCoords;
+
+        const worldX = gameX / gameZoomScale + cameraX;
+        const worldY = gameY / gameZoomScale + cameraY;
 
         onMouseClick(worldX, worldY);
       };
@@ -185,7 +265,14 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
       return () => {
         canvas.removeEventListener("click", handleClick);
       };
-    }, [gameState, playerId, canvasSize, onMouseClick]);
+    }, [
+      gameState,
+      playerId,
+      canvasSize,
+      onMouseClick,
+      gameConfig.cameraZoomScale,
+      viewport,
+    ]);
 
     useEffect(() => {
       const canvas = canvasRef.current;
@@ -203,6 +290,7 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
           playerId,
           gameConfig,
           canvasSize,
+          viewport,
           showGrid,
           showCulling
         );
@@ -211,14 +299,26 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
         console.error("GameState:", gameState);
         console.error("PlayerID:", playerId);
       }
-    }, [gameState, playerId, gameConfig, canvasSize, showGrid, showCulling]);
+    }, [
+      gameState,
+      playerId,
+      gameConfig,
+      canvasSize,
+      showGrid,
+      showCulling,
+      viewport,
+    ]);
 
     return (
       <canvas
         ref={canvasRef}
-        width={canvasSize.width}
-        height={canvasSize.height}
-        style={{ display: "block" }}
+        width={1920}
+        height={1080}
+        style={{
+          display: "block",
+          width: "100%",
+          height: "100%",
+        }}
       />
     );
   }
@@ -233,6 +333,7 @@ const drawGame = (
   playerId: string,
   gameConfig: GameConfig,
   canvasSize: { width: number; height: number },
+  viewport: Viewport,
   showGrid: boolean,
   showCulling: boolean
 ) => {
@@ -244,21 +345,25 @@ const drawGame = (
   // カメラズーム設定を取得
   const zoomScale = gameConfig.cameraZoomScale || 1.0;
 
-  // カメラの中心位置を計算（固定ズーム適用）
-  const cameraX = playerPosition
-    ? playerPosition.x - canvasSize.width / 2 / zoomScale
-    : 0;
-  const cameraY = playerPosition
-    ? playerPosition.y - canvasSize.height / 2 / zoomScale
-    : 0;
+  // カメラの中心位置を計算
+  const { x: cameraX, y: cameraY } = playerPosition
+    ? calculateCameraOffset(playerPosition, gameConfig.cameraZoomScale || 1.0)
+    : { x: 0, y: 0 };
 
   // キャンバスをクリア
-  ctx.fillStyle = "#0a0a0a";
+  ctx.fillStyle = COLORS.BACKGROUND;
   ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
 
-  // カメラ変換を適用（固定ズーム付き）
+  // カメラ変換を適用
   ctx.save();
-  ctx.scale(zoomScale, zoomScale);
+
+  // ゲームのズームを適用
+  ctx.scale(
+    gameConfig.cameraZoomScale || 1.0,
+    gameConfig.cameraZoomScale || 1.0
+  );
+
+  // カメラの位置を適用
   ctx.translate(-cameraX, -cameraY);
 
   // フィールドの境界を描画
@@ -304,7 +409,7 @@ const drawGame = (
   // プレイヤーを描画（カリング付き）
   if (gameState.pls && gameState.pls.length > 0) {
     // カリング用の画面境界計算（余裕を持たせる、ズーム考慮）
-    const cullingMargin = 300; // 画面外300pxまで描画
+    const cullingMargin = GAME_CONSTANTS.CULLING_MARGIN;
     const minX = cameraX - cullingMargin / zoomScale;
     const maxX = cameraX + (canvasSize.width + cullingMargin) / zoomScale;
     const minY = cameraY - cullingMargin / zoomScale;
@@ -339,7 +444,8 @@ const drawGame = (
   ctx.restore();
 
   // UI要素を描画（画面固定）
-  drawUI(ctx, playerData, canvasSize, showGrid, showCulling);
+  const currentPlayerData = playerData || null;
+  drawUI(ctx, currentPlayerData, showGrid, showCulling);
 };
 
 // フィールドの境界を描画
@@ -372,7 +478,7 @@ const drawServerCullingBounds = (
   const maxY = playerPosition.y + serverViewHeight / 2;
 
   // カリング境界を赤い点線で描画
-  ctx.strokeStyle = "#ff0000";
+  ctx.strokeStyle = COLORS.CULLING;
   ctx.lineWidth = 2;
   ctx.setLineDash([5, 5]);
   ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
@@ -415,9 +521,9 @@ const drawDroppedSatellites = (
       ctx.fill();
 
       // 内側に小さな光る点を追加
-      ctx.fillStyle = "#FFFFFF";
+      ctx.fillStyle = COLORS.WHITE;
       ctx.shadowBlur = 4;
-      ctx.shadowColor = "#FFFFFF";
+      ctx.shadowColor = COLORS.WHITE;
       ctx.beginPath();
       ctx.arc(satellite.p.x, satellite.p.y, satellite.r * 0.3, 0, 2 * Math.PI);
       ctx.fill();
@@ -466,7 +572,7 @@ const drawProjectiles = (
         const vel = projectile.sph.v;
         const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
         if (speed > 0) {
-          const trailLength = 20;
+          const trailLength = GAME_CONSTANTS.PROJECTILE_TRAIL_LENGTH;
           const dirX = -vel.x / speed;
           const dirY = -vel.y / speed;
 
@@ -554,10 +660,10 @@ const drawCoreHead = (
 
   // 自分の球体構造にはアウトラインを追加
   if (isCurrentPlayer) {
-    ctx.strokeStyle = "#ffd700";
+    ctx.strokeStyle = COLORS.GOLD;
     ctx.lineWidth = 3;
     ctx.shadowBlur = 15;
-    ctx.shadowColor = "#ffd700";
+    ctx.shadowColor = COLORS.GOLD;
     ctx.beginPath();
     ctx.arc(position.x, position.y, radius + 2, 0, 2 * Math.PI);
     ctx.stroke();
@@ -601,7 +707,7 @@ const drawPlayerName = (
   isCurrentPlayer: boolean
 ) => {
   ctx.globalAlpha = 1;
-  ctx.fillStyle = isCurrentPlayer ? "#ffd700" : "#fff";
+  ctx.fillStyle = isCurrentPlayer ? COLORS.GOLD : COLORS.WHITE;
   ctx.font = isCurrentPlayer ? "bold 16px Arial" : "14px Arial";
   ctx.textAlign = "center";
 
@@ -616,7 +722,7 @@ const drawPlayerName = (
   );
 
   // 文字を描画
-  ctx.fillStyle = isCurrentPlayer ? "#ffd700" : "#fff";
+  ctx.fillStyle = isCurrentPlayer ? COLORS.GOLD : COLORS.WHITE;
   ctx.fillText(name, headPosition.x, headPosition.y - 15);
 };
 
@@ -624,7 +730,6 @@ const drawPlayerName = (
 const drawUI = (
   ctx: CanvasRenderingContext2D,
   currentPlayer: ConvertedPlayer | null,
-  canvasSize: { width: number; height: number },
   showGrid: boolean,
   showCulling: boolean
 ) => {
@@ -634,7 +739,7 @@ const drawUI = (
   ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
   ctx.fillRect(10, 10, 200, 80);
 
-  ctx.fillStyle = "#fff";
+  ctx.fillStyle = COLORS.WHITE;
   ctx.font = "bold 18px Arial";
   ctx.textAlign = "left";
   ctx.fillText(`Score: ${currentPlayer.sc}`, 20, 35);
@@ -657,7 +762,7 @@ const drawUI = (
     ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
     ctx.fillRect(10, 100, 280, boxHeight);
 
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle = COLORS.WHITE;
     ctx.font = "14px Arial";
     ctx.textAlign = "left";
 
@@ -679,7 +784,7 @@ const drawSpatialGrid = (
   ctx: CanvasRenderingContext2D,
   gridLines: GridLine[]
 ) => {
-  ctx.strokeStyle = "rgba(0, 200, 255, 0.8)"; // 青色、より濃く
+  ctx.strokeStyle = COLORS.GRID;
   ctx.lineWidth = 1.5; // 線を太く
   ctx.setLineDash([3, 3]); // 点線を少し長く
 

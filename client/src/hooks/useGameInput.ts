@@ -1,14 +1,13 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import type { Direction } from '../types';
 
 interface UseGameInputProps {
-  onDirectionChange: (direction: Direction) => void;
   onAccelerationChange: (x: number, y: number) => void;
   onMovementStop: () => void;
   isEnabled: boolean;
 }
 
-export const useGameInput = ({ onDirectionChange, onAccelerationChange, onMovementStop, isEnabled }: UseGameInputProps) => {
+export const useGameInput = ({ onAccelerationChange, onMovementStop, isEnabled }: UseGameInputProps) => {
   const pressedDirections = useRef(new Set<Direction>());
   
   // 現在押されている方向から加速度ベクトルを計算
@@ -116,16 +115,7 @@ export const useGameInput = ({ onDirectionChange, onAccelerationChange, onMoveme
       window.removeEventListener('keyup', handleKeyUp);
       pressedDirections.current.clear();
     };
-  }, [onDirectionChange, onAccelerationChange, onMovementStop, isEnabled]);
+  }, [onAccelerationChange, onMovementStop, isEnabled]);
 
-  // タッチ・マウス入力の処理（TouchControlsから呼び出される）
-  const handleTouchDirection = useCallback((direction: Direction) => {
-    if (isEnabled) {
-      onDirectionChange(direction);
-    }
-  }, [onDirectionChange, isEnabled]);
-
-  return {
-    handleTouchDirection
-  };
+  return {};
 };

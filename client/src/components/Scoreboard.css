@@ -1,9 +1,9 @@
 .scoreboard {
   background-color: #1a1a1a;
   border-radius: 12px;
-  padding: 16px;
-  min-width: 320px;
-  max-width: 350px;
+  padding: 20px;
+  min-width: 380px;
+  max-width: 420px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   border: 1px solid #333;
 }
@@ -19,7 +19,7 @@
 
 .scoreboard-header h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
   color: #fff;
   font-weight: bold;
 }
@@ -36,9 +36,9 @@
 .my-score-card {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px;
-  margin-bottom: 10px;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
   background-color: #2a4a3a;
   border-radius: 8px;
   border: 2px solid #4ECDC4;
@@ -46,10 +46,10 @@
 }
 
 .my-score-value {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: bold;
   color: #4ECDC4;
-  min-width: 50px;
+  min-width: 60px;
   text-align: right;
 }
 
@@ -59,9 +59,9 @@
 }
 
 .ranking-title {
-  font-size: 12px;
+  font-size: 14px;
   color: #999;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   text-align: center;
   font-weight: bold;
 }
@@ -69,16 +69,16 @@
 .players-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .player-score {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
+  gap: 10px;
+  padding: 8px 12px;
   background-color: #2a2a2a;
-  border-radius: 4px;
+  border-radius: 6px;
   border: 1px solid #333;
   transition: all 0.2s ease;
 }
@@ -96,21 +96,21 @@
 .player-rank {
   font-weight: bold;
   color: #4ECDC4;
-  min-width: 22px;
+  min-width: 26px;
   text-align: center;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .player-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex: 1;
 }
 
 .player-color {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   border: 1px solid #555;
   flex-shrink: 0;
@@ -118,7 +118,7 @@
 
 .player-name {
   color: #fff;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   flex: 1;
   min-width: 0;
@@ -128,8 +128,8 @@
 }
 
 .player-status {
-  font-size: 9px;
-  padding: 1px 4px;
+  font-size: 10px;
+  padding: 2px 6px;
   border-radius: 8px;
   font-weight: bold;
   text-transform: uppercase;
@@ -148,8 +148,8 @@
 .player-score-value {
   font-weight: bold;
   color: #4ECDC4;
-  font-size: 14px;
-  min-width: 35px;
+  font-size: 16px;
+  min-width: 45px;
   text-align: right;
 }
 
@@ -160,117 +160,4 @@
   font-style: italic;
 }
 
-/* レスポンシブデザイン */
-@media (max-width: 768px) {
-  .scoreboard {
-    width: 100%;
-    max-width: 320px;
-    margin: 0 auto;
-    padding: 10px;
-    min-width: auto;
-  }
-  
-  .scoreboard-header {
-    flex-direction: row;
-    gap: 8px;
-    align-items: center;
-    margin-bottom: 8px;
-    padding-bottom: 6px;
-  }
-  
-  .scoreboard-header h3 {
-    font-size: 14px;
-  }
-  
-  .room-info {
-    font-size: 10px;
-    padding: 2px 6px;
-  }
-  
-  .my-score-section {
-    margin-bottom: 12px;
-  }
-  
-  .my-score-card {
-    padding: 10px;
-    gap: 8px;
-  }
-  
-  .my-score-value {
-    font-size: 16px;
-  }
-  
-  .players-list {
-    gap: 3px;
-    /* 高さ制限を削除してスクロールなしで10位まで表示 */
-  }
-  
-  .player-score {
-    padding: 5px 8px;
-    gap: 6px;
-  }
-  
-  .player-rank {
-    font-size: 11px;
-    min-width: 18px;
-  }
-  
-  .player-color {
-    width: 8px;
-    height: 8px;
-  }
-  
-  .player-name {
-    font-size: 11px;
-  }
-  
-  .player-status {
-    font-size: 8px;
-    padding: 1px 3px;
-  }
-  
-  .player-score-value {
-    font-size: 12px;
-    min-width: 30px;
-  }
-  
-  .ranking-title {
-    font-size: 12px;
-    margin-bottom: 6px;
-  }
-}
-
-/* iPhone SE等の小さな画面対応 */
-@media (max-width: 375px) {
-  .scoreboard {
-    padding: 8px;
-    max-width: 280px;
-  }
-  
-  .my-score-card {
-    padding: 8px;
-  }
-  
-  .my-score-value {
-    font-size: 14px;
-  }
-  
-  .player-score {
-    padding: 4px 6px;
-    gap: 4px;
-  }
-  
-  .player-rank {
-    font-size: 10px;
-    min-width: 16px;
-  }
-  
-  .player-name {
-    font-size: 10px;
-  }
-  
-  .player-score-value {
-    font-size: 11px;
-    min-width: 25px;
-  }
-}
+/* モバイル対応は削除済み - PC専用 */

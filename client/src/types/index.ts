@@ -57,10 +57,6 @@ export interface JoinMessage extends WebSocketMessage {
   playerName: string;
 }
 
-export interface DirectionMessage extends WebSocketMessage {
-  type: 'changeDirection';
-  direction: Direction;
-}
 
 export interface AccelerationMessage extends WebSocketMessage {
   type: 'setAcceleration';

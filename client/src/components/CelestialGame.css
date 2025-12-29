@@ -10,9 +10,8 @@
 
 /* ゲームコンテナ */
 .game-container {
-  width: 100%;
-  height: 100%;
   position: relative;
+  overflow: hidden;
 }
 
 /* オーバーレイUI */
@@ -128,14 +127,6 @@
   color: #4ecdc4;
 }
 
-/* タッチコントロールオーバーレイ */
-.touch-controls-overlay {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  pointer-events: auto;
-}
 
 /* 待機画面 */
 .waiting-screen {
@@ -183,37 +174,6 @@
   opacity: 0.6;
 }
 
-/* モバイル対応 */
-@media (max-width: 768px) {
-  .connection-status-overlay {
-    top: 10px;
-    left: 10px;
-    font-size: 12px;
-  }
-
-  .leaderboard-overlay {
-    top: 10px;
-    right: 10px;
-  }
-
-  .leaderboard-overlay .scoreboard {
-    min-width: 150px;
-    padding: 8px;
-  }
-
-  .leaderboard-overlay .scoreboard h3 {
-    font-size: 14px;
-  }
-
-  .leaderboard-overlay .scoreboard .player-item {
-    font-size: 11px;
-    padding: 3px 6px;
-  }
-
-  .touch-controls-overlay {
-    bottom: 15px;
-  }
-}
 
 /* ベクトル表示のスタイル */
 .vector-display-overlay {

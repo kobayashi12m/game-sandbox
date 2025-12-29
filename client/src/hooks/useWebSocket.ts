@@ -2,9 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import type { 
   GameState, 
   JoinMessage, 
-  DirectionMessage, 
   AccelerationMessage,
-  Direction,
   WebSocketMessage,
   GameConfig,
   GameConfigMessage,
@@ -22,9 +20,7 @@ interface UseWebSocketProps {
 interface UseWebSocketReturn {
   gameState: GameState;
   playerId: string;
-  sendDirection: (direction: Direction) => void;
   sendAcceleration: (x: number, y: number) => void;
-  sendStopMovement: () => void;
   sendEjectSatellite: (targetX: number, targetY: number) => void;
   isConnecting: boolean;
   gameConfig: GameConfig;
@@ -131,18 +127,6 @@ export const useWebSocket = ({
     };
   }, [isConnected, roomId, playerName, handleMessage]);
 
-  // 方向変更メッセージの送信
-  const sendDirection = useCallback((direction: Direction) => {
-    const websocket = wsRef.current;
-    if (!websocket || websocket.readyState !== WebSocket.OPEN) return;
-
-    const directionMessage: DirectionMessage = {
-      type: 'changeDirection',
-      direction
-    };
-    
-    websocket.send(JSON.stringify(directionMessage));
-  }, []);
 
   // 加速度送信（360度自由移動用）
   const sendAcceleration = useCallback((x: number, y: number) => {
@@ -159,10 +143,6 @@ export const useWebSocket = ({
   }, []);
 
 
-  // 移動停止メッセージの送信（加速度を0,0にする）
-  const sendStopMovement = useCallback(() => {
-    sendAcceleration(0, 0);
-  }, [sendAcceleration]);
 
   // 衛星射出メッセージの送信
   const sendEjectSatellite = useCallback((targetX: number, targetY: number) => {
@@ -181,9 +161,7 @@ export const useWebSocket = ({
   return {
     gameState,
     playerId,
-    sendDirection,
     sendAcceleration,
-    sendStopMovement,
     sendEjectSatellite,
     isConnecting,
     gameConfig,

@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from "react";
 import "./CelestialGame.css";
-import TouchControls from "./TouchControls";
 import GameCanvas from "./GameCanvas";
 import Scoreboard from "./Scoreboard";
 import { VectorDisplay } from "./VectorDisplay";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { useGameInput } from "../hooks/useGameInput";
 import { getPlayer } from "../types";
+import { calculateViewportScale } from "../utils/viewport";
+import { PLAYER_CONFIG } from "../constants/game";
 
 const CelestialGame: React.FC = () => {
-  const [playerName] = useState<string>("");
-  const [roomId] = useState<string>("default");
   const [isConnected, setIsConnected] = useState(false);
   const [hasInitiallyConnected, setHasInitiallyConnected] = useState(false);
+
+  // ビューポートスケール計算
+  const [viewportScale, setViewportScale] = useState(calculateViewportScale);
 
   // ページ読み込み時に自動接続
   useEffect(() => {
@@ -20,28 +22,36 @@ const CelestialGame: React.FC = () => {
     setHasInitiallyConnected(true);
   }, []);
 
+  // ウィンドウリサイズ時のスケール更新
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportScale(calculateViewportScale());
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   // カスタムフックを使用
   const {
     gameState,
     playerId,
-    sendDirection,
     sendAcceleration,
-    sendStopMovement,
     sendEjectSatellite,
     isConnecting,
     gameConfig,
     scoreboard,
     myScore,
   } = useWebSocket({
-    roomId,
-    playerName,
+    roomId: PLAYER_CONFIG.ROOM_ID,
+    playerName: PLAYER_CONFIG.PLAYER_NAME,
     isConnected,
   });
 
-  const { handleTouchDirection } = useGameInput({
-    onDirectionChange: sendDirection,
+  // ゲーム入力処理
+  useGameInput({
     onAccelerationChange: sendAcceleration,
-    onMovementStop: sendStopMovement,
+    onMovementStop: () => sendAcceleration(0, 0),
     isEnabled: isConnected,
   });
 
@@ -73,7 +83,20 @@ const CelestialGame: React.FC = () => {
     <div className="celestial-game">
       {/* ゲームコンテンツ */}
       {isConnected ? (
-        <div className="game-container">
+        <div
+          className="game-container"
+          style={{
+            transform: `scale(${viewportScale})`,
+            transformOrigin: "center center",
+            width: `${1920}px`,
+            height: `${1080}px`,
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            marginTop: `${-1080 / 2}px`,
+            marginLeft: `${-1920 / 2}px`,
+          }}
+        >
           {/* メインのゲーム画面 */}
           <GameCanvas
             gameState={gameState}
@@ -152,11 +175,6 @@ const CelestialGame: React.FC = () => {
                   return null;
                 })()}
             </div>
-          </div>
-
-          {/* タッチコントロール */}
-          <div className="touch-controls-overlay">
-            <TouchControls onDirectionChange={handleTouchDirection} />
           </div>
         </div>
       ) : hasInitiallyConnected ? (
