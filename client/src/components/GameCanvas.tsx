@@ -579,11 +579,17 @@ const drawCelestialSystem = (
   isCurrentPlayer: boolean
 ) => {
   const celestialSystem = player.cel;
-  ctx.fillStyle = celestialSystem.col;
+
+  // 描画状態を保存
+  ctx.save();
+
+  // 無敵時の透明度を設定
+  const alpha = player.inv ? 0.5 : 1.0;
+  const lineAlpha = player.inv ? 0.3 : 0.6;
 
   // 軌道を先に描画 - 核から各衛星への放射状線
   ctx.lineWidth = 2;
-  ctx.globalAlpha = player.inv ? 0.3 : 0.6; // 無敵時は線も透明に
+  ctx.globalAlpha = lineAlpha;
 
   // コアから各ノードへの線を描画
   if (celestialSystem.n && celestialSystem.n.length > 0) {
@@ -597,21 +603,24 @@ const drawCelestialSystem = (
     });
   }
 
-  ctx.globalAlpha = player.inv ? 0.5 : 1.0; // 球体描画用の透明度に設定
+  // 球体描画用の透明度に設定
+  ctx.globalAlpha = alpha;
 
   // コア（中心球）を描画
+  ctx.fillStyle = celestialSystem.c.c;
   drawCoreHead(
     ctx,
     celestialSystem.c.p,
     celestialSystem.c.r,
-    celestialSystem.c.c, // コア球体の色を使用
+    celestialSystem.c.c,
     isCurrentPlayer
   );
 
   // ノード（周辺球）を描画
   if (celestialSystem.n && celestialSystem.n.length > 0) {
     celestialSystem.n.forEach((node) => {
-      // 各衛星の色を使用
+      // 透明度を維持
+      ctx.globalAlpha = alpha;
       ctx.fillStyle = node.c;
       ctx.beginPath();
       ctx.arc(node.p.x, node.p.y, node.r, 0, 2 * Math.PI);
@@ -622,7 +631,8 @@ const drawCelestialSystem = (
   // プレイヤー名を描画
   drawPlayerName(ctx, player.nm, celestialSystem.c.p, isCurrentPlayer);
 
-  ctx.globalAlpha = 1;
+  // 描画状態を復元
+  ctx.restore();
 };
 
 // 球体構造の頭部（コア）の描画
@@ -633,6 +643,9 @@ const drawCoreHead = (
   color: string,
   isCurrentPlayer: boolean
 ) => {
+  // 現在の透明度を保存
+  const savedAlpha = ctx.globalAlpha;
+
   // 頭部の円
   ctx.beginPath();
   ctx.arc(position.x, position.y, radius, 0, 2 * Math.PI);
@@ -640,6 +653,8 @@ const drawCoreHead = (
 
   // 自分の球体構造にはアウトラインを追加
   if (isCurrentPlayer) {
+    ctx.save(); // 状態を保存
+    ctx.globalAlpha = savedAlpha; // 透明度を維持
     ctx.strokeStyle = COLORS.GOLD;
     ctx.lineWidth = 3;
     ctx.shadowBlur = 15;
@@ -647,10 +662,11 @@ const drawCoreHead = (
     ctx.beginPath();
     ctx.arc(position.x, position.y, radius + 2, 0, 2 * Math.PI);
     ctx.stroke();
-    ctx.shadowBlur = 0;
+    ctx.restore(); // 状態を復元
   }
 
   // 目を描画
+  ctx.globalAlpha = savedAlpha; // 透明度を維持
   ctx.fillStyle = "#000";
   const eyeRadius = radius * 0.25;
   const eyeOffset = radius * 0.4;
@@ -686,6 +702,10 @@ const drawPlayerName = (
   headPosition: { x: number; y: number },
   isCurrentPlayer: boolean
 ) => {
+  // 現在の透明度を保存（無敵時の透明度を維持）
+  const savedAlpha = ctx.globalAlpha;
+
+  // 名前は常に不透明で表示
   ctx.globalAlpha = 1;
   ctx.fillStyle = isCurrentPlayer ? COLORS.GOLD : COLORS.WHITE;
   ctx.font = isCurrentPlayer ? "bold 16px Arial" : "14px Arial";
@@ -704,6 +724,9 @@ const drawPlayerName = (
   // 文字を描画
   ctx.fillStyle = isCurrentPlayer ? COLORS.GOLD : COLORS.WHITE;
   ctx.fillText(name, headPosition.x, headPosition.y - 15);
+
+  // 透明度を元に戻す
+  ctx.globalAlpha = savedAlpha;
 };
 
 // UI要素の描画（画面固定）
