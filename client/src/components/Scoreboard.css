@@ -1,18 +1,19 @@
 .scoreboard {
   background-color: #1a1a1a;
   border-radius: 12px;
-  padding: 20px;
-  min-width: 280px;
+  padding: 16px;
+  min-width: 320px;
+  max-width: 350px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   border: 1px solid #333;
 }
 
 .scoreboard-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
   border-bottom: 1px solid #333;
 }
 
@@ -31,19 +32,53 @@
   border-radius: 4px;
 }
 
+/* 自分のスコア表示 */
+.my-score-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+  background-color: #2a4a3a;
+  border-radius: 8px;
+  border: 2px solid #4ECDC4;
+  box-shadow: 0 0 8px rgba(78, 205, 196, 0.3);
+}
+
+.my-score-value {
+  font-size: 20px;
+  font-weight: bold;
+  color: #4ECDC4;
+  min-width: 50px;
+  text-align: right;
+}
+
+/* ランキングセクション */
+.ranking-section {
+  margin-top: 8px;
+}
+
+.ranking-title {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 6px;
+  text-align: center;
+  font-weight: bold;
+}
+
 .players-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .player-score {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
+  gap: 8px;
+  padding: 6px 8px;
   background-color: #2a2a2a;
-  border-radius: 8px;
+  border-radius: 4px;
   border: 1px solid #333;
   transition: all 0.2s ease;
 }
@@ -61,9 +96,9 @@
 .player-rank {
   font-weight: bold;
   color: #4ECDC4;
-  min-width: 25px;
+  min-width: 22px;
   text-align: center;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .player-info {
@@ -83,7 +118,7 @@
 
 .player-name {
   color: #fff;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   flex: 1;
   min-width: 0;
@@ -93,9 +128,9 @@
 }
 
 .player-status {
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 10px;
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 8px;
   font-weight: bold;
   text-transform: uppercase;
 }
@@ -113,8 +148,8 @@
 .player-score-value {
   font-weight: bold;
   color: #4ECDC4;
-  font-size: 16px;
-  min-width: 40px;
+  font-size: 14px;
+  min-width: 35px;
   text-align: right;
 }
 
@@ -129,7 +164,7 @@
 @media (max-width: 768px) {
   .scoreboard {
     width: 100%;
-    max-width: 350px;
+    max-width: 320px;
     margin: 0 auto;
     padding: 10px;
     min-width: auto;
@@ -152,20 +187,32 @@
     padding: 2px 6px;
   }
   
-  .players-list {
-    gap: 4px;
-    max-height: 120px;
-    overflow-y: auto;
+  .my-score-section {
+    margin-bottom: 12px;
   }
   
-  .player-score {
-    padding: 6px;
+  .my-score-card {
+    padding: 10px;
     gap: 8px;
   }
   
+  .my-score-value {
+    font-size: 16px;
+  }
+  
+  .players-list {
+    gap: 3px;
+    /* 高さ制限を削除してスクロールなしで10位まで表示 */
+  }
+  
+  .player-score {
+    padding: 5px 8px;
+    gap: 6px;
+  }
+  
   .player-rank {
-    font-size: 12px;
-    min-width: 20px;
+    font-size: 11px;
+    min-width: 18px;
   }
   
   .player-color {
@@ -174,17 +221,22 @@
   }
   
   .player-name {
-    font-size: 12px;
+    font-size: 11px;
   }
   
   .player-status {
-    font-size: 9px;
-    padding: 1px 4px;
+    font-size: 8px;
+    padding: 1px 3px;
   }
   
   .player-score-value {
-    font-size: 13px;
+    font-size: 12px;
     min-width: 30px;
+  }
+  
+  .ranking-title {
+    font-size: 12px;
+    margin-bottom: 6px;
   }
 }
 
@@ -192,17 +244,33 @@
 @media (max-width: 375px) {
   .scoreboard {
     padding: 8px;
+    max-width: 280px;
   }
   
-  .players-list {
-    max-height: 100px;
+  .my-score-card {
+    padding: 8px;
+  }
+  
+  .my-score-value {
+    font-size: 14px;
   }
   
   .player-score {
-    padding: 5px;
+    padding: 4px 6px;
+    gap: 4px;
+  }
+  
+  .player-rank {
+    font-size: 10px;
+    min-width: 16px;
   }
   
   .player-name {
+    font-size: 10px;
+  }
+  
+  .player-score-value {
     font-size: 11px;
+    min-width: 25px;
   }
 }

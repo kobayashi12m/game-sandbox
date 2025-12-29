@@ -116,16 +116,8 @@ const CelestialGame: React.FC = () => {
               <Scoreboard
                 players={scoreboard}
                 currentPlayerId={playerId}
-                roomId={roomId}
+                myScore={myScore}
               />
-
-              {/* 自分のスコア表示 */}
-              {myScore && (
-                <div className="my-score-display">
-                  <div className="my-score-label">あなたのスコア</div>
-                  <div className="my-score-value">{myScore.score}</div>
-                </div>
-              )}
             </div>
 
             {/* ベクトル表示（左下） */}
