@@ -113,6 +113,15 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 						"state": state,
 					}
 					conn.WriteJSON(stateMsg)
+
+					// スコアボード情報を送信
+					scoreboard := gameInstance.GetScoreboard()
+					scoreUpdate := models.ScoreUpdate{Players: scoreboard}
+					scoreMsg := map[string]interface{}{
+						"type":       "scoreboard",
+						"scoreboard": scoreUpdate,
+					}
+					conn.WriteJSON(scoreMsg)
 				}()
 
 			case "setAcceleration":
