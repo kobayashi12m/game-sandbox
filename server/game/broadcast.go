@@ -142,6 +142,11 @@ func (g *Game) GetScoreboard() []models.ScoreInfo {
 		return scores[i].ID < scores[j].ID // 同スコアならID昇順
 	})
 
+	// 上位10名に制限
+	if len(scores) > 10 {
+		scores = scores[:10]
+	}
+
 	return scores
 }
 
@@ -160,27 +165,36 @@ func (g *Game) BroadcastScoreboard() {
 		return
 	}
 
-	// スコアボード情報を取得
+	// 上位10名のスコアボード情報を取得
 	scoreboard := g.GetScoreboard()
-	scoreUpdate := models.ScoreUpdate{Players: scoreboard}
 
-	message := map[string]interface{}{
-		"type":       "scoreboard",
-		"scoreboard": scoreUpdate,
-	}
-
-	data, err := json.Marshal(message)
-	if err != nil {
-		utils.Error("Failed to marshal scoreboard", map[string]interface{}{
-			"error":   err.Error(),
-			"game_id": g.ID,
-		})
-		return
-	}
-
-	// 全クライアントに送信
+	// 各プレイヤーに個別に送信（自分のスコア情報も含める）
 	for _, player := range playerList {
 		func() {
+			// プレイヤー自身のスコア情報を作成
+			myScore := models.ScoreInfo{
+				ID:    player.ID,
+				Name:  player.Name,
+				Score: player.Score,
+				Alive: player.Celestial.Alive,
+				Color: player.Celestial.Color,
+			}
+
+			message := map[string]interface{}{
+				"type":       "scoreboard",
+				"scoreboard": scoreboard,
+				"myScore":    myScore,
+			}
+
+			data, err := json.Marshal(message)
+			if err != nil {
+				utils.Error("Failed to marshal scoreboard", map[string]interface{}{
+					"error":     err.Error(),
+					"player_id": player.ID,
+				})
+				return
+			}
+
 			player.ConnMu.Lock()
 			defer player.ConnMu.Unlock()
 			if err := player.Conn.WriteMessage(websocket.TextMessage, data); err != nil {

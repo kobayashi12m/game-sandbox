@@ -82,6 +82,28 @@
   pointer-events: auto;
 }
 
+/* 自分のスコア表示 */
+.my-score-display {
+  margin-top: 15px;
+  background-color: rgba(0, 0, 0, 0.9);
+  padding: 15px;
+  border-radius: 8px;
+  border: 2px solid #4ECDC4;
+  text-align: center;
+}
+
+.my-score-label {
+  font-size: 14px;
+  color: #888;
+  margin-bottom: 5px;
+}
+
+.my-score-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: #4ECDC4;
+}
+
 /* リーダーボードのスタイル調整 */
 .leaderboard-overlay .scoreboard {
   background-color: rgba(0, 0, 0, 0.9);

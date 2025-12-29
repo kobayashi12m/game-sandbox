@@ -79,9 +79,8 @@ export interface ScoreInfo {
 
 export interface ScoreboardMessage extends WebSocketMessage {
   type: 'scoreboard';
-  scoreboard: {
-    players: ScoreInfo[];
-  };
+  scoreboard: ScoreInfo[];
+  myScore?: ScoreInfo;
 }
 
 export interface GridLine {

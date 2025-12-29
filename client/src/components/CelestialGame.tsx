@@ -31,6 +31,7 @@ const CelestialGame: React.FC = () => {
     isConnecting,
     gameConfig,
     scoreboard,
+    myScore,
   } = useWebSocket({
     roomId,
     playerName,
@@ -117,6 +118,14 @@ const CelestialGame: React.FC = () => {
                 currentPlayerId={playerId}
                 roomId={roomId}
               />
+
+              {/* 自分のスコア表示 */}
+              {myScore && (
+                <div className="my-score-display">
+                  <div className="my-score-label">あなたのスコア</div>
+                  <div className="my-score-value">{myScore.score}</div>
+                </div>
+              )}
             </div>
 
             {/* ベクトル表示（左下） */}

@@ -29,6 +29,7 @@ interface UseWebSocketReturn {
   isConnecting: boolean;
   gameConfig: GameConfig;
   scoreboard: ScoreInfo[];
+  myScore: ScoreInfo | null;
 }
 
 export const useWebSocket = ({ 
@@ -41,6 +42,7 @@ export const useWebSocket = ({
   const [isConnecting, setIsConnecting] = useState(false);
   const [gameConfig, setGameConfig] = useState<GameConfig>(DEFAULT_GAME_CONFIG);
   const [scoreboard, setScoreboard] = useState<ScoreInfo[]>([]);
+  const [myScore, setMyScore] = useState<ScoreInfo | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
   // メッセージハンドラー
@@ -68,7 +70,12 @@ export const useWebSocket = ({
       case 'scoreboard':
         if ('scoreboard' in message) {
           const scoreboardMsg = message as ScoreboardMessage;
-          setScoreboard(scoreboardMsg.scoreboard.players);
+          setScoreboard(scoreboardMsg.scoreboard);
+          
+          // 自分のスコア情報を保存
+          if (scoreboardMsg.myScore) {
+            setMyScore(scoreboardMsg.myScore);
+          }
         }
         break;
     }
@@ -180,6 +187,7 @@ export const useWebSocket = ({
     sendEjectSatellite,
     isConnecting,
     gameConfig,
-    scoreboard
+    scoreboard,
+    myScore
   };
 };

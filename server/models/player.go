@@ -112,8 +112,3 @@ type ScoreInfo struct {
 	Alive bool   `json:"alive"`
 	Color string `json:"color"`
 }
-
-// ScoreUpdate はスコアボードの更新情報を表す（さらに軽量化）
-type ScoreUpdate struct {
-	Players []ScoreInfo `json:"players"`
-}

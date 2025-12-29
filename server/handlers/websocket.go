@@ -116,10 +116,20 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 
 					// スコアボード情報を送信
 					scoreboard := gameInstance.GetScoreboard()
-					scoreUpdate := models.ScoreUpdate{Players: scoreboard}
+
+					// プレイヤー自身のスコア情報
+					myScore := models.ScoreInfo{
+						ID:    player.ID,
+						Name:  player.Name,
+						Score: player.Score,
+						Alive: player.Celestial.Alive,
+						Color: player.Celestial.Color,
+					}
+
 					scoreMsg := map[string]interface{}{
 						"type":       "scoreboard",
-						"scoreboard": scoreUpdate,
+						"scoreboard": scoreboard,
+						"myScore":    myScore,
 					}
 					conn.WriteJSON(scoreMsg)
 				}()
