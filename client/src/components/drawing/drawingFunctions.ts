@@ -204,7 +204,6 @@ export const drawCelestialSystem = (
     ctx,
     celestialSystem.c.p,
     celestialSystem.c.r,
-    celestialSystem.c.c,
     isCurrentPlayer
   );
 
@@ -229,7 +228,6 @@ const drawCoreHead = (
   ctx: CanvasRenderingContext2D,
   position: { x: number; y: number },
   radius: number,
-  color: string,
   isCurrentPlayer: boolean
 ) => {
   // 現在の透明度を保存
