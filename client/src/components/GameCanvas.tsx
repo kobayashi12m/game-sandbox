@@ -2,6 +2,7 @@ import { useRef, useState, memo } from "react";
 import type { GameState, GameConfig } from "../types";
 import { GAME_CONSTANTS } from "../constants/game";
 import { useMouseInput } from "../hooks/useMouseInput";
+import { useTouchInput } from "../hooks/useTouchInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useGameRenderer } from "../hooks/useGameRenderer";
 
@@ -29,6 +30,15 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
       onMouseClick,
     });
 
+    // タッチ入力対応
+    useTouchInput({
+      canvasRef,
+      gameState,
+      playerId,
+      gameConfig,
+      onTouchMove: onMouseMove, // 同じ関数を使用
+    });
+
     useKeyboardShortcuts({
       onToggleGrid: () => setShowGrid((prev) => !prev),
       onToggleCulling: () => setShowCulling((prev) => !prev),
@@ -54,6 +64,7 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
           display: "block",
           width: "100%",
           height: "100%",
+          touchAction: "none", // タッチジェスチャーを無効化
         }}
       />
     );
