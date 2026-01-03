@@ -738,23 +738,6 @@ const drawUI = (
 ) => {
   if (!currentPlayer) return;
 
-  // スコア表示
-  ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-  ctx.fillRect(10, 10, 200, 80);
-
-  ctx.fillStyle = COLORS.WHITE;
-  ctx.font = "bold 18px Arial";
-  ctx.textAlign = "left";
-  ctx.fillText(`Score: ${currentPlayer.sc}`, 20, 35);
-  ctx.fillText(`Length: ${(currentPlayer.cel.n?.length || 0) + 1}`, 20, 55);
-
-  // 死んでいる場合はDEAD表示
-  if (!currentPlayer.cel.a) {
-    ctx.fillStyle = "#ff4444";
-    ctx.font = "bold 20px Arial";
-    ctx.fillText("DEAD", 20, 80);
-  }
-
   // 表示設定とヘルプ
   const helpLines = [];
   if (showGrid) helpLines.push("Grid: ON (G to toggle)");
