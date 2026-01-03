@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import { memo } from "react";
 import type { ScoreInfo } from "../types";
 import "./Scoreboard.css";
 
@@ -7,6 +7,22 @@ interface ScoreboardProps {
   currentPlayerId: string;
   myScore?: ScoreInfo | null;
 }
+
+// プレイヤー情報を表示する共通コンポーネント
+const PlayerInfo: React.FC<{ player: ScoreInfo; showStatus?: boolean }> = ({
+  player,
+  showStatus = true,
+}) => (
+  <div className="player-info">
+    <span className="player-color" style={{ backgroundColor: player.color }} />
+    <span className="player-name">{player.name}</span>
+    {showStatus && (
+      <span className={`player-status ${player.alive ? "alive" : "dead"}`}>
+        {player.alive ? "生存" : "死亡"}
+      </span>
+    )}
+  </div>
+);
 
 const Scoreboard: React.FC<ScoreboardProps> = memo(
   ({ players, currentPlayerId, myScore }) => {
@@ -19,18 +35,7 @@ const Scoreboard: React.FC<ScoreboardProps> = memo(
         {/* 自分のスコア表示（ラベルなし） */}
         {myScore && (
           <div className="my-score-card">
-            <div className="player-info">
-              <span
-                className="player-color"
-                style={{ backgroundColor: myScore.color }}
-              />
-              <span className="player-name">{myScore.name}</span>
-              <span
-                className={`player-status ${myScore.alive ? "alive" : "dead"}`}
-              >
-                {myScore.alive ? "生存" : "死亡"}
-              </span>
-            </div>
+            <PlayerInfo player={myScore} />
             <div className="my-score-value">{myScore.score}</div>
           </div>
         )}
@@ -46,23 +51,14 @@ const Scoreboard: React.FC<ScoreboardProps> = memo(
                 }`}
               >
                 <div className="player-rank">#{index + 1}</div>
-                <div className="player-info">
-                  <span
-                    className="player-color"
-                    style={{ backgroundColor: player.color }}
-                  />
-                  <span className="player-name">
-                    {player.name}
-                    {player.id === currentPlayerId && " (あなた)"}
-                  </span>
-                  <span
-                    className={`player-status ${
-                      player.alive ? "alive" : "dead"
-                    }`}
-                  >
-                    {player.alive ? "生存" : "死亡"}
-                  </span>
-                </div>
+                <PlayerInfo
+                  player={{
+                    ...player,
+                    name:
+                      player.name +
+                      (player.id === currentPlayerId ? " (あなた)" : ""),
+                  }}
+                />
                 <div className="player-score-value">{player.score}</div>
               </div>
             ))}

@@ -101,9 +101,6 @@ export interface GameConfigMessage extends WebSocketMessage {
   config: GameConfig;
 }
 
-// 方向の型
-export type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
-
 // 配列形式データ用の型定義
 export interface ConvertedPosition {
   x: number;

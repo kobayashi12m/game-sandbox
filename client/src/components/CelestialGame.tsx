@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import "./CelestialGame.css";
 import GameCanvas from "./GameCanvas";
 import Scoreboard from "./Scoreboard";
 import { VectorDisplay } from "./VectorDisplay";
 import { useWebSocket } from "../hooks/useWebSocket";
-import { useGameInput } from "../hooks/useGameInput";
 import { getPlayer } from "../types";
 import { calculateViewportScale } from "../utils/viewport";
 import { PLAYER_CONFIG } from "../constants/game";
@@ -49,13 +48,6 @@ const CelestialGame: React.FC = () => {
     isConnected,
   });
 
-  // ゲーム入力処理
-  useGameInput({
-    onAccelerationChange: sendAcceleration,
-    onMovementStop: () => sendAcceleration(0, 0),
-    isEnabled: isConnected,
-  });
-
   const handleConnect = () => {
     setIsConnected(true);
   };
@@ -64,21 +56,13 @@ const CelestialGame: React.FC = () => {
     setIsConnected(false);
   };
 
-  // 接続状況の表示テキスト
-  const getConnectionStatus = () => {
-    if (isConnecting) return "接続中...";
-    if (isConnected && playerId) return "接続済み";
-    if (isConnected && !playerId) return "接続中...";
-    return "未接続";
-  };
-
-  // 接続状況の色
-  const getConnectionStatusColor = () => {
-    if (isConnecting) return "#FFA500";
-    if (isConnected && playerId) return "#4CAF50";
-    if (isConnected && !playerId) return "#FFA500";
-    return "#F44336";
-  };
+  // 接続状況を取得
+  const connectionState =
+    isConnecting || (isConnected && !playerId)
+      ? { text: "接続中...", color: "#FFA500" }
+      : isConnected && playerId
+      ? { text: "接続済み", color: "#4CAF50" }
+      : { text: "未接続", color: "#F44336" };
 
   return (
     <div className="celestial-game">
@@ -114,9 +98,9 @@ const CelestialGame: React.FC = () => {
               <div className="connection-status-overlay">
                 <span
                   className="status-indicator"
-                  style={{ color: getConnectionStatusColor() }}
+                  style={{ color: connectionState.color }}
                 >
-                  ● {getConnectionStatus()}
+                  ● {connectionState.text}
                 </span>
                 {isConnected ? (
                   <button

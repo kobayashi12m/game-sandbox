@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, memo } from "react";
+import { useRef, useEffect, useState, memo } from "react";
 import type { GameState, GameConfig, GridLine } from "../types";
 import { getPlayer, getDroppedSatellite, getProjectile } from "../types";
 import type {
@@ -30,6 +30,29 @@ interface Viewport {
   offsetX: number;
   offsetY: number;
 }
+
+// マウス座標をワールド座標に変換する共通関数
+const convertMouseToWorldCoords = (
+  event: MouseEvent,
+  rect: DOMRect,
+  playerPosition: { x: number; y: number } | undefined,
+  gameZoomScale: number
+): { worldX: number; worldY: number } | null => {
+  if (!playerPosition) return null;
+
+  const { x: cameraX, y: cameraY } = calculateCameraOffset(
+    playerPosition,
+    gameZoomScale
+  );
+
+  const gameCoords = convertMouseToGameCoords(event, rect);
+  const { x: gameX, y: gameY } = gameCoords;
+
+  const worldX = gameX / gameZoomScale + cameraX;
+  const worldY = gameY / gameZoomScale + cameraY;
+
+  return { worldX, worldY };
+};
 
 const GameCanvas: React.FC<GameCanvasProps> = memo(
   ({ gameState, playerId, gameConfig, onMouseMove, onMouseClick }) => {
@@ -142,18 +165,14 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
         // カメラズーム設定を取得
         const gameZoomScale = gameConfig.cameraZoomScale || 1.0;
 
-        // カメラオフセットを考慮したワールド座標に変換
-        const { x: cameraX, y: cameraY } = calculateCameraOffset(
+        const worldCoords = convertMouseToWorldCoords(
+          event,
+          rect,
           playerPosition,
           gameZoomScale
         );
-
-        // マウス座標をビューポート座標系からゲーム座標系に変換（スケールファクター考慮）
-        const gameCoords = convertMouseToGameCoords(event, rect);
-        const { x: gameX, y: gameY } = gameCoords;
-
-        const worldX = gameX / gameZoomScale + cameraX;
-        const worldY = gameY / gameZoomScale + cameraY;
+        if (!worldCoords) return;
+        const { worldX, worldY } = worldCoords;
 
         // コアからマウス位置への方向ベクトルを計算
         const dx = worldX - playerPosition.x;
@@ -249,18 +268,14 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
         // カメラズーム設定を取得
         const gameZoomScale = gameConfig.cameraZoomScale || 1.0;
 
-        // カメラオフセットを考慮したワールド座標に変換
-        const { x: cameraX, y: cameraY } = calculateCameraOffset(
+        const worldCoords = convertMouseToWorldCoords(
+          event,
+          rect,
           playerPosition,
           gameZoomScale
         );
-
-        // マウス座標をビューポート座標系からゲーム座標系に変換（スケールファクター考慮）
-        const gameCoords = convertMouseToGameCoords(event, rect);
-        const { x: gameX, y: gameY } = gameCoords;
-
-        const worldX = gameX / gameZoomScale + cameraX;
-        const worldY = gameY / gameZoomScale + cameraY;
+        if (!worldCoords) return;
+        const { worldX, worldY } = worldCoords;
 
         onMouseClick(worldX, worldY);
       };

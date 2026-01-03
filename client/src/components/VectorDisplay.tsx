@@ -1,4 +1,3 @@
-import React from "react";
 import type { Position, NPCDebugStats } from "../types";
 
 interface VectorDisplayProps {
@@ -7,6 +6,10 @@ interface VectorDisplayProps {
   maxSpeed: number;
   npcDebug?: NPCDebugStats | null;
 }
+
+// ベクトルの大きさを計算する共通関数
+const calculateMagnitude = (x: number, y: number): number =>
+  Math.sqrt(x * x + y * y);
 
 export const VectorDisplay: React.FC<VectorDisplayProps> = ({
   velocity,
@@ -21,16 +24,14 @@ export const VectorDisplay: React.FC<VectorDisplayProps> = ({
   const ay = acceleration?.[1] ?? 0;
 
   // ベクトルの大きさを計算
-  const velocityMagnitude = Math.sqrt(vx * vx + vy * vy);
-  const accelerationMagnitude = Math.sqrt(ax * ax + ay * ay);
+  const velocityMagnitude = calculateMagnitude(vx, vy);
+  const accelerationMagnitude = calculateMagnitude(ax, ay);
 
   const npcVelocityMagnitude = npcDebug
-    ? Math.sqrt(npcDebug.velX * npcDebug.velX + npcDebug.velY * npcDebug.velY)
+    ? calculateMagnitude(npcDebug.velX, npcDebug.velY)
     : 0;
   const npcAccelerationMagnitude = npcDebug
-    ? Math.sqrt(
-        npcDebug.accelX * npcDebug.accelX + npcDebug.accelY * npcDebug.accelY
-      )
+    ? calculateMagnitude(npcDebug.accelX, npcDebug.accelY)
     : 0;
 
   return (
