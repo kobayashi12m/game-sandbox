@@ -83,9 +83,8 @@ export const useWebSocket = ({
 
     setIsConnecting(true);
     
-    const wsUrl = window.location.hostname === 'localhost' 
-      ? 'ws://localhost:8081/ws' 
-      : `ws://${window.location.hostname}:8081/ws`;
+    // 接続先
+    const wsUrl = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname}:8081/ws`;
     
     const websocket = new WebSocket(wsUrl);
     wsRef.current = websocket;
