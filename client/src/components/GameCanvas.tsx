@@ -11,6 +11,7 @@ import {
   calculateCameraOffset,
   convertMouseToGameCoords,
 } from "../utils/viewport";
+import { UI_CONFIG } from "../constants/ui";
 
 interface GameCanvasProps {
   gameState: GameState;
@@ -34,7 +35,7 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
   ({ gameState, playerId, gameConfig, onMouseMove, onMouseClick }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [showGrid, setShowGrid] = useState(true);
-    const [showCulling, setShowCulling] = useState(true);
+    const [showCulling, setShowCulling] = useState(false);
     // 基準解像度（デザイン時の解像度）
     const { BASE_WIDTH, BASE_HEIGHT } = GAME_CONSTANTS;
 
@@ -91,6 +92,9 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
     // キーボードショートカット
     useEffect(() => {
       const handleKeyPress = (event: KeyboardEvent) => {
+        // SHOW_LEFT_UIがfalseの場合は切り替えを無効化
+        if (!UI_CONFIG.SHOW_LEFT_UI) return;
+
         if (event.key === "g" || event.key === "G") {
           setShowGrid((prev) => !prev);
         }
@@ -292,7 +296,8 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
           canvasSize,
           viewport,
           showGrid,
-          showCulling
+          showCulling,
+          UI_CONFIG.SHOW_LEFT_UI
         );
       } catch (error) {
         console.error("🚨 DRAW ERROR:", error);
@@ -335,7 +340,8 @@ const drawGame = (
   canvasSize: { width: number; height: number },
   viewport: Viewport,
   showGrid: boolean,
-  showCulling: boolean
+  showCulling: boolean,
+  showLeftUI: boolean
 ) => {
   // プレイヤーの位置を取得
   const currentPlayer = gameState.pls?.find((p) => p[0] === playerId);
@@ -425,7 +431,7 @@ const drawGame = (
 
   // UI要素を描画（画面固定）
   const currentPlayerData = playerData || null;
-  drawUI(ctx, currentPlayerData, showGrid, showCulling);
+  drawUI(ctx, currentPlayerData, showGrid, showCulling, showLeftUI);
 };
 
 // フィールドの境界を描画
@@ -734,9 +740,13 @@ const drawUI = (
   ctx: CanvasRenderingContext2D,
   currentPlayer: ConvertedPlayer | null,
   showGrid: boolean,
-  showCulling: boolean
+  showCulling: boolean,
+  showLeftUI: boolean
 ) => {
   if (!currentPlayer) return;
+
+  // 左側UIの表示制御
+  if (!showLeftUI) return;
 
   // 表示設定とヘルプ
   const helpLines = [];

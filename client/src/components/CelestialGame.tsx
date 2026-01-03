@@ -8,6 +8,7 @@ import { useGameInput } from "../hooks/useGameInput";
 import { getPlayer } from "../types";
 import { calculateViewportScale } from "../utils/viewport";
 import { PLAYER_CONFIG } from "../constants/game";
+import { UI_CONFIG } from "../constants/ui";
 
 const CelestialGame: React.FC = () => {
   const [isConnected, setIsConnected] = useState(false);
@@ -109,30 +110,32 @@ const CelestialGame: React.FC = () => {
           {/* オーバーレイUI */}
           <div className="overlay-ui">
             {/* 接続状況（左上） */}
-            <div className="connection-status-overlay">
-              <span
-                className="status-indicator"
-                style={{ color: getConnectionStatusColor() }}
-              >
-                ● {getConnectionStatus()}
-              </span>
-              {isConnected ? (
-                <button
-                  className="disconnect-button-small"
-                  onClick={handleDisconnect}
+            {UI_CONFIG.SHOW_LEFT_UI && (
+              <div className="connection-status-overlay">
+                <span
+                  className="status-indicator"
+                  style={{ color: getConnectionStatusColor() }}
                 >
-                  切断
-                </button>
-              ) : (
-                <button
-                  className="connect-button-small"
-                  onClick={handleConnect}
-                  disabled={isConnecting}
-                >
-                  再接続
-                </button>
-              )}
-            </div>
+                  ● {getConnectionStatus()}
+                </span>
+                {isConnected ? (
+                  <button
+                    className="disconnect-button-small"
+                    onClick={handleDisconnect}
+                  >
+                    切断
+                  </button>
+                ) : (
+                  <button
+                    className="connect-button-small"
+                    onClick={handleConnect}
+                    disabled={isConnecting}
+                  >
+                    再接続
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* リーダーボード（右上） */}
             <div className="leaderboard-overlay">
@@ -144,37 +147,39 @@ const CelestialGame: React.FC = () => {
             </div>
 
             {/* ベクトル表示（左下） */}
-            <div className="vector-display-overlay">
-              {gameState &&
-                playerId &&
-                (() => {
-                  const currentPlayer = gameState.pls.find(
-                    (p) => p[0] === playerId
-                  );
-                  if (currentPlayer) {
-                    const playerData = getPlayer(currentPlayer);
-                    if (playerData?.cel?.c) {
-                      const velocity = playerData.cel.c.v;
-                      const acceleration = playerData.cel.c.a;
-                      return (
-                        <VectorDisplay
-                          velocity={
-                            velocity ? [velocity.x, velocity.y] : undefined
-                          }
-                          acceleration={
-                            acceleration
-                              ? [acceleration.x, acceleration.y]
-                              : undefined
-                          }
-                          maxSpeed={500}
-                          npcDebug={gameState?.npcDebug}
-                        />
-                      );
+            {UI_CONFIG.SHOW_LEFT_UI && (
+              <div className="vector-display-overlay">
+                {gameState &&
+                  playerId &&
+                  (() => {
+                    const currentPlayer = gameState.pls.find(
+                      (p) => p[0] === playerId
+                    );
+                    if (currentPlayer) {
+                      const playerData = getPlayer(currentPlayer);
+                      if (playerData?.cel?.c) {
+                        const velocity = playerData.cel.c.v;
+                        const acceleration = playerData.cel.c.a;
+                        return (
+                          <VectorDisplay
+                            velocity={
+                              velocity ? [velocity.x, velocity.y] : undefined
+                            }
+                            acceleration={
+                              acceleration
+                                ? [acceleration.x, acceleration.y]
+                                : undefined
+                            }
+                            maxSpeed={500}
+                            npcDebug={gameState?.npcDebug}
+                          />
+                        );
+                      }
                     }
-                  }
-                  return null;
-                })()}
-            </div>
+                    return null;
+                  })()}
+              </div>
+            )}
           </div>
         </div>
       ) : hasInitiallyConnected ? (
