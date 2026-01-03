@@ -64,6 +64,31 @@ const CelestialGame: React.FC = () => {
       ? { text: "接続済み", color: "#4CAF50" }
       : { text: "未接続", color: "#F44336" };
 
+  // プレイヤーのベクトル表示データを取得
+  const getPlayerVectorData = () => {
+    if (!gameState || !playerId) return null;
+
+    const currentPlayer = gameState.pls.find((p) => p[0] === playerId);
+    if (!currentPlayer) return null;
+
+    const playerData = getPlayer(currentPlayer);
+    if (!playerData?.cel?.c) return null;
+
+    const velocity = playerData.cel.c.v;
+    const acceleration = playerData.cel.c.a;
+
+    return (
+      <VectorDisplay
+        velocity={velocity ? [velocity.x, velocity.y] : undefined}
+        acceleration={
+          acceleration ? [acceleration.x, acceleration.y] : undefined
+        }
+        maxSpeed={500}
+        npcDebug={gameState?.npcDebug}
+      />
+    );
+  };
+
   return (
     <div className="celestial-game">
       {/* ゲームコンテンツ */}
@@ -133,35 +158,7 @@ const CelestialGame: React.FC = () => {
             {/* ベクトル表示（左下） */}
             {UI_CONFIG.SHOW_LEFT_UI && (
               <div className="vector-display-overlay">
-                {gameState &&
-                  playerId &&
-                  (() => {
-                    const currentPlayer = gameState.pls.find(
-                      (p) => p[0] === playerId
-                    );
-                    if (currentPlayer) {
-                      const playerData = getPlayer(currentPlayer);
-                      if (playerData?.cel?.c) {
-                        const velocity = playerData.cel.c.v;
-                        const acceleration = playerData.cel.c.a;
-                        return (
-                          <VectorDisplay
-                            velocity={
-                              velocity ? [velocity.x, velocity.y] : undefined
-                            }
-                            acceleration={
-                              acceleration
-                                ? [acceleration.x, acceleration.y]
-                                : undefined
-                            }
-                            maxSpeed={500}
-                            npcDebug={gameState?.npcDebug}
-                          />
-                        );
-                      }
-                    }
-                    return null;
-                  })()}
+                {getPlayerVectorData()}
               </div>
             )}
           </div>

@@ -21,16 +21,6 @@ interface GameCanvasProps {
   onMouseClick?: (x: number, y: number) => void;
 }
 
-interface Viewport {
-  width: number;
-  height: number;
-  scale: number;
-  gameWidth: number;
-  gameHeight: number;
-  offsetX: number;
-  offsetY: number;
-}
-
 // マウス座標をワールド座標に変換する共通関数
 const convertMouseToWorldCoords = (
   event: MouseEvent,
@@ -61,53 +51,6 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
     const [showCulling, setShowCulling] = useState(false);
     // 基準解像度（デザイン時の解像度）
     const { BASE_WIDTH, BASE_HEIGHT } = GAME_CONSTANTS;
-
-    // キャンバスサイズとスケール計算
-    const [viewport, setViewport] = useState(() => {
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-
-      // アスペクト比を維持しつつ、画面に収まるスケールを計算
-      const scaleX = width / BASE_WIDTH;
-      const scaleY = height / BASE_HEIGHT;
-      const scale = Math.min(scaleX, scaleY);
-
-      return {
-        width,
-        height,
-        scale,
-        // 実際のゲーム描画領域
-        gameWidth: BASE_WIDTH * scale,
-        gameHeight: BASE_HEIGHT * scale,
-        offsetX: (width - BASE_WIDTH * scale) / 2,
-        offsetY: (height - BASE_HEIGHT * scale) / 2,
-      };
-    });
-
-    // ウィンドウリサイズ時のハンドラー
-    useEffect(() => {
-      const handleResize = () => {
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-
-        const scaleX = width / BASE_WIDTH;
-        const scaleY = height / BASE_HEIGHT;
-        const scale = Math.min(scaleX, scaleY);
-
-        setViewport({
-          width,
-          height,
-          scale,
-          gameWidth: BASE_WIDTH * scale,
-          gameHeight: BASE_HEIGHT * scale,
-          offsetX: (width - BASE_WIDTH * scale) / 2,
-          offsetY: (height - BASE_HEIGHT * scale) / 2,
-        });
-      };
-
-      window.addEventListener("resize", handleResize);
-      return () => window.removeEventListener("resize", handleResize);
-    }, []);
 
     // 固定キャンバスサイズ（基準解像度を使用）
     const canvasSize = { width: BASE_WIDTH, height: BASE_HEIGHT };
@@ -248,7 +191,6 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
       canvasSize,
       onMouseMove,
       gameConfig.cameraZoomScale,
-      viewport,
     ]);
 
     // マウスクリックの処理
@@ -290,7 +232,6 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
       canvasSize,
       onMouseClick,
       gameConfig.cameraZoomScale,
-      viewport,
     ]);
 
     useEffect(() => {
@@ -309,7 +250,6 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
           playerId,
           gameConfig,
           canvasSize,
-          viewport,
           showGrid,
           showCulling,
           UI_CONFIG.SHOW_LEFT_UI
@@ -319,15 +259,7 @@ const GameCanvas: React.FC<GameCanvasProps> = memo(
         console.error("GameState:", gameState);
         console.error("PlayerID:", playerId);
       }
-    }, [
-      gameState,
-      playerId,
-      gameConfig,
-      canvasSize,
-      showGrid,
-      showCulling,
-      viewport,
-    ]);
+    }, [gameState, playerId, gameConfig, canvasSize, showGrid, showCulling]);
 
     return (
       <canvas
@@ -353,7 +285,6 @@ const drawGame = (
   playerId: string,
   gameConfig: GameConfig,
   canvasSize: { width: number; height: number },
-  viewport: Viewport,
   showGrid: boolean,
   showCulling: boolean,
   showLeftUI: boolean
