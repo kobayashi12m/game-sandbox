@@ -76,8 +76,9 @@ func (l *Logger) log(level LogLevel, levelStr string, message string, data map[s
 			icon = "💀"
 		}
 
-		// イベントタイプに応じた追加アイコン
+		// イベントタイプに応じた追加アイコンと色
 		eventIcon := ""
+		eventColor := ""
 		if event, ok := data["event"].(string); ok {
 			switch event {
 			case "server_start":
@@ -86,10 +87,14 @@ func (l *Logger) log(level LogLevel, levelStr string, message string, data map[s
 				eventIcon = " 🎮"
 			case "game_end":
 				eventIcon = " 🏁"
-			case "connect", "npc_joined":
+			case "connect":
+				eventIcon = " 👤"
+				eventColor = "\033[32m" // Green
+			case "npc_joined":
 				eventIcon = " 👤"
 			case "disconnect":
 				eventIcon = " 👋"
+				eventColor = "\033[35m" // Magenta
 			case "player_destroyed":
 				eventIcon = " 💥"
 			case "collision", "satellite_collision", "core_satellite_collision", "projectile_hit_core":
@@ -109,6 +114,11 @@ func (l *Logger) log(level LogLevel, levelStr string, message string, data map[s
 
 		resetCode := "\033[0m"
 		timeStr := time.Now().Format("15:04:05.000")
+
+		// eventColorがあればそれを優先
+		if eventColor != "" {
+			colorCode = eventColor
+		}
 
 		logStr := ""
 		if colorCode != "" {
