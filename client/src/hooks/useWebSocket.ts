@@ -14,7 +14,6 @@ import { DEFAULT_GAME_CONFIG } from "../types";
 interface UseWebSocketProps {
   roomId: string;
   playerName: string;
-  isConnected: boolean;
 }
 
 interface UseWebSocketReturn {
@@ -31,7 +30,6 @@ interface UseWebSocketReturn {
 export const useWebSocket = ({
   roomId,
   playerName,
-  isConnected,
 }: UseWebSocketProps): UseWebSocketReturn => {
   const [gameState, setGameState] = useState<GameState>({ pls: [] });
   const [playerId, setPlayerId] = useState<string>("");
@@ -116,14 +114,12 @@ export const useWebSocket = ({
 
   // メインエフェクト
   useEffect(() => {
-    if (!isConnected) return;
-
     connect();
 
     return () => {
       clearConnection();
     };
-  }, [isConnected, connect, clearConnection]);
+  }, [connect, clearConnection]);
 
   const sendAcceleration = useCallback((x: number, y: number) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {

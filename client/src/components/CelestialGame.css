@@ -25,54 +25,6 @@
   z-index: 10;
 }
 
-/* 接続状況オーバーレイ（左上） */
-.connection-status-overlay {
-  position: absolute;
-  top: 15px;
-  left: 15px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background-color: rgba(0, 0, 0, 0.8);
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid #333;
-  pointer-events: auto;
-}
-
-.status-indicator {
-  font-weight: bold;
-  font-size: 14px;
-}
-
-.connect-button-small,
-.disconnect-button-small {
-  padding: 4px 8px;
-  font-size: 12px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.connect-button-small {
-  background-color: #4caf50;
-  color: white;
-}
-
-.connect-button-small:hover:not(:disabled) {
-  background-color: #45a049;
-}
-
-.disconnect-button-small {
-  background-color: #f44336;
-  color: white;
-}
-
-.disconnect-button-small:hover {
-  background-color: #d32f2f;
-}
-
 /* リーダーボードオーバーレイ（右上） */
 .leaderboard-overlay {
   position: absolute;
@@ -125,53 +77,6 @@
 .leaderboard-overlay .scoreboard .player-score {
   font-weight: bold;
   color: #4ecdc4;
-}
-
-
-/* 待機画面 */
-.waiting-screen {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  text-align: center;
-  gap: 20px;
-}
-
-.waiting-screen h2 {
-  color: #4ecdc4;
-  margin: 0;
-  font-size: 32px;
-}
-
-.waiting-screen p {
-  color: #999;
-  font-size: 16px;
-  margin: 0;
-}
-
-.connect-button {
-  padding: 12px 24px;
-  background-color: #4caf50;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.connect-button:hover:not(:disabled) {
-  background-color: #45a049;
-  transform: translateY(-2px);
-}
-
-.connect-button:disabled {
-  background-color: #666;
-  cursor: not-allowed;
-  opacity: 0.6;
 }
 
 
