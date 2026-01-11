@@ -28,9 +28,6 @@ interface UseWebSocketReturn {
   myScore: ScoreInfo | null;
 }
 
-// 接続タイムアウト
-const CONNECTION_TIMEOUT_MS = 3000;
-
 export const useWebSocket = ({
   roomId,
   playerName,
@@ -43,177 +40,105 @@ export const useWebSocket = ({
   const [scoreboard, setScoreboard] = useState<ScoreInfo[]>([]);
   const [myScore, setMyScore] = useState<ScoreInfo | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectingRef = useRef(false);
 
-  // 接続先URL
   const wsUrl =
-    import.meta.env.VITE_WS_URL ||
-    `ws://${window.location.hostname}:8081/ws`;
+    import.meta.env.VITE_WS_URL || `ws://${window.location.hostname}:8081/ws`;
 
-  // メッセージハンドラー
-  const handleMessage = useCallback((message: WebSocketMessage) => {
-    switch (message.type) {
-      case "gameJoined":
-        if ("playerId" in message && typeof message.playerId === "string") {
-          setPlayerId(message.playerId);
-        }
-        break;
-
-      case "gameState":
-        if ("state" in message) {
-          setGameState(message.state as GameState);
-        }
-        break;
-
-      case "gameConfig":
-        if ("config" in message) {
-          const configMsg = message as GameConfigMessage;
-          setGameConfig(configMsg.config);
-        }
-        break;
-
-      case "scoreboard":
-        if ("scoreboard" in message) {
-          const scoreboardMsg = message as ScoreboardMessage;
-          setScoreboard(scoreboardMsg.scoreboard);
-          if (scoreboardMsg.myScore) {
-            setMyScore(scoreboardMsg.myScore);
-          }
-        }
-        break;
-    }
+  // 状態をリセット
+  const resetState = useCallback(() => {
+    setPlayerId("");
+    setGameState({ pls: [] });
+    setScoreboard([]);
+    setIsConnecting(false);
   }, []);
 
-  // WebSocket接続を作成
-  const createConnection = useCallback(() => {
-    // 既存の接続があれば閉じる
+  // 接続を完全にクリア
+  const clearConnection = useCallback(() => {
     if (wsRef.current) {
+      wsRef.current.onopen = null;
+      wsRef.current.onmessage = null;
+      wsRef.current.onclose = null;
+      wsRef.current.onerror = null;
       wsRef.current.close();
       wsRef.current = null;
     }
+  }, []);
 
-    console.log("[WS] Creating connection:", wsUrl);
+  // 新規接続
+  const connect = useCallback(() => {
+    clearConnection();
+    resetState();
     setIsConnecting(true);
 
+    console.log("[WS] Connecting:", wsUrl);
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
-    // タイムアウト処理（iOS Safari対策）
-    const timeoutId = setTimeout(() => {
-      if (ws.readyState === WebSocket.CONNECTING) {
-        console.log("[WS] Connection timeout, retrying...");
-        ws.close();
-        if (!reconnectingRef.current) {
-          reconnectingRef.current = true;
-          createConnection();
-          reconnectingRef.current = false;
-        }
-      }
-    }, CONNECTION_TIMEOUT_MS);
-
     ws.onopen = () => {
-      console.log("[WS] Connected");
-      clearTimeout(timeoutId);
-      setIsConnecting(false);
-
-      const joinMessage: JoinMessage = {
-        type: "join",
-        roomId,
-        playerName,
-      };
-      ws.send(JSON.stringify(joinMessage));
+      console.log("[WS] Open");
+      ws.send(JSON.stringify({ type: "join", roomId, playerName } as JoinMessage));
     };
 
-    ws.onmessage = (event) => {
+    ws.onmessage = (e) => {
       try {
-        const message: WebSocketMessage = JSON.parse(event.data);
-        handleMessage(message);
-      } catch (error) {
-        console.error("[WS] Parse error:", error);
+        const msg: WebSocketMessage = JSON.parse(e.data);
+        if (msg.type === "gameJoined" && "playerId" in msg) {
+          console.log("[WS] Joined:", msg.playerId);
+          setPlayerId(msg.playerId as string);
+          setIsConnecting(false);
+        } else if (msg.type === "gameState" && "state" in msg) {
+          setGameState(msg.state as GameState);
+        } else if (msg.type === "gameConfig" && "config" in msg) {
+          setGameConfig((msg as GameConfigMessage).config);
+        } else if (msg.type === "scoreboard" && "scoreboard" in msg) {
+          const sm = msg as ScoreboardMessage;
+          setScoreboard(sm.scoreboard);
+          if (sm.myScore) setMyScore(sm.myScore);
+        }
+      } catch (err) {
+        console.error("[WS] Parse error:", err);
       }
     };
 
-    ws.onclose = (event) => {
-      console.log("[WS] Closed:", event.code, event.reason);
-      clearTimeout(timeoutId);
-      setIsConnecting(false);
-      setPlayerId("");
-      setGameState({ pls: [] });
-      setScoreboard([]);
+    ws.onclose = (e) => {
+      console.log("[WS] Close:", e.code);
+      resetState();
+      // 異常終了なら再接続
+      if (e.code === 1006 || e.code === 1005) {
+        setTimeout(connect, 500);
+      }
     };
 
     ws.onerror = () => {
       console.log("[WS] Error");
-      clearTimeout(timeoutId);
-      setIsConnecting(false);
     };
+  }, [wsUrl, roomId, playerName, clearConnection, resetState]);
 
-    return () => {
-      clearTimeout(timeoutId);
-    };
-  }, [wsUrl, roomId, playerName, handleMessage]);
-
-  // メイン接続エフェクト
+  // メインエフェクト
   useEffect(() => {
-    if (!isConnected) {
-      return;
-    }
+    if (!isConnected) return;
 
-    const cleanup = createConnection();
-
-    // ページ離脱時にWebSocketを閉じる
-    const handlePageHide = () => {
-      console.log("[WS] Page hide, closing");
-      wsRef.current?.close();
-    };
-
-    // ページ復帰時に再接続
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        const ws = wsRef.current;
-        if (!ws || ws.readyState === WebSocket.CLOSED) {
-          console.log("[WS] Page visible, reconnecting...");
-          createConnection();
-        }
-      }
-    };
-
-    window.addEventListener("pagehide", handlePageHide);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    connect();
 
     return () => {
-      cleanup?.();
-      window.removeEventListener("pagehide", handlePageHide);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      wsRef.current?.close();
-      wsRef.current = null;
+      clearConnection();
     };
-  }, [isConnected, createConnection]);
+  }, [isConnected, connect, clearConnection]);
 
-  // 加速度送信
   const sendAcceleration = useCallback((x: number, y: number) => {
-    const ws = wsRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
-
-    const message: AccelerationMessage = {
-      type: "setAcceleration",
-      x,
-      y,
-    };
-    ws.send(JSON.stringify(message));
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({ type: "setAcceleration", x, y } as AccelerationMessage)
+      );
+    }
   }, []);
 
-  // 衛星射出
   const sendEjectSatellite = useCallback((targetX: number, targetY: number) => {
-    const ws = wsRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
-
-    const message = {
-      type: "ejectSatellite",
-      targetX,
-      targetY,
-    };
-    ws.send(JSON.stringify(message));
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({ type: "ejectSatellite", targetX, targetY })
+      );
+    }
   }, []);
 
   return {
