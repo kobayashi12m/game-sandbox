@@ -79,49 +79,87 @@ export const useWebSocket = ({
 
   // WebSocket接続の確立
   useEffect(() => {
-    if (!isConnected) return;
+    console.log('[WS] useEffect called, isConnected:', isConnected);
+    if (!isConnected) {
+      console.log('[WS] isConnected is false, skipping');
+      return;
+    }
 
     setIsConnecting(true);
-    
+
     // 接続先
     const wsUrl = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname}:8081/ws`;
-    
+
+    console.log('[WS] Creating WebSocket:', wsUrl);
     const websocket = new WebSocket(wsUrl);
     wsRef.current = websocket;
+    console.log('[WS] Created, readyState:', websocket.readyState);
 
-    websocket.onopen = () => {
-      setIsConnecting(false);
-      
-      const joinMessage: JoinMessage = {
-        type: 'join',
-        roomId,
-        playerName
+    // ハンドラー設定関数（リトライ時にも使用）
+    const setupHandlers = (ws: WebSocket, clearTimeoutFn: () => void) => {
+      ws.onopen = () => {
+        console.log('[WS] onopen fired');
+        clearTimeoutFn();
+        setIsConnecting(false);
+
+        const joinMessage: JoinMessage = {
+          type: 'join',
+          roomId,
+          playerName
+        };
+        console.log('[WS] Sending join');
+        wsRef.current?.send(JSON.stringify(joinMessage));
       };
-      websocket.send(JSON.stringify(joinMessage));
+
+      ws.onmessage = (event) => {
+        try {
+          const message: WebSocketMessage = JSON.parse(event.data);
+          handleMessage(message);
+        } catch (error) {
+          console.error('📡 JSON parse error:', error, event.data);
+        }
+      };
+
+      ws.onclose = (event) => {
+        console.log('[WS] onclose, code:', event.code, 'reason:', event.reason);
+        setIsConnecting(false);
+        setPlayerId('');
+        setGameState({ pls: [] });
+        setScoreboard([]);
+      };
+
+      ws.onerror = (event) => {
+        console.log('[WS] onerror:', event);
+        setIsConnecting(false);
+      };
     };
 
-    websocket.onmessage = (event) => {
-      try {
-        const message: WebSocketMessage = JSON.parse(event.data);
-        handleMessage(message);
-      } catch (error) {
-        console.error('📡 JSON parse error:', error, event.data);
+    // 接続タイムアウト（3秒以内に接続できなければ再試行）
+    const connectionTimeout = setTimeout(() => {
+      if (wsRef.current?.readyState === WebSocket.CONNECTING) {
+        console.log('[WS] Connection timeout, retrying...');
+        wsRef.current.close();
+        // 再接続
+        const retryWs = new WebSocket(wsUrl);
+        wsRef.current = retryWs;
+        setupHandlers(retryWs, () => {});
       }
-    };
+    }, 3000);
 
-    websocket.onclose = () => {
-      setIsConnecting(false);
-      setPlayerId('');
-      setGameState({ pls: [] });
-      setScoreboard([]);
-    };
+    setupHandlers(websocket, () => clearTimeout(connectionTimeout));
 
-    websocket.onerror = () => {
-      setIsConnecting(false);
+    // ページ離脱時にWebSocketを強制クローズ
+    const handlePageHide = () => {
+      console.log('[WS] pagehide, closing');
+      wsRef.current?.close();
     };
+    window.addEventListener('pagehide', handlePageHide);
 
     return () => {
-      websocket.close();
+      console.log('[WS] Cleanup, closing');
+      clearTimeout(connectionTimeout);
+      window.removeEventListener('pagehide', handlePageHide);
+      wsRef.current?.close();
       wsRef.current = null;
     };
   }, [isConnected, roomId, playerName, handleMessage]);

@@ -36,6 +36,12 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 		}
 		defer conn.Close()
 
+		// WebSocket接続確立ログ
+		utils.Info("WebSocket established", map[string]interface{}{
+			"event":       "ws_established",
+			"remote_addr": r.RemoteAddr,
+		})
+
 		var player *models.Player
 		var gameInstance *game.Game
 		var playerID string
