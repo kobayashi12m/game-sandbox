@@ -15,8 +15,6 @@ func (g *Game) AddNPC(count int) {
 		npcName := utils.GenerateRandomNickname()
 
 		g.AddPlayer(npcID, npcName, nil)
-
-		utils.LogConnectionEvent("npc_joined", npcID, npcName, true)
 	}
 
 	utils.Info("NPCs added to game", map[string]interface{}{
