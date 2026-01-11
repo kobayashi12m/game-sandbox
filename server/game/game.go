@@ -64,6 +64,7 @@ func (cmd ShootCommand) GetPlayer() *models.Player {
 type Game struct {
 	ID                string
 	Players           map[string]*models.Player
+	clients           map[string]*Client         // WebSocket接続（ゲームロジックと分離）
 	DroppedSatellites []*models.DroppedSatellite // 落ちた衛星
 	Projectiles       []*models.Projectile       // 射出された衛星
 	Running           bool
@@ -101,7 +102,6 @@ func (g *Game) AddPlayer(id, name string, conn *websocket.Conn) {
 		Name:      name,
 		Celestial: celestial,
 		Score:     0,
-		Conn:      conn,
 	}
 
 	// WebSocket接続がない場合はNPCとして初期化
@@ -111,6 +111,11 @@ func (g *Game) AddPlayer(id, name string, conn *websocket.Conn) {
 	}
 
 	g.Players[id] = player
+
+	// 人間プレイヤーの場合はClientを作成（Playerを渡す）
+	if conn != nil {
+		g.clients[id] = NewClient(conn, player)
+	}
 
 	// 初期スポーン処理（安全な位置でスポーン）
 	g.SpawnPlayer(player)
@@ -125,6 +130,12 @@ func (g *Game) RemovePlayer(id string) {
 	player, exists := g.Players[id]
 	if !exists {
 		return
+	}
+
+	// Clientを閉じる（人間プレイヤーの場合）
+	if client, ok := g.clients[id]; ok {
+		client.Close()
+		delete(g.clients, id)
 	}
 
 	// Playersマップから削除
@@ -144,22 +155,24 @@ func (g *Game) GetPlayer(id string) (*models.Player, bool) {
 	return player, exists
 }
 
+// GetClient はIDでClientを取得する
+func (g *Game) GetClient(id string) (*Client, bool) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	client, exists := g.clients[id]
+	return client, exists
+}
+
 // humanPlayerCount はロック済み状態で人間プレイヤー数を返す（内部用）
 func (g *Game) humanPlayerCount() int {
-	count := 0
-	for _, player := range g.Players {
-		if !player.IsNPC {
-			count++
-		}
-	}
-	return count
+	return len(g.clients)
 }
 
 // GetHumanPlayerCount は人間プレイヤーの数を返す
 func (g *Game) GetHumanPlayerCount() int {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
-	return g.humanPlayerCount()
+	return len(g.clients)
 }
 
 // ShouldStart はゲームを開始すべきかチェックし、必要なら開始する

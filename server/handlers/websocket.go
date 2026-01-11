@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -34,7 +35,6 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 			})
 			return
 		}
-		defer conn.Close()
 
 		// WebSocket接続確立ログ
 		utils.Info("WebSocket established", map[string]interface{}{
@@ -44,8 +44,10 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 
 		var player *models.Player
 		var gameInstance *game.Game
+		var client *game.Client
 		var playerID string
 
+		// メッセージ読み取りループ
 		for {
 			var msg map[string]interface{}
 			err := conn.ReadJSON(&msg)
@@ -74,71 +76,17 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 				playerID = utils.GenerateID()
 				gameInstance = hub.GetOrCreateGame(roomID)
 
+				// プレイヤーを追加（内部でClientも作成される）
 				gameInstance.AddPlayer(playerID, playerName, conn)
 				player, _ = gameInstance.GetPlayer(playerID)
+				client, _ = gameInstance.GetClient(playerID)
 
 				utils.LogConnectionEvent("connect", playerID, playerName, false)
 
 				gameInstance.ShouldStart()
 
-				// WebSocket書き込みを同期化
-				func() {
-					player.ConnMu.Lock()
-					defer player.ConnMu.Unlock()
-
-					// 参加確認を送信
-					response := map[string]interface{}{
-						"type":     "gameJoined",
-						"playerId": playerID,
-					}
-					conn.WriteJSON(response)
-
-					// ゲーム設定を送信（グリッド線含む）
-					gridLines := gameInstance.GetSpatialGridLines()
-
-					config := models.GameConfig{
-						FieldWidth:      utils.FIELD_WIDTH,
-						FieldHeight:     utils.FIELD_HEIGHT,
-						SphereRadius:    utils.SPHERE_RADIUS,
-						CullingWidth:    utils.CULLING_WIDTH,
-						CullingHeight:   utils.CULLING_HEIGHT,
-						CameraZoomScale: utils.CAMERA_ZOOM_SCALE,
-						GridLines:       gridLines,
-					}
-					configMsg := map[string]interface{}{
-						"type":   "gameConfig",
-						"config": config,
-					}
-					conn.WriteJSON(configMsg)
-
-					// 現在のゲーム状態を送信
-					state := gameInstance.GetState()
-
-					stateMsg := map[string]interface{}{
-						"type":  "gameState",
-						"state": state,
-					}
-					conn.WriteJSON(stateMsg)
-
-					// スコアボード情報を送信
-					scoreboard := gameInstance.GetScoreboard()
-
-					// プレイヤー自身のスコア情報
-					myScore := models.ScoreInfo{
-						ID:    player.ID,
-						Name:  player.Name,
-						Score: player.Score,
-						Alive: player.Celestial.Alive,
-						Color: player.Celestial.Color,
-					}
-
-					scoreMsg := map[string]interface{}{
-						"type":       "scoreboard",
-						"scoreboard": scoreboard,
-						"myScore":    myScore,
-					}
-					conn.WriteJSON(scoreMsg)
-				}()
+				// 初期データを送信
+				sendInitialData(client, player, gameInstance)
 
 			case "setAcceleration":
 				if player == nil || gameInstance == nil {
@@ -148,7 +96,6 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 				x, xOk := msg["x"].(float64)
 				y, yOk := msg["y"].(float64)
 				if xOk && yOk && player.Celestial != nil && player.Celestial.Alive {
-					// 加速度コマンドを送信
 					gameInstance.SendCommand(game.AccelerationCommand{
 						Player: player,
 						X:      x,
@@ -164,7 +111,6 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 				targetX, xOk := msg["targetX"].(float64)
 				targetY, yOk := msg["targetY"].(float64)
 				if xOk && yOk {
-					// 射撃コマンドを送信
 					gameInstance.SendCommand(game.ShootCommand{
 						Player:  player,
 						TargetX: targetX,
@@ -175,20 +121,90 @@ func WebSocketHandler(hub *game.Hub) http.HandlerFunc {
 		}
 
 		// 切断時のクリーンアップ
-		if gameInstance != nil && playerID != "" {
-			if player != nil {
-				utils.LogConnectionEvent("disconnect", playerID, player.Name, player.IsNPC)
-			}
-			gameInstance.RemovePlayer(playerID)
+		cleanup(gameInstance, hub, player, playerID)
+	}
+}
 
-			// 人間プレイヤーがいなくなったらゲームを停止
-			if gameInstance.GetHumanPlayerCount() == 0 {
-				endTime := time.Now()
-				duration := endTime.Sub(gameInstance.GetStartTime())
-				utils.LogGameSessionEvent("game_end", gameInstance.ID, 0, len(gameInstance.GetPlayers()), duration)
-				gameInstance.Stop()
-				hub.RemoveGame(gameInstance.ID)
-			}
-		}
+// sendInitialData は接続時の初期データを送信する
+func sendInitialData(client *game.Client, player *models.Player, gameInstance *game.Game) {
+	if client == nil || player == nil {
+		return
+	}
+
+	// 参加確認を送信
+	joinResponse := map[string]interface{}{
+		"type":     "gameJoined",
+		"playerId": player.ID,
+	}
+	if data, err := json.Marshal(joinResponse); err == nil {
+		client.Send(data)
+	}
+
+	// ゲーム設定を送信
+	gridLines := gameInstance.GetSpatialGridLines()
+	config := models.GameConfig{
+		FieldWidth:      utils.FIELD_WIDTH,
+		FieldHeight:     utils.FIELD_HEIGHT,
+		SphereRadius:    utils.SPHERE_RADIUS,
+		CullingWidth:    utils.CULLING_WIDTH,
+		CullingHeight:   utils.CULLING_HEIGHT,
+		CameraZoomScale: utils.CAMERA_ZOOM_SCALE,
+		GridLines:       gridLines,
+	}
+	configMsg := map[string]interface{}{
+		"type":   "gameConfig",
+		"config": config,
+	}
+	if data, err := json.Marshal(configMsg); err == nil {
+		client.Send(data)
+	}
+
+	// 現在のゲーム状態を送信
+	state := gameInstance.GetState()
+	stateMsg := map[string]interface{}{
+		"type":  "gameState",
+		"state": state,
+	}
+	if data, err := json.Marshal(stateMsg); err == nil {
+		client.Send(data)
+	}
+
+	// スコアボード情報を送信
+	scoreboard := gameInstance.GetScoreboard()
+	myScore := models.ScoreInfo{
+		ID:    player.ID,
+		Name:  player.Name,
+		Score: player.Score,
+		Alive: player.Celestial.Alive,
+		Color: player.Celestial.Color,
+	}
+	scoreMsg := map[string]interface{}{
+		"type":       "scoreboard",
+		"scoreboard": scoreboard,
+		"myScore":    myScore,
+	}
+	if data, err := json.Marshal(scoreMsg); err == nil {
+		client.Send(data)
+	}
+}
+
+// cleanup は切断時のクリーンアップ処理を行う
+func cleanup(gameInstance *game.Game, hub *game.Hub, player *models.Player, playerID string) {
+	if gameInstance == nil || playerID == "" {
+		return
+	}
+
+	if player != nil {
+		utils.LogConnectionEvent("disconnect", playerID, player.Name, player.IsNPC)
+	}
+	gameInstance.RemovePlayer(playerID)
+
+	// 人間プレイヤーがいなくなったらゲームを停止
+	if gameInstance.GetHumanPlayerCount() == 0 {
+		endTime := time.Now()
+		duration := endTime.Sub(gameInstance.GetStartTime())
+		utils.LogGameSessionEvent("game_end", gameInstance.ID, 0, len(gameInstance.GetPlayers()), duration)
+		gameInstance.Stop()
+		hub.RemoveGame(gameInstance.ID)
 	}
 }

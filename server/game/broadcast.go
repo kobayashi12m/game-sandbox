@@ -3,12 +3,9 @@ package game
 import (
 	"encoding/json"
 	"sort"
-	"time"
 
 	"game-sandbox/server/models"
 	"game-sandbox/server/utils"
-
-	"github.com/gorilla/websocket"
 )
 
 // GetState はクライアント用の現在のゲーム状態を返す
@@ -150,86 +147,82 @@ func (g *Game) GetScoreboard() []models.ScoreInfo {
 	return scores
 }
 
-// BroadcastScoreboard はスコアボード情報を全クライアントに送信
+// BroadcastScoreboard はスコアボード情報を全クライアントに送信（非同期）
 func (g *Game) BroadcastScoreboard() {
+	// クライアントのスナップショットを取得
 	g.mu.RLock()
-	playerList := make([]*models.Player, 0)
-	for _, player := range g.Players {
-		if !player.IsNPC && player.Conn != nil {
-			playerList = append(playerList, player)
+	clients := make([]*Client, 0, len(g.clients))
+	for _, client := range g.clients {
+		if !client.IsClosed() {
+			clients = append(clients, client)
 		}
 	}
 	g.mu.RUnlock()
 
-	if len(playerList) == 0 {
+	if len(clients) == 0 {
 		return
 	}
 
 	// 上位10名のスコアボード情報を取得
 	scoreboard := g.GetScoreboard()
 
-	// 各プレイヤーに個別に送信（自分のスコア情報も含める）
-	for _, player := range playerList {
-		func() {
-			// プレイヤー自身のスコア情報を作成
-			myScore := models.ScoreInfo{
-				ID:    player.ID,
-				Name:  player.Name,
-				Score: player.Score,
-				Alive: player.Celestial.Alive,
-				Color: player.Celestial.Color,
-			}
+	// 各クライアントに送信
+	for _, client := range clients {
+		player := client.Player
+		if player == nil {
+			continue
+		}
 
-			message := map[string]interface{}{
-				"type":       "scoreboard",
-				"scoreboard": scoreboard,
-				"myScore":    myScore,
-			}
+		// プレイヤー自身のスコア情報を作成
+		myScore := models.ScoreInfo{
+			ID:    player.ID,
+			Name:  player.Name,
+			Score: player.Score,
+			Alive: player.Celestial.Alive,
+			Color: player.Celestial.Color,
+		}
 
-			data, err := json.Marshal(message)
-			if err != nil {
-				utils.Error("Failed to marshal scoreboard", map[string]interface{}{
-					"error":     err.Error(),
-					"player_id": player.ID,
-				})
-				return
-			}
+		message := map[string]interface{}{
+			"type":       "scoreboard",
+			"scoreboard": scoreboard,
+			"myScore":    myScore,
+		}
 
-			player.ConnMu.Lock()
-			defer player.ConnMu.Unlock()
-			if err := player.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
-				utils.LogWebSocketError(player.ID, "broadcast_scoreboard", err)
-			}
-		}()
+		data, err := json.Marshal(message)
+		if err != nil {
+			utils.Error("Failed to marshal scoreboard", map[string]interface{}{
+				"error":     err.Error(),
+				"player_id": player.ID,
+			})
+			continue
+		}
+
+		// 非同期送信（ブロックしない）
+		client.Send(data)
 	}
 }
 
-// BroadcastOptimized は各クライアントに最適化されたデータを個別送信
+// BroadcastOptimized は各クライアントに最適化されたデータを個別送信（非同期）
 func (g *Game) BroadcastOptimized() {
-	// 人間プレイヤーリストを取得
+	// クライアントのスナップショットを取得
 	g.mu.RLock()
-	playerList := make([]*models.Player, 0)
-	for _, player := range g.Players {
-		if player.IsNPC {
+	clients := make([]*Client, 0, len(g.clients))
+	for _, client := range g.clients {
+		if client.IsClosed() {
 			continue
 		}
-		// 接続が切断されていないかチェック
-		if player.Conn == nil {
+		if client.Player == nil || client.Player.Celestial.Core == nil {
 			continue
 		}
-
-		// プレイヤーの位置を取得（死んでいても送信を続ける）
-		if player.Celestial.Core == nil {
-			continue
-		}
-
-		playerList = append(playerList, player)
+		clients = append(clients, client)
 	}
 	g.mu.RUnlock()
 
-	// スナップショットを使って各プレイヤーに送信（デッドロック回避）
-	for _, player := range playerList {
+	// 各クライアントに送信
+	for _, client := range clients {
+		player := client.Player
 		core := player.Celestial.Core.Position
+
 		// ズームレベルに応じてカリング範囲を調整
 		zoomScale := utils.CAMERA_ZOOM_SCALE
 		viewWidth := utils.CULLING_WIDTH / zoomScale
@@ -253,21 +246,10 @@ func (g *Game) BroadcastOptimized() {
 			continue
 		}
 
-		// WebSocket書き込みを同期化
-		func() {
-			player.ConnMu.Lock()
-			defer player.ConnMu.Unlock()
-			start := time.Now()
-			if err := player.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
-				utils.LogWebSocketError(player.ID, "broadcast_state", err)
-			} else {
-				// パフォーマンス計測
-				duration := time.Since(start)
-				utils.LogPerformanceWarning("websocket_write", duration, 10*time.Millisecond)
+		// 非同期送信
+		client.Send(data)
 
-				// 送信バイト数の追跡
-				g.totalBytesSent += int64(len(data))
-			}
-		}()
+		// 送信バイト数の追跡
+		g.totalBytesSent += int64(len(data))
 	}
 }

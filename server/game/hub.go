@@ -31,6 +31,7 @@ func (h *Hub) GetOrCreateGame(roomID string) *Game {
 	game := &Game{
 		ID:          roomID,
 		Players:     make(map[string]*models.Player),
+		clients:     make(map[string]*Client), // WebSocket接続管理
 		Running:     false,
 		spatialGrid: NewSpatialGrid(),            // 空間分割グリッドを初期化
 		commands:    make(chan GameCommand, 500), // 統一コマンドキュー初期化
