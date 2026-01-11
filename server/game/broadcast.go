@@ -153,9 +153,9 @@ func (g *Game) GetScoreboard() []models.ScoreInfo {
 // BroadcastScoreboard はスコアボード情報を全クライアントに送信
 func (g *Game) BroadcastScoreboard() {
 	g.mu.RLock()
-	playerList := make([]*models.Player, 0, len(g.humanPlayers))
-	for _, player := range g.humanPlayers {
-		if player.Conn != nil {
+	playerList := make([]*models.Player, 0)
+	for _, player := range g.Players {
+		if !player.IsNPC && player.Conn != nil {
 			playerList = append(playerList, player)
 		}
 	}
@@ -206,10 +206,13 @@ func (g *Game) BroadcastScoreboard() {
 
 // BroadcastOptimized は各クライアントに最適化されたデータを個別送信
 func (g *Game) BroadcastOptimized() {
-	// キャッシュされた人間プレイヤーリストを取得
+	// 人間プレイヤーリストを取得
 	g.mu.RLock()
-	playerList := make([]*models.Player, 0, len(g.humanPlayers))
-	for _, player := range g.humanPlayers {
+	playerList := make([]*models.Player, 0)
+	for _, player := range g.Players {
+		if player.IsNPC {
+			continue
+		}
 		// 接続が切断されていないかチェック
 		if player.Conn == nil {
 			continue

@@ -245,9 +245,9 @@ func (g *Game) distance(a, b *models.Celestial) float64 {
 	return math.Sqrt(dx*dx + dy*dy)
 }
 
-// GetDesiredNPCCount は現在の人間プレイヤー数から必要なNPC数を計算する
+// GetDesiredNPCCount は現在の人間プレイヤー数から必要なNPC数を計算する（ロック済み状態で呼ぶこと）
 func (g *Game) GetDesiredNPCCount() int {
-	humanCount := len(g.humanPlayers)
+	humanCount := g.humanPlayerCount()
 	desiredNPCCount := utils.MAX_NPC_COUNT - humanCount
 	if desiredNPCCount < 0 {
 		return 0
@@ -257,9 +257,11 @@ func (g *Game) GetDesiredNPCCount() int {
 
 // ReplenishNPCs は不足したNPCを補充する
 func (g *Game) ReplenishNPCs() {
+	g.mu.Lock()
+	humanCount := g.humanPlayerCount()
 	desiredNPCCount := g.GetDesiredNPCCount()
-	currentNPCCount := len(g.Players) - len(g.humanPlayers)
-	humanCount := len(g.humanPlayers)
+	currentNPCCount := len(g.Players) - humanCount
+	g.mu.Unlock()
 
 	// NPCが不足している場合は追加
 	if currentNPCCount < desiredNPCCount {
@@ -276,14 +278,14 @@ func (g *Game) ReplenishNPCs() {
 	}
 }
 
-// ShouldNPCRespawn はNPCがリスポーンすべきかを判定する
+// ShouldNPCRespawn はNPCがリスポーンすべきかを判定する（ロック済み状態で呼ぶこと）
 func (g *Game) ShouldNPCRespawn(npc *models.Player) bool {
 	if !npc.IsNPC {
 		return true // 人間プレイヤーは常にリスポーン
 	}
 
 	desiredNPCCount := g.GetDesiredNPCCount()
-	humanCount := len(g.humanPlayers)
+	humanCount := g.humanPlayerCount()
 	currentNPCCount := len(g.Players) - humanCount
 
 	// NPC数が上限以下ならリスポーン

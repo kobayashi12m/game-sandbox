@@ -67,9 +67,8 @@ type Game struct {
 	DroppedSatellites []*models.DroppedSatellite // 落ちた衛星
 	Projectiles       []*models.Projectile       // 射出された衛星
 	Running           bool
-	spatialGrid       *SpatialGrid     // 空間分割グリッド
-	frameCount        int64            // フレームカウンター
-	humanPlayers      []*models.Player // WebSocket接続する人間プレイヤーのキャッシュ
+	spatialGrid       *SpatialGrid // 空間分割グリッド
+	frameCount        int64        // フレームカウンター
 	// 通信統計（シンプル版）
 	totalBytesSent int64 // 送信バイト数の累計
 	startTime      time.Time
@@ -115,11 +114,6 @@ func (g *Game) AddPlayer(id, name string, conn *websocket.Conn) {
 
 	// 初期スポーン処理（安全な位置でスポーン）
 	g.SpawnPlayer(player)
-
-	// 人間プレイヤーの場合はキャッシュに追加
-	if !player.IsNPC && player.Conn != nil {
-		g.humanPlayers = append(g.humanPlayers, player)
-	}
 }
 
 // RemovePlayer はゲームからプレイヤーを削除する
@@ -136,16 +130,9 @@ func (g *Game) RemovePlayer(id string) {
 	// Playersマップから削除
 	delete(g.Players, id)
 
-	// 人間プレイヤーキャッシュからも削除
+	// 人間プレイヤーが減ったらNPCを補充
 	if !player.IsNPC {
-		for i, cachedPlayer := range g.humanPlayers {
-			if cachedPlayer == player {
-				g.humanPlayers = append(g.humanPlayers[:i], g.humanPlayers[i+1:]...)
-				// 人間プレイヤーが減ったらNPCを補充
-				go g.ReplenishNPCs()
-				break
-			}
-		}
+		go g.ReplenishNPCs()
 	}
 }
 
@@ -157,12 +144,22 @@ func (g *Game) GetPlayer(id string) (*models.Player, bool) {
 	return player, exists
 }
 
+// humanPlayerCount はロック済み状態で人間プレイヤー数を返す（内部用）
+func (g *Game) humanPlayerCount() int {
+	count := 0
+	for _, player := range g.Players {
+		if !player.IsNPC {
+			count++
+		}
+	}
+	return count
+}
+
 // GetHumanPlayerCount は人間プレイヤーの数を返す
 func (g *Game) GetHumanPlayerCount() int {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
-
-	return len(g.humanPlayers)
+	return g.humanPlayerCount()
 }
 
 // ShouldStart はゲームを開始すべきかチェックし、必要なら開始する
@@ -170,14 +167,14 @@ func (g *Game) ShouldStart() bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	humanPlayers := len(g.humanPlayers)
+	humanCount := g.humanPlayerCount()
 
 	// 人間プレイヤーが1人以上いて、ゲームが開始されていない場合
-	if humanPlayers >= 1 && !g.Running {
+	if humanCount >= 1 && !g.Running {
 		g.Running = true
 		g.startTime = time.Now()
 		go g.RunGameLoop()
-		utils.LogGameSessionEvent("game_start", g.ID, humanPlayers, len(g.Players), 0)
+		utils.LogGameSessionEvent("game_start", g.ID, humanCount, len(g.Players), 0)
 		return true
 	}
 	return false
