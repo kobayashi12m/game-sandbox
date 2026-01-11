@@ -107,6 +107,16 @@ const CelestialGame: React.FC = () => {
             marginLeft: `${-1920 / 2}px`,
           }}
         >
+          {/* 接続中オーバーレイ */}
+          {!playerId && (
+            <div className="connecting-overlay">
+              <div className="connecting-content">
+                <div className="connecting-spinner"></div>
+                <p>サーバーに接続中...</p>
+              </div>
+            </div>
+          )}
+
           {/* メインのゲーム画面 */}
           <GameCanvas
             gameState={gameState}
