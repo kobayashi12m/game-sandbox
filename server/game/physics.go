@@ -56,7 +56,7 @@ func (g *Game) processGameCommands() {
 						"avg_per_second":     float64(g.commandsLast10Sec) / 10.0,
 						"max_queue_length":   g.maxQueueLength,
 						"queue_utilization":  fmt.Sprintf("%.1f%%", float64(g.maxQueueLength)/float64(cap(g.commands))*100),
-						"human_players":      g.GetHumanPlayerCount(),
+						"human_players":      g.humanPlayerCount(),
 						"event":              "command_stats_10s",
 					})
 				}
