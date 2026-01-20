@@ -73,7 +73,4 @@ cd client
 npm run dev
 ```
 
-## アクセス方法
-
-- PC: http://localhost:5173/
-- スマホ: ターミナルに表示されるNetwork URL (例: http://192.168.x.x:5173/)
+http://localhost:5173/ でアクセス
