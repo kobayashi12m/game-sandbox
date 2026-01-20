@@ -5,6 +5,7 @@ import (
 	"math"
 	"time"
 
+	"game-sandbox/server/celestial"
 	"game-sandbox/server/models"
 	"game-sandbox/server/utils"
 )
@@ -188,7 +189,7 @@ func (g *Game) Update(deltaTime float64) {
 // checkCelestialCollision は球体レベルでの個別衝突判定を行う
 func (g *Game) checkCelestialCollision(player *models.Player) {
 	// プレイヤーの全球体（Core + Satellites）
-	var playerSpheres []*models.Sphere
+	var playerSpheres []*celestial.Sphere
 	playerSpheres = append(playerSpheres, player.Celestial.Core)
 	playerSpheres = append(playerSpheres, player.Celestial.GetAllSpheres()...)
 
@@ -202,7 +203,7 @@ func (g *Game) checkCelestialCollision(player *models.Player) {
 }
 
 // applySphereCollision は個別の球体間の衝突を処理する
-func (g *Game) applySphereCollision(sphere1, sphere2 *models.Sphere, player1, player2 *models.Player) {
+func (g *Game) applySphereCollision(sphere1, sphere2 *celestial.Sphere, player1, player2 *models.Player) {
 	// 衝突方向ベクトルを計算
 	dx := sphere1.Position.X - sphere2.Position.X
 	dy := sphere1.Position.Y - sphere2.Position.Y
@@ -304,7 +305,7 @@ func (g *Game) UpdateSpatialGrid() {
 	for _, player := range g.Players {
 		if player.Celestial.Core != nil {
 			// 球体構造の全ノードをグリッドに登録
-			var spheres []*models.Sphere
+			var spheres []*celestial.Sphere
 			spheres = append(spheres, player.Celestial.Core)
 			spheres = append(spheres, player.Celestial.GetAllSpheres()...)
 			g.spatialGrid.AddPlayerSpheres(player, spheres)

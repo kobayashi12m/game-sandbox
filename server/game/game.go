@@ -4,7 +4,9 @@ import (
 	"sync"
 	"time"
 
+	"game-sandbox/server/celestial"
 	"game-sandbox/server/models"
+	"game-sandbox/server/types"
 	"game-sandbox/server/utils"
 
 	"github.com/gorilla/websocket"
@@ -93,14 +95,14 @@ func (g *Game) AddPlayer(id, name string, conn *websocket.Conn) {
 	colors := []string{"#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#DDA0DD", "#F4A460"}
 	color := colors[len(g.Players)%len(colors)]
 
-	celestial := &models.Celestial{
+	cel := &celestial.Celestial{
 		Color: color,
 	}
 
 	player := &models.Player{
 		ID:        id,
 		Name:      name,
-		Celestial: celestial,
+		Celestial: cel,
 		Score:     0,
 	}
 
@@ -254,7 +256,7 @@ func (g *Game) RunGameLoop() {
 }
 
 // GetSpatialGridLines はSpatialGridの分割線を取得する
-func (g *Game) GetSpatialGridLines() []models.GridLine {
+func (g *Game) GetSpatialGridLines() []types.GridLine {
 	return g.spatialGrid.GetGridLines()
 }
 

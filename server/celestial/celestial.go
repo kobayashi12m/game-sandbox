@@ -1,19 +1,20 @@
-package models
+package celestial
 
 import (
 	"fmt"
+	"game-sandbox/server/types"
 	"game-sandbox/server/utils"
 	"time"
 )
 
 // Sphere は物理演算される球体を表す
 type Sphere struct {
-	Position     Position `json:"position"`
-	Velocity     Position `json:"velocity,omitempty"`
-	Acceleration Position `json:"acceleration,omitempty"` // 加速度
-	Radius       float64  `json:"radius"`
-	Color        string   `json:"color"` // 球体の色
-	Mass         float64  `json:"-"`     // 質量
+	Position     types.Position `json:"position"`
+	Velocity     types.Position `json:"velocity,omitempty"`
+	Acceleration types.Position `json:"acceleration,omitempty"` // 加速度
+	Radius       float64        `json:"radius"`
+	Color        string         `json:"color"` // 球体の色
+	Mass         float64        `json:"-"`     // 質量
 }
 
 // MarshalJSON は配列形式でJSONサイズを最大削減する [[x,y], radius, color, [vx,vy], [ax,ay]]
@@ -108,9 +109,9 @@ func (c *Celestial) MarshalJSON() ([]byte, error) {
 func (c *Celestial) ResetAtPosition(x, y float64) {
 	// コア（中心球）を初期化
 	c.Core = &Sphere{
-		Position:     Position{X: x, Y: y},
-		Velocity:     Position{X: 0, Y: 0},
-		Acceleration: Position{X: 0, Y: 0},
+		Position:     types.Position{X: x, Y: y},
+		Velocity:     types.Position{X: 0, Y: 0},
+		Acceleration: types.Position{X: 0, Y: 0},
 		Radius:       utils.SPHERE_RADIUS,
 		Color:        c.Color,
 		Mass:         1.0,

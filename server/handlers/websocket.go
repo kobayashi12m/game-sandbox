@@ -7,6 +7,7 @@ import (
 
 	"game-sandbox/server/game"
 	"game-sandbox/server/models"
+	"game-sandbox/server/types"
 	"game-sandbox/server/utils"
 
 	"github.com/gorilla/websocket"
@@ -142,7 +143,7 @@ func sendInitialData(client *game.Client, player *models.Player, gameInstance *g
 
 	// ゲーム設定を送信
 	gridLines := gameInstance.GetSpatialGridLines()
-	config := models.GameConfig{
+	config := types.GameConfig{
 		FieldWidth:      utils.FIELD_WIDTH,
 		FieldHeight:     utils.FIELD_HEIGHT,
 		SphereRadius:    utils.SPHERE_RADIUS,

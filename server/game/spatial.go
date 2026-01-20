@@ -1,7 +1,9 @@
 package game
 
 import (
+	"game-sandbox/server/celestial"
 	"game-sandbox/server/models"
+	"game-sandbox/server/types"
 	"game-sandbox/server/utils"
 )
 
@@ -15,8 +17,8 @@ type SpatialGrid struct {
 
 // GridCell は各グリッドセルに含まれるオブジェクト
 type GridCell struct {
-	playerSpheres     map[*models.Player][]*models.Sphere // プレイヤー別の球体ポインタ
-	droppedSatellites []*models.DroppedSatellite          // 落ちた衛星
+	playerSpheres     map[*models.Player][]*celestial.Sphere // プレイヤー別の球体ポインタ
+	droppedSatellites []*models.DroppedSatellite             // 落ちた衛星
 }
 
 // NewSpatialGrid は新しい空間分割グリッドを作成する
@@ -32,7 +34,7 @@ func NewSpatialGrid() *SpatialGrid {
 		cells[i] = make([]*GridCell, width)
 		for j := range cells[i] {
 			cells[i][j] = &GridCell{
-				playerSpheres:     make(map[*models.Player][]*models.Sphere),
+				playerSpheres:     make(map[*models.Player][]*celestial.Sphere),
 				droppedSatellites: make([]*models.DroppedSatellite, 0),
 			}
 		}
@@ -51,7 +53,7 @@ func (sg *SpatialGrid) Clear() {
 	for i := range sg.cells {
 		for j := range sg.cells[i] {
 			// プレイヤー球体のみクリア（落ちた衛星は残す）
-			sg.cells[i][j].playerSpheres = make(map[*models.Player][]*models.Sphere)
+			sg.cells[i][j].playerSpheres = make(map[*models.Player][]*celestial.Sphere)
 			// 落ちた衛星はそのまま残す
 		}
 	}
@@ -79,7 +81,7 @@ func (sg *SpatialGrid) GetCellCoords(x, y float64) (int, int) {
 }
 
 // AddPlayerSpheres はプレイヤーの全球体をグリッドに追加する
-func (sg *SpatialGrid) AddPlayerSpheres(player *models.Player, spheres []*models.Sphere) {
+func (sg *SpatialGrid) AddPlayerSpheres(player *models.Player, spheres []*celestial.Sphere) {
 	for _, sphere := range spheres {
 		cellX, cellY := sg.GetCellCoords(sphere.Position.X, sphere.Position.Y)
 
@@ -125,7 +127,7 @@ func (sg *SpatialGrid) iterateNearbyCells(centerX, centerY, radius int, callback
 }
 
 // CheckCollisionAt は指定した位置で衝突しているプレイヤーと球体を返す
-func (sg *SpatialGrid) CheckCollisionAt(position models.Position, radius float64, selfPlayer *models.Player) (*models.Player, *models.Sphere) {
+func (sg *SpatialGrid) CheckCollisionAt(position types.Position, radius float64, selfPlayer *models.Player) (*models.Player, *celestial.Sphere) {
 	// 自分が無敵状態の場合は衝突しない
 	if selfPlayer != nil && selfPlayer.IsInvulnerable() {
 		return nil, nil
@@ -134,7 +136,7 @@ func (sg *SpatialGrid) CheckCollisionAt(position models.Position, radius float64
 	centerX, centerY := sg.GetCellCoords(position.X, position.Y)
 
 	var resultPlayer *models.Player
-	var resultSphere *models.Sphere
+	var resultSphere *celestial.Sphere
 	sg.iterateNearbyCells(centerX, centerY, 1, func(cell *GridCell) {
 		if resultPlayer != nil {
 			return
@@ -275,13 +277,13 @@ func (sg *SpatialGrid) GetObjectsInArea(minX, maxX, minY, maxY float64) AreaResu
 }
 
 // GetGridLines はSpatialGridの分割線を取得する
-func (sg *SpatialGrid) GetGridLines() []models.GridLine {
-	lines := make([]models.GridLine, 0, sg.width+sg.height)
+func (sg *SpatialGrid) GetGridLines() []types.GridLine {
+	lines := make([]types.GridLine, 0, sg.width+sg.height)
 
 	// 縦線（垂直線）
 	for i := 1; i < sg.width; i++ {
 		x := float64(i) * sg.cellSize
-		lines = append(lines, models.GridLine{
+		lines = append(lines, types.GridLine{
 			StartX: x,
 			StartY: 0,
 			EndX:   x,
@@ -292,7 +294,7 @@ func (sg *SpatialGrid) GetGridLines() []models.GridLine {
 	// 横線（水平線）
 	for i := 1; i < sg.height; i++ {
 		y := float64(i) * sg.cellSize
-		lines = append(lines, models.GridLine{
+		lines = append(lines, types.GridLine{
 			StartX: 0,
 			StartY: y,
 			EndX:   utils.FIELD_WIDTH,

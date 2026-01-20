@@ -4,15 +4,16 @@ import (
 	"fmt"
 	"time"
 
+	"game-sandbox/server/celestial"
 	"game-sandbox/server/utils"
 )
 
 // Player はゲーム内のプレイヤーを表す（ゲームロジック専用、WebSocketは含まない）
 type Player struct {
-	ID                  string     `json:"id"`
-	Name                string     `json:"name"`
-	Celestial           *Celestial `json:"celestial"`
-	Score               int        `json:"score"`
+	ID                  string                  `json:"id"`
+	Name                string                  `json:"name"`
+	Celestial           *celestial.Celestial    `json:"celestial"`
+	Score               int                     `json:"score"`
 	IsNPC               bool                    `json:"-"` // NPCかどうかのフラグ
 	LastDirectionChange time.Time               `json:"-"` // 最後に方向を変えた時刻
 	LastAutoSatellite   time.Time               `json:"-"` // 最後に自動衛星を追加した時刻
@@ -75,11 +76,11 @@ func (p *Player) AwardPickupScore() {
 
 // PlayerState はクライアント同期用のプレイヤーデータを表す
 type PlayerState struct {
-	ID           string     `json:"id"`
-	Name         string     `json:"nm"`  // name → nm
-	Celestial    *Celestial `json:"cel"` // celestial → cel
-	Score        int        `json:"sc"`  // score → sc
-	Invulnerable bool       `json:"inv"` // invulnerable → inv
+	ID           string               `json:"id"`
+	Name         string               `json:"nm"`  // name → nm
+	Celestial    *celestial.Celestial `json:"cel"` // celestial → cel
+	Score        int                  `json:"sc"`  // score → sc
+	Invulnerable bool                 `json:"inv"` // invulnerable → inv
 }
 
 // MarshalJSON はPlayerStateを配列形式でJSON化 [id, name, celestial, score, invulnerable]

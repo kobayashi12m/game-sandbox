@@ -1,11 +1,14 @@
 package game
 
 import (
-	"game-sandbox/server/models"
-	"game-sandbox/server/utils"
 	"math"
 	"math/rand"
 	"time"
+
+	"game-sandbox/server/celestial"
+	"game-sandbox/server/models"
+	"game-sandbox/server/types"
+	"game-sandbox/server/utils"
 )
 
 // NPCを追加
@@ -39,14 +42,14 @@ func (g *Game) UpdateNPCAI() {
 
 // NPCのターゲット情報
 type npcTarget struct {
-	position   models.Position
-	velocity   models.Position
+	position   types.Position
+	velocity   types.Position
 	targetType string // "satellite" or "enemy"
 }
 
 // 予測位置を計算
-func (g *Game) predictPosition(position, velocity models.Position, deltaTime float64) models.Position {
-	return models.Position{
+func (g *Game) predictPosition(position, velocity types.Position, deltaTime float64) types.Position {
+	return types.Position{
 		X: position.X + velocity.X*deltaTime,
 		Y: position.Y + velocity.Y*deltaTime,
 	}
@@ -150,7 +153,7 @@ func (g *Game) findBestTarget(npc *models.Player, cellSize float64) *npcTarget {
 				minScore = score
 				bestTarget = &npcTarget{
 					position:   satellite.Position,
-					velocity:   models.Position{X: 0, Y: 0},
+					velocity:   types.Position{X: 0, Y: 0},
 					targetType: "satellite",
 				}
 			}
@@ -234,7 +237,7 @@ func (g *Game) randomWander(npc *models.Player, cellSize float64) {
 }
 
 // 2つの天体間の距離を計算
-func (g *Game) distance(a, b *models.Celestial) float64 {
+func (g *Game) distance(a, b *celestial.Celestial) float64 {
 	if a == nil || b == nil || a.Core == nil || b.Core == nil {
 		return math.MaxFloat64
 	}

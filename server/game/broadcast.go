@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"game-sandbox/server/models"
+	"game-sandbox/server/types"
 	"game-sandbox/server/utils"
 )
 
@@ -74,8 +75,8 @@ func (g *Game) GetOptimizedState(clientPlayerID string, clientX, clientY, viewWi
 
 			// 自分以外のプレイヤーの速度・加速度情報をクリア
 			if p.ID != clientPlayerID {
-				celestialCopy.Core.Velocity = models.Position{}
-				celestialCopy.Core.Acceleration = models.Position{}
+				celestialCopy.Core.Velocity = types.Position{}
+				celestialCopy.Core.Acceleration = types.Position{}
 			}
 
 			players = append(players, models.PlayerState{

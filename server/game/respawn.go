@@ -5,18 +5,19 @@ import (
 	"time"
 
 	"game-sandbox/server/models"
+	"game-sandbox/server/types"
 	"game-sandbox/server/utils"
 )
 
 // generateRandomPosition はランダムな位置を生成する
-func generateRandomPosition() models.Position {
+func generateRandomPosition() types.Position {
 	x := rand.Float64()*(utils.FIELD_WIDTH-100) + 50
 	y := rand.Float64()*(utils.FIELD_HEIGHT-100) + 50
-	return models.Position{X: x, Y: y}
+	return types.Position{X: x, Y: y}
 }
 
 // FindSafeSpawnPosition は安全なリスポーン位置を見つける
-func (g *Game) FindSafeSpawnPosition() models.Position {
+func (g *Game) FindSafeSpawnPosition() types.Position {
 	maxAttempts := 50
 
 	// Spatial Gridを使った高速チェック

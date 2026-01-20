@@ -2,7 +2,8 @@ package game
 
 import (
 	"fmt"
-	"game-sandbox/server/models"
+
+	"game-sandbox/server/types"
 )
 
 // addBytesSent は送信バイト数を安全に追加する
@@ -47,10 +48,10 @@ func formatBytes(bytes int64) string {
 }
 
 // createNPCDebugInfo は「Bot Alpha」のデバッグ情報を作成
-func (g *Game) createNPCDebugInfo() *models.NPCDebugStats {
+func (g *Game) createNPCDebugInfo() *types.NPCDebugStats {
 	for _, p := range g.Players {
 		if p.IsNPC && p.Name == "Bot Alpha" && p.Celestial.Alive {
-			return &models.NPCDebugStats{
+			return &types.NPCDebugStats{
 				ID:         p.ID,
 				Name:       p.Name,
 				VelocityX:  p.Celestial.Core.Velocity.X,

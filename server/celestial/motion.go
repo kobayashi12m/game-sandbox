@@ -1,4 +1,4 @@
-package models
+package celestial
 
 import (
 	"game-sandbox/server/utils"

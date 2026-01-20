@@ -1,13 +1,14 @@
-package models
+package celestial
 
 import (
+	"game-sandbox/server/types"
 	"game-sandbox/server/utils"
 	"math"
 	"math/rand/v2"
 )
 
 // AddSatellite は新しい衛星を追加する（成長時）
-func (c *Celestial) AddSatellite(color string, startPos Position) {
+func (c *Celestial) AddSatellite(color string, startPos types.Position) {
 	// 利用可能な最も内側の軌道を取得し、存在を保証
 	orbitIndex := c.GetAvailableOrbitForNewSatellite()
 	c.EnsureOrbitExists(orbitIndex)
@@ -80,7 +81,7 @@ func (c *Celestial) EjectSatelliteWithReturn(targetX, targetY float64) *Sphere {
 	ejectedSphere := &Sphere{
 		Position:     closestSatellite.Sphere.Position,
 		Velocity:     closestSatellite.Sphere.Velocity,
-		Acceleration: Position{X: 0, Y: 0},
+		Acceleration: types.Position{X: 0, Y: 0},
 		Radius:       closestSatellite.Sphere.Radius,
 		Color:        closestSatellite.Sphere.Color,
 		Mass:         closestSatellite.Sphere.Mass,
@@ -93,15 +94,15 @@ func (c *Celestial) EjectSatelliteWithReturn(targetX, targetY float64) *Sphere {
 }
 
 // createSatellite は指定位置・角度・軌道設定で衛星を作成する
-func (c *Celestial) createSatellite(position Position, angle float64, orbitConfig *OrbitConfig, color string) *Satellite {
+func (c *Celestial) createSatellite(position types.Position, angle float64, orbitConfig *OrbitConfig, color string) *Satellite {
 	// 接線方向の初期速度を計算
 	tangentVelX := -orbitConfig.Radius * orbitConfig.Speed * math.Sin(angle)
 	tangentVelY := orbitConfig.Radius * orbitConfig.Speed * math.Cos(angle)
 
 	sphere := &Sphere{
 		Position:     position,
-		Velocity:     Position{X: tangentVelX, Y: tangentVelY},
-		Acceleration: Position{X: 0, Y: 0},
+		Velocity:     types.Position{X: tangentVelX, Y: tangentVelY},
+		Acceleration: types.Position{X: 0, Y: 0},
 		Radius:       utils.SPHERE_RADIUS,
 		Color:        color,
 		Mass:         0.5,

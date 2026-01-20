@@ -1,9 +1,12 @@
 package game
 
 import (
-	"game-sandbox/server/models"
-	"game-sandbox/server/utils"
 	"time"
+
+	"game-sandbox/server/celestial"
+	"game-sandbox/server/models"
+	"game-sandbox/server/types"
+	"game-sandbox/server/utils"
 )
 
 // EjectPlayerSatellite はプレイヤーの衛星を射出する
@@ -69,12 +72,12 @@ func (g *Game) destroyPlayer(player *models.Player) {
 
 	// プレイヤーを死亡状態にする
 	player.Celestial.Alive = false
-	player.Celestial.Satellites = [][]*models.Satellite{}
+	player.Celestial.Satellites = [][]*celestial.Satellite{}
 
 }
 
 // destroyTargetSatellite は指定した位置の衛星を完全消滅させる
-func (g *Game) destroyTargetSatellite(player *models.Player, sphere *models.Sphere) {
+func (g *Game) destroyTargetSatellite(player *models.Player, sphere *celestial.Sphere) {
 	for oi, orbit := range player.Celestial.Satellites {
 		for si, sat := range orbit {
 			if sat.Sphere == sphere {
@@ -131,7 +134,7 @@ func (g *Game) updateAutoSatellites() {
 		// コア位置
 		corePos := player.Celestial.Core.Position
 
-		startPos := models.Position{
+		startPos := types.Position{
 			X: corePos.X,
 			Y: corePos.Y,
 		}
