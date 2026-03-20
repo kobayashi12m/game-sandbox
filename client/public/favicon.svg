@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="planet" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#60a5fa" stop-opacity="0.9"/>
+      <stop offset="50%" stop-color="#c084fc" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#60a5fa" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0.3" y1="0" x2="0.7" y2="1">
+      <stop offset="0%" stop-color="#fff" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <!-- Clip to hide ring behind planet -->
+    <clipPath id="ring-back">
+      <rect x="0" y="0" width="64" height="27"/>
+    </clipPath>
+    <clipPath id="ring-front">
+      <rect x="0" y="27" width="64" height="37"/>
+    </clipPath>
+  </defs>
+
+  <!-- Ring behind planet -->
+  <ellipse cx="32" cy="32" rx="30" ry="10" fill="none" stroke="url(#ring)" stroke-width="3.5" clip-path="url(#ring-back)" opacity="0.5"/>
+
+  <!-- Planet body -->
+  <circle cx="32" cy="32" r="16" fill="url(#planet)"/>
+
+  <!-- Planet band stripes -->
+  <ellipse cx="32" cy="28" rx="14" ry="3" fill="rgba(255,255,255,0.08)"/>
+  <ellipse cx="32" cy="35" rx="15" ry="2.5" fill="rgba(0,0,0,0.12)"/>
+
+  <!-- Shine highlight -->
+  <circle cx="26" cy="26" r="8" fill="url(#shine)"/>
+
+  <!-- Ring in front of planet -->
+  <ellipse cx="32" cy="32" rx="30" ry="10" fill="none" stroke="url(#ring)" stroke-width="3.5" clip-path="url(#ring-front)"/>
+
+  <!-- Small orbiting satellite -->
+  <circle cx="52" cy="22" r="3" fill="#f0abfc" opacity="0.9"/>
+  <circle cx="52" cy="22" r="1.5" fill="white" opacity="0.6"/>
+</svg>

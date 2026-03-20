@@ -3,16 +3,63 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>Celestial Game Online</title>
+  <title>Celestial Game Online - Free Multiplayer Browser Game</title>
+  <meta name="description" content="Free real-time multiplayer browser game. Command your celestial system, collect orbiting satellites, and destroy enemy cores. Play instantly on PC or mobile — no download required." />
+  <meta name="keywords" content="io game, browser game, multiplayer game, celestial game, free online game, real-time combat, .io game" />
+  <meta property="og:title" content="Celestial Game Online" />
+  <meta property="og:description" content="Command your celestial system. Collect satellites, destroy enemies. Free multiplayer browser game." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "VideoGame",
+      "name": "Celestial Game Online",
+      "description": "Real-time multiplayer browser game where players command celestial systems with orbiting satellites, collect resources, and battle other players.",
+      "genre": ["Action", "Multiplayer", "Browser Game"],
+      "gamePlatform": ["Web Browser", "Mobile Browser"],
+      "applicationCategory": "Game",
+      "operatingSystem": "Any",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "playMode": "MultiPlayer",
+      "numberOfPlayers": {
+        "@type": "QuantitativeValue",
+        "minValue": 1
+      }
+    }
+  </script>
 </head>
 
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">
+      <h1>Celestial Game Online</h1>
+      <p>Free real-time multiplayer browser game. Command your celestial system and battle other players.</p>
+      <h2>How to Play</h2>
+      <ul>
+        <li>Move toward your cursor or finger</li>
+        <li>Click or tap to eject satellites and attack</li>
+        <li>Collect dropped satellites to grow stronger</li>
+        <li>Destroy enemy cores to score points</li>
+      </ul>
+      <h2>Features</h2>
+      <ul>
+        <li>Real-time multiplayer combat via WebSocket</li>
+        <li>Orbital mechanics — satellites orbit your core</li>
+        <li>Works on desktop and mobile — no download required</li>
+        <li>Free to play, no sign-up needed</li>
+      </ul>
+    </div>
+  </div>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 
