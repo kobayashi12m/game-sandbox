@@ -2,10 +2,12 @@
 
 リアルタイム同期のマルチプレイヤー対戦ゲーム。
 
+**https://celestial-game.com**
+
 ## 技術スタック
 
 - サーバー: Go
-- クライアント: React / TypeScript / Vite
+- クライアント: React / TypeScript
 
 ## ゲーム内容
 
