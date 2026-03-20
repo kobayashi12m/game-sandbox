@@ -39,8 +39,9 @@ export const useWebSocket = ({
   const [myScore, setMyScore] = useState<ScoreInfo | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
+  const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const wsUrl =
-    import.meta.env.VITE_WS_URL || `ws://${window.location.hostname}:8081/ws`;
+    import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.host}/ws`;
 
   // 状態をリセット
   const resetState = useCallback(() => {
